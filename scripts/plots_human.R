@@ -113,13 +113,15 @@ obs_list_human <- list(
 
 # ── Appel principal ──────────────────────────────────────
 # Doses humaines : 2 cycles Q21D (jours 0 et 21)
-plot_human_neut_plt(
-  sim       = sim_hu,
-  pars      = init_pars,
-  titre     = "Hematopoiesis – Carboplatin (Human) Q21D × 2",
-  dose_days = c(0, 21),
-  obs_list  = obs_list_human
-)
+if (exists("sim_hu")) {
+  plot_human_neut_plt(
+    sim       = sim_hu,
+    pars      = init_pars,
+    titre     = "Hematopoiesis – Carboplatin (Human) Q21D × 2",
+    dose_days = c(0, 21),
+    obs_list  = obs_list_human
+  )
+}
 
 # ── Sauvegarde PDF ───────────────────────────────────────
 save_human_neut_plt <- function(sim, pars, file,
