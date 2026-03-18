@@ -1,15 +1,15 @@
 ############################################################
 # parameters_human.R
 # Paramètres physiologiques de base — HUMAIN
-# Baselines, MTTs, circulating rates, PK carboplatin
-# Référence : Fornari 2019, Table 1 & Calvert formula
+# Référence : Fornari 2019, Table 1 & Table 2
+# Tous les paramètres vérifiés contre le papier
 ############################################################
 
 init_pars <- list()
 
 # ── PK carboplatin humain (modèle 2 compartiments) ──
-# CL = GFR + 25 mL/min (formule Calvert, GFR médian = 78 mL/min)
-# CL = 103 mL/min = 6.18 L/h
+# Ref. 22 (Schmitt et al. 2010), Supplementary Text S11
+# CL calvert : GFR + 25 mL/min → 103 mL/min = 6.18 L/h (GFR médian 78)
 init_pars$CL <- 6.18   # L/h
 init_pars$V1 <- 17.0   # L
 init_pars$Q  <- 7.5    # L/h
@@ -25,41 +25,42 @@ init_pars$k_dam <- 0.017
 init_pars$k_rep <- 0.017
 
 # ── Baselines humains (Table 1, 10⁹ cells/L) ──
-init_pars$MPP0  <-    6.2
-init_pars$CMP0  <-   14.3
-init_pars$MEP0  <-    6.3
-init_pars$Neut0 <-    4.5
-init_pars$Mono0 <-    0.5
-init_pars$Ret0  <-   70.0
-init_pars$RBC0  <- 5000.0
-init_pars$Plt0  <-  250.0
+init_pars$MPP0  <-    1.3    # allometric scaling ref. 42
+init_pars$CMP0  <-   20.9   # proportions ref. 43
+init_pars$MEP0  <-   15.0   # proportions ref. 43
+init_pars$Neut0 <-    4.5   # range 2–7, ref. 22
+init_pars$Mono0 <-    0.5   # range 0.2–10, ref. 41
+init_pars$Ret0  <-   70.0   # range 40–115, ref. 1
+init_pars$RBC0  <- 5000.0   # range 4100–5900, ref. 32
+init_pars$Plt0  <-  345.0   # ref. 5
 
 # ── MTTs humains (Table 1, en heures) ──
-init_pars$MTT_Neut <- 130.0   # granulopoïèse : ~5-6 jours
-init_pars$MTT_Mono <-  80.0
-init_pars$MTT_Ret  <-  72.0   # réticulocytes : ~3 jours
-init_pars$MTT_Plt  <- 200.0   # thrombopoïèse : ~8-10 jours
+init_pars$MTT_Neut <- 210.0   # scaled from ref. 5
+init_pars$MTT_Mono <- 121.5   # scaled from ref. 47
+init_pars$MTT_Ret  <-  66.0   # scaled from internal AZ study
+init_pars$MTT_Plt  <- 168.0   # scaled from ref. 5
 
 # ── Circulating rates (Table 1, en h⁻¹) ──
-init_pars$k_circ_Neut <- 0.130   # demi-vie ~7.6 h
-init_pars$k_circ_Mono <- 0.020   # demi-vie ~2 jours
-init_pars$k_circ_Plt  <- 0.0042  # durée de vie ~10 jours
-init_pars$k_circ_RBC  <- 0.00035 # durée de vie ~120 jours
+init_pars$k_circ_Neut <- 0.100    # ref. 22
+init_pars$k_circ_Mono <- 0.040    # ref. 41
+init_pars$k_circ_Plt  <- 0.0052   # ref. 5
+init_pars$k_circ_RBC  <- 0.00037  # ref. 13
 # k_circ_Ret est dérivé dans parameters_FORNARI_CORRECT.R (Eq S4)
 
 # ── Drug effects (Table 2) ──
-init_pars$Slope_MPP  <- 2.05
-init_pars$Slope_CMP  <- 1.47
-init_pars$Slope_MEP  <- 2.19
-init_pars$delta_Ret  <- 2.8
-init_pars$delta_Plt  <- 1.00  # calibration auto : nadir1~150 nadir2~130
-init_pars$delta_Neut <- 0.003
+# Slopes ajustés pour la sensibilité espèce-spécifique (Eq. 10)
+init_pars$Slope_MPP  <- 0.79   # IC50-scaled from rat (2.05)
+init_pars$Slope_CMP  <- 0.57   # IC50-scaled from rat (1.47)
+init_pars$Slope_MEP  <- 0.66   # IC50-scaled from rat (2.19)
+init_pars$delta_Ret  <- 2.8    # same as rat
+init_pars$delta_Plt  <- 0.54   # same as rat
+init_pars$delta_Neut <- 0.003  # same as rat
 
-# ── Feedback powers (Table 1) ──
+# ── Feedback powers (Table 1, same as rat) ──
 init_pars$gamma_stem      <- 0.07
 init_pars$gamma_mat_CMP   <- 0.60
 init_pars$gamma_mat_MEP   <- 0.30
-init_pars$gamma_prolTrans <- 0.55
+init_pars$gamma_prolTrans <- 0.70  # same as rat
 
 # ── MW carboplatin ──
 init_pars$MW_carboplatin <- 371.25
