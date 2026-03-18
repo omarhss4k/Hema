@@ -4,7 +4,7 @@
 # Sources parameters_rat.R
 ############################################################
 
-source("parameters_human.R")
+# Les paramètres de base (rat ou humain) doivent être chargés avant ce fichier
 
 cat("╔══════════════════════════════════════════════════════════╗\n")
 cat("║  PARAMÈTRES FORNARI — EQUATION S4 EXACTE               ║\n")

@@ -3,6 +3,7 @@
 # Simulations rat + VPC + grades NCI-CTCAE
 ############################################################
 source("pkpd_model_FORNARI.R")
+source("parameters_rat.R")
 source("parameters_FORNARI_CORRECT.R")
 source("plots.R")
 source("plots_grades.R")
