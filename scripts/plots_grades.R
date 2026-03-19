@@ -201,19 +201,49 @@ save_grade_figure4c <- function(base_pars, init_state,
                                 height     = 5) {
 
   set.seed(seed)
-  cat(sprintf("  → Figure 4c : %d patients (GFR~N(%g,%g))...\n",
+  cat(sprintf("  → Figure 4c : %d patients (GFR~N(%g,%g) + IIV CL/Neut0/Plt0)...\n",
               n_patients, gfr_mean, gfr_sd))
+
+  # ── Sources de variabilité inter-individuelle ──────────────
+  # 1. IIV log-normale sur CL résiduel (au-delà de la prédiction GFR)
+  #    omega_CL = 0.35 (Zandvliet 2008 Table 3 : ~30-35% CV)
+  omega_CL   <- 0.35
+  # 2. IIV log-normale sur les Slopes (sensibilité médicament)
+  #    omega_Slope = 0.40 (variabilité PD interindividuelle, cohérent avec
+  #    les CV% de Table 2 : 11-21% rat → ~30-40% en clinique)
+  omega_Slope <- 0.40
+  # 3. Variabilité des baselines (Table 1 : Neut0 2-7, Plt0 150-500)
+  neut0_mean <- base_pars$Neut0;  neut0_sd <- 1.5
+  plt0_mean  <- base_pars$Plt0;   plt0_sd  <- 100
 
   times    <- seq(0, n_cycles * interval_h + 21*24, by = 1)
   gfr_vals <- pmax(20, pmin(150,
                rnorm(n_patients, mean = gfr_mean, sd = gfr_sd)))
+  eta_CL    <- rnorm(n_patients, 0, omega_CL)
+  eta_Slope <- rnorm(n_patients, 0, omega_Slope)
+  neut0_i   <- pmax(1.5, pmin(10, rnorm(n_patients, neut0_mean, neut0_sd)))
+  plt0_i    <- pmax(75,  pmin(700, rnorm(n_patients, plt0_mean, plt0_sd)))
 
   grade_neut <- integer(n_patients)
   grade_plt  <- integer(n_patients)
 
   for (i in seq_len(n_patients)) {
-    dose_i          <- auc_target * (gfr_vals[i] + 25)
-    pars_i          <- base_pars
+    # Dose Calvert sur GFR individuel
+    dose_i <- auc_target * (gfr_vals[i] + 25)
+
+    # PK avec IIV sur CL (variabilité résiduelle post-Calvert)
+    pars_i     <- base_pars
+    pars_i$CL  <- base_pars$CL * exp(eta_CL[i])
+
+    # PD : IIV sur sensibilité médicament (Slope)
+    pars_i$Slope_MPP <- base_pars$Slope_MPP * exp(eta_Slope[i])
+    pars_i$Slope_CMP <- base_pars$Slope_CMP * exp(eta_Slope[i])
+    pars_i$Slope_MEP <- base_pars$Slope_MEP * exp(eta_Slope[i])
+
+    # PD : baselines individuelles
+    pars_i$Neut0 <- neut0_i[i]
+    pars_i$Plt0  <- plt0_i[i]
+
     pars_i$rate_fun <- make_repeated_infusion(
       dose_mg    = dose_i,
       Tinfu_h    = 1,
@@ -221,9 +251,26 @@ save_grade_figure4c <- function(base_pars, init_state,
       n_cycles   = n_cycles
     )
 
+    # État initial adapté aux baselines individuelles
+    state_i        <- init_state
+    state_i["Neut"] <- neut0_i[i]
+    state_i["Plt"]  <- plt0_i[i]
+    # Rééquilibrer les compartiments transit Neut et Plt
+    a_Neut <- 3 / pars_i$MTT_Neut
+    a_Plt  <- 3 / pars_i$MTT_Plt
+    T_Neut <- pars_i$k_circ_Neut * neut0_i[i] / a_Neut
+    T_Plt  <- pars_i$k_circ_Plt  * plt0_i[i]  / a_Plt
+    state_i["T1_Neut"] <- T_Neut
+    state_i["T2_Neut"] <- T_Neut
+    state_i["T3_Neut"] <- T_Neut
+    T1_Plt <- T_Plt / pars_i$lambda2
+    state_i["T1_Plt"] <- T1_Plt
+    state_i["T2_Plt"] <- T_Plt
+    state_i["T3_Plt"] <- T_Plt
+
     tryCatch({
       out_i <- as.data.frame(lsoda(
-        y        = init_state,
+        y        = state_i,
         times    = times,
         func     = pkpd_fornari,
         parms    = pars_i,

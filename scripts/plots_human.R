@@ -106,9 +106,12 @@ read_wpd <- function(path) {
   list(time = df$time, value = df$value)
 }
 
+data_dir <- if (file.exists("Neut_H.csv")) "." else
+            if (file.exists("../data/Neut_H.csv")) "../data" else "data"
+
 obs_list_human <- list(
-  Neut = read_wpd("Neut_H.csv"),
-  Plt  = read_wpd("Plt_H.csv")
+  Neut = read_wpd(file.path(data_dir, "Neut_H.csv")),
+  Plt  = read_wpd(file.path(data_dir, "Plt_H.csv"))
 )
 
 # ── Appel principal ──────────────────────────────────────
