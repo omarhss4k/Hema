@@ -56,7 +56,7 @@ init_pars$Slope_CMP  <- 0.57   # IC50-scaled from rat (1.47)
 init_pars$Slope_MEP  <- 0.66   # IC50-scaled from rat (2.19)
 init_pars$delta_Ret  <- 2.8    # same as rat
 init_pars$delta_Plt  <- 0.54   # same as rat
-init_pars$delta_Neut <- 0.003  # same as rat
+# delta_Neut absent du modèle Fornari (pas de drug effect sur transit neutrophiles)
 
 # ── Feedback powers (Table 1, same as rat) ──
 init_pars$gamma_stem      <- 0.07

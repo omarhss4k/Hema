@@ -94,15 +94,13 @@ pkpd_fornari <- function(time, state, pars) {
             k_tr_MEP * f_mat_MEP * MPP -
             (k_tr_Ret + k_tr_Plt) * MEP
 
-    # ── Neutrophiles — transit non prolifératif + kill drug direct (Eq. 5) ──
-    # delta_Neut : amplification du kill sur transit (analogue delta_Ret pour Ret)
-    # drug_neut = delta_Neut * Slope_CMP * a_Neut * Damage [h⁻¹]
-    a_Neut    <- 3 / MTT_Neut
-    drug_neut <- delta_Neut * Slope_CMP * a_Neut * Damage
-    dT1_Neut  <- k_tr_Neut*CMP    - a_Neut*T1_Neut - drug_neut*T1_Neut
-    dT2_Neut  <- a_Neut*T1_Neut  - a_Neut*T2_Neut  - drug_neut*T2_Neut
-    dT3_Neut  <- a_Neut*T2_Neut  - a_Neut*T3_Neut  - drug_neut*T3_Neut
-    dNeut     <- a_Neut*T3_Neut  - k_circ_Neut*Neut
+    # ── Neutrophiles — transit non prolifératif (Eq. 5, Fornari 2019) ──
+    # Pas d'effet drogue direct sur les compartiments transit (contrairement à Ret/Plt)
+    a_Neut   <- 3 / MTT_Neut
+    dT1_Neut <- k_tr_Neut*CMP   - a_Neut*T1_Neut
+    dT2_Neut <- a_Neut*T1_Neut  - a_Neut*T2_Neut
+    dT3_Neut <- a_Neut*T2_Neut  - a_Neut*T3_Neut
+    dNeut    <- a_Neut*T3_Neut  - k_circ_Neut*Neut
 
     # ── Monocytes — transit non prolifératif (Eq. 5) ──
     a_Mono   <- 3 / MTT_Mono

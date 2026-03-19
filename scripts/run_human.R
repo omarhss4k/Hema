@@ -14,7 +14,7 @@ if (!dir.exists("results_HUMAN")) dir.create("results_HUMAN")
 
 # ── Dose Calvert ─────────────────────────────────────────
 AUC_target   <- 5
-GFR_mLmin    <- 78
+GFR_mLmin    <- 125   # normal renal function (Fornari 2019 S11)
 dose_calvert <- AUC_target * (GFR_mLmin + 25)
 cat(sprintf("=== Dose Calvert : AUC=%g, GFR=%g => Dose = %.0f mg ===\n",
             AUC_target, GFR_mLmin, dose_calvert))
