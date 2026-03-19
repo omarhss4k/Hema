@@ -14,10 +14,10 @@ library(deSolve)
 # SEUILS NCI-CTCAE v5.0
 # ════════════════════════════════════════════════════════
 # Neutropénie (10^9 cells/L)
-NEUT_THRESHOLDS <- c(G1 = 1.5, G2 = 1.0, G3 = 0.5, G4 = 0.1)
+NEUT_THRESHOLDS <- c(G1 = 2.0, G2 = 1.5, G3 = 1.0, G4 = 0.5)
 
 # Thrombocytopénie (10^9 cells/L)
-PLT_THRESHOLDS  <- c(G1 = 75, G2 = 50, G3 = 25, G4 = 10)
+PLT_THRESHOLDS  <- c(G1 = 150, G2 = 75, G3 = 50, G4 = 25)
 
 # Couleurs des grades
 GRADE_COLORS <- c(G1 = "#fee08b", G2 = "#fc8d59",
