@@ -22,12 +22,9 @@ init_pars$k_bind <- 0.0
 
 # ── Damage ──
 # k_dam : même que rat (formation d'adduits ADN)
-# k_rep : DIFFÉRENT du rat — adduits ADN du carboplatine persistent
-#          5-14 jours chez l'humain (réparation NER plus lente que chez le rat)
-#          Ref : Eastman 1987, Fichtinger-Schepman 1990 → t1/2 adduits ≈ 3-7 jours
-#          k_rep = 0.005 /h → t1/2 = 139h ≈ 5.8 jours
+# k_rep : identique au rat — Table 1, Fornari 2019 : "As in the rat"
 init_pars$k_dam <- 0.017
-init_pars$k_rep <- 0.005
+init_pars$k_rep <- 0.017
 
 # ── Baselines humains (Table 1, 10⁹ cells/L) ──
 init_pars$MPP0  <-    1.3    # allometric scaling ref. 42
