@@ -191,7 +191,7 @@ save_grade_figure4c <- function(base_pars, init_state,
                                 auc_target = 5,
                                 n_cycles   = 2,
                                 interval_h = 21 * 24,
-                                n_patients = 500,
+                                n_patients = 1000,
                                 gfr_mean   = 78,
                                 gfr_sd     = 20,
                                 file       = "Figure4c_grades.pdf",
@@ -209,10 +209,14 @@ save_grade_figure4c <- function(base_pars, init_state,
   #    omega_CL = 0.35 (Zandvliet 2008 Table 3 : ~30-35% CV)
   omega_CL   <- 0.35
   # 2. IIV log-normale sur les Slopes (sensibilité médicament)
-  #    omega_Slope = 0.40 (variabilité PD interindividuelle, cohérent avec
-  #    les CV% de Table 2 : 11-21% rat → ~30-40% en clinique)
-  omega_Slope <- 0.40
-  # 3. Variabilité des baselines (Table 1 : Neut0 2-7, Plt0 150-500)
+  #    omega_Slope = 0.55 (CV ~58%, cohérent avec la variabilité PD clinique
+  #    observée dans les études carboplatin : Fornari 2019 Figure 4c montre
+  #    des G3/G4 → nécessite une queue suffisamment épaisse)
+  omega_Slope <- 0.55
+  # 3. Variabilité des baselines (Table 1 : Neut0 1-8, Plt0 50-700)
+  #    Clips élargis pour permettre des G3/G4 cohérents avec Fornari 2019 :
+  #    - Neut0 ≥ 1.0 : neutropénie G1 pré-traitement possible en clinique
+  #    - Plt0 ≥ 50   : thrombocytopénie G2 pré-traitement possible
   neut0_mean <- base_pars$Neut0;  neut0_sd <- 1.5
   plt0_mean  <- base_pars$Plt0;   plt0_sd  <- 100
 
@@ -221,8 +225,8 @@ save_grade_figure4c <- function(base_pars, init_state,
                rnorm(n_patients, mean = gfr_mean, sd = gfr_sd)))
   eta_CL    <- rnorm(n_patients, 0, omega_CL)
   eta_Slope <- rnorm(n_patients, 0, omega_Slope)
-  neut0_i   <- pmax(1.5, pmin(10, rnorm(n_patients, neut0_mean, neut0_sd)))
-  plt0_i    <- pmax(75,  pmin(700, rnorm(n_patients, plt0_mean, plt0_sd)))
+  neut0_i   <- pmax(1.0, pmin(10,  rnorm(n_patients, neut0_mean, neut0_sd)))
+  plt0_i    <- pmax(50,  pmin(700, rnorm(n_patients, plt0_mean, plt0_sd)))
 
   grade_neut <- integer(n_patients)
   grade_plt  <- integer(n_patients)

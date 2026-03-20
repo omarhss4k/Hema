@@ -71,7 +71,7 @@ save_grade_figure4c(
   auc_target = 5,
   n_cycles   = 2,
   interval_h = 21*24,
-  n_patients = 500,
+  n_patients = 1000,
   file       = "results_HUMAN/Figure4c_grades_AUC5.pdf",
   titre      = "Carboplatine AUC=5, Q21D x 2 — % patients par grade",
   seed       = 42
@@ -104,7 +104,7 @@ for (auc in c(4, 5, 6)) {
     auc_target = auc,
     n_cycles   = 2,
     interval_h = 21*24,
-    n_patients = 500,
+    n_patients = 1000,
     file       = sprintf("results_HUMAN/Figure4c_AUC%d.pdf", auc),
     titre      = sprintf("Carboplatine AUC=%d, Q21D x 2 — %% patients", auc),
     seed       = 42
