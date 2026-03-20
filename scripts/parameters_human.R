@@ -55,14 +55,14 @@ init_pars$Slope_MPP  <- 0.79   # IC50-scaled from rat (2.05)
 init_pars$Slope_CMP  <- 0.57   # IC50-scaled from rat (1.47)
 init_pars$Slope_MEP  <- 0.66   # IC50-scaled from rat (2.19)
 init_pars$delta_Ret  <- 2.8    # same as rat
-init_pars$delta_Plt  <- 0.54   # same as rat
+init_pars$delta_Plt  <- 0.80  # calibration auto : nadir1~160 nadir2~146
 # delta_Neut absent du modèle Fornari (pas de drug effect sur transit neutrophiles)
 
 # ── Feedback powers (Table 1, same as rat) ──
 init_pars$gamma_stem      <- 0.07
 init_pars$gamma_mat_CMP   <- 0.60
 init_pars$gamma_mat_MEP   <- 0.30
-init_pars$gamma_prolTrans <- 0.70  # same as rat
+init_pars$gamma_prolTrans <- 0.40
 
 # ── MW carboplatin ──
 init_pars$MW_carboplatin <- 371.25

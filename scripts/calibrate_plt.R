@@ -6,7 +6,7 @@
 #   (réajustement delta_Plt si nadir1 sort de sa plage)
 ############################################################
 
-setwd("C:/Users/Hassa/OneDrive/Documents/hema2")
+if (interactive()) setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
 source("pkpd_model_FORNARI.R")
 source("parameters_human.R")
