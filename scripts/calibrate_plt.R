@@ -12,9 +12,9 @@ source("pkpd_model_FORNARI.R")
 source("parameters_human.R")
 source("parameters_FORNARI_CORRECT.R")
 
-# ── Dose Calvert (AUC=5, GFR=78 mL/min) ──
+# ── Dose Calvert (AUC=5, GFR=125 mL/min — normal renal function, Fornari 2019 S11) ──
 AUC_target   <- 5
-GFR_mLmin    <- 78
+GFR_mLmin    <- 125
 dose_calvert <- AUC_target * (GFR_mLmin + 25)
 times_hu     <- seq(0, 63 * 24, by = 1)
 
