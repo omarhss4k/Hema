@@ -179,38 +179,37 @@ header_bar(s, "Modèle Friberg — Hématopoïèse Rat",
            "Carboplatin 40 mg/kg Q14D × 8 | 8 lignées cellulaires")
 footer(s)
 
+# Texte gauche
 box(s, "Ce qui a été modélisé",
-    Inches(0.4), Inches(1.55), Inches(6.0), Inches(0.4),
-    font_size=14, bold=True, fg=BLEU)
+    Inches(0.4), Inches(1.55), Inches(5.5), Inches(0.4),
+    font_size=13, bold=True, fg=BLEU)
 
 lignes = [
-    ("Progéniteurs",  "MPP → CMP → MEP (hiérarchie hématopoïétique complète)"),
+    ("Progéniteurs",  "MPP → CMP → MEP"),
     ("Myéloïde",      "Neutrophiles  +  Monocytes"),
-    ("Érythroïde",    "Réticulocytes  +  Globules rouges"),
+    ("Érythroïde",    "Réticulocytes  +  GR"),
     ("Thrombocytaire","Plaquettes"),
 ]
 for i, (cat, detail) in enumerate(lignes):
-    y = Inches(2.05) + Inches(0.75) * i
-    rect(s, Inches(0.4), y, Inches(2.2), Inches(0.55), BLEU_CLAIR)
-    box(s, cat, Inches(0.5), y + Inches(0.1), Inches(2.0), Inches(0.38),
-        font_size=12, bold=True, fg=BLANC)
-    box(s, detail, Inches(2.75), y + Inches(0.1), Inches(9.5), Inches(0.4),
-        font_size=12, fg=BLEU)
-
-# Résultats clés
-rect(s, Inches(0.4), Inches(5.2), Inches(12.5), Inches(0.04), BLEU_CLAIR)
-box(s, "Résultats clés", Inches(0.4), Inches(5.3), Inches(4.0), Inches(0.4),
-    font_size=14, bold=True, fg=BLEU)
+    y = Inches(2.05) + Inches(0.7) * i
+    rect(s, Inches(0.4), y, Inches(2.0), Inches(0.5), BLEU_CLAIR)
+    box(s, cat, Inches(0.5), y + Inches(0.08), Inches(1.85), Inches(0.35),
+        font_size=11, bold=True, fg=BLANC)
+    box(s, detail, Inches(2.5), y + Inches(0.08), Inches(3.2), Inches(0.38),
+        font_size=11, fg=BLEU)
 
 resultats = [
-    "✔  Oscillations cycliques reproduites après chaque injection",
-    "✔  Cinétique sur 125 jours cohérente avec les données expérimentales",
-    "✔  Modèle PK → Damage → Hématopoïèse validé sur rat",
-    "✔  Base solide pour le transfert rat → humain",
+    "✔  Oscillations cycliques reproduites",
+    "✔  125 jours de cinétique validés",
+    "✔  PK → Damage → Hématopoïèse ✓",
 ]
 for i, r in enumerate(resultats):
-    box(s, r, Inches(0.5), Inches(5.8) + Inches(0.28) * i, Inches(12.0), Inches(0.28),
-        font_size=12, fg=RGBColor(0x11, 0x55, 0x11) if i < 3 else BLEU)
+    box(s, r, Inches(0.4), Inches(5.0) + Inches(0.4) * i, Inches(5.5), Inches(0.38),
+        font_size=11, fg=RGBColor(0x11, 0x55, 0x11))
+
+# Graphique droite — Figure3_simulation (1800×1650, ~carré)
+s.shapes.add_picture("img/Figure3_simulation.png",
+                     Inches(5.9), Inches(1.38), Inches(7.1), Inches(5.72))
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -222,35 +221,19 @@ header_bar(s, "Transfert inter-espèce : Rat → Humain",
            "Carboplatin Q21D × 2 | Validation clinique")
 footer(s)
 
-box(s, "Démarche", Inches(0.4), Inches(1.55), Inches(12.0), Inches(0.4),
-    font_size=14, bold=True, fg=BLEU)
+box(s, "Carboplatin AUC=5 — Q21D × 2  |  Nadirs neutrophiles & plaquettes",
+    Inches(0.4), Inches(1.55), Inches(12.5), Inches(0.4),
+    font_size=13, bold=True, fg=BLEU)
 
-steps = [
-    ("1", BLEU_CLAIR, "Paramètres PK estimés sur rat",
-     "CL, V1, V2, Q transférés directement au modèle humain"),
-    ("2", BLEU_CLAIR, "Simulation humaine",
-     "Carboplatin AUC=5 (750 mg pour GFR=125) — 2 cycles Q21D"),
-    ("3", VERT,       "Comparaison données cliniques",
-     "Courbes modèle superposées aux observations (neutrophiles + plaquettes)"),
-    ("4", VERT,       "Validation",
-     "Nadirs bien reproduits — variabilité inter-patient identifiée"),
-]
-for i, (num, col, titre, desc) in enumerate(steps):
-    y = Inches(2.1) + Inches(1.1) * i
-    rect(s, Inches(0.4), y, Inches(0.6), Inches(0.6), col)
-    box(s, num, Inches(0.4), y, Inches(0.6), Inches(0.6),
-        font_size=16, bold=True, fg=BLANC, align=PP_ALIGN.CENTER)
-    box(s, titre, Inches(1.15), y, Inches(11.0), Inches(0.35),
-        font_size=13, bold=True, fg=BLEU)
-    box(s, desc, Inches(1.15), y + Inches(0.35), Inches(11.0), Inches(0.35),
-        font_size=11, fg=RGBColor(0x44, 0x44, 0x44))
+# Graphique pleine largeur — Figure4_Q21D_x2 (1500×750, 2:1)
+s.shapes.add_picture("img/Figure4_Q21D_x2.png",
+                     Inches(0.4), Inches(2.0), Inches(12.5), Inches(4.55))
 
 # Box résultat
-rect(s, Inches(0.4), Inches(6.35), Inches(12.5), Inches(0.7), GRIS)
-rect(s, Inches(0.4), Inches(6.35), Inches(0.15), Inches(0.7), VERT)
+rect(s, Inches(0.4), Inches(6.62), Inches(12.5), Inches(0.45), BLEU)
 box(s, "Chaîne complète validée :  Souris  →  Rat  →  Humain  ✔",
-    Inches(0.7), Inches(6.45), Inches(12.0), Inches(0.45),
-    font_size=14, bold=True, fg=BLEU, align=PP_ALIGN.CENTER)
+    Inches(0.7), Inches(6.68), Inches(12.0), Inches(0.35),
+    font_size=13, bold=True, fg=BLANC, align=PP_ALIGN.CENTER)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -266,33 +249,32 @@ box(s, "VPC (Visual Predictive Check) — AUC=5, GFR=125 fixe",
     Inches(0.4), Inches(1.55), Inches(12.0), Inches(0.4),
     font_size=14, bold=True, fg=BLEU)
 
+# VPC portrait (1050×1350) à gauche
+s.shapes.add_picture("img/Figure4_VPC_AUC5.png",
+                     Inches(0.3), Inches(1.42), Inches(4.2), Inches(5.65))
+
+# Texte + grades droite
+box(s, "1000 patients simulés (GFR=125 fixe)",
+    Inches(4.8), Inches(1.6), Inches(8.2), Inches(0.4),
+    font_size=12, bold=True, fg=BLEU)
+
 vpc_items = [
-    "1000 patients simulés (Supp. S11, GFR=125 fixe)",
-    "Intervalles de prédiction 5–95% calculés pour neutrophiles et plaquettes",
-    "Erreur résiduelle intégrée dans la simulation populationnelle",
-    "Nadirs cycliques bien capturés par les intervalles de prédiction",
+    "Intervalles de prédiction 5–95%",
+    "Erreur résiduelle intégrée",
+    "Nadirs cycliques bien capturés",
 ]
 for i, it in enumerate(vpc_items):
-    box(s, "▸  " + it, Inches(0.6), Inches(2.1) + Inches(0.6) * i,
-        Inches(12.0), Inches(0.5), font_size=13, fg=BLEU)
+    box(s, "▸  " + it, Inches(4.8), Inches(2.1) + Inches(0.42) * i,
+        Inches(8.2), Inches(0.38), font_size=11, fg=BLEU)
 
-rect(s, Inches(0.4), Inches(4.7), Inches(12.5), Inches(0.04), BLEU_CLAIR)
+rect(s, Inches(4.8), Inches(3.5), Inches(8.2), Inches(0.04), BLEU_CLAIR)
+box(s, "Grades NCI-CTCAE (Figure 4c)",
+    Inches(4.8), Inches(3.6), Inches(8.2), Inches(0.38),
+    font_size=12, bold=True, fg=BLEU)
 
-box(s, "Grades NCI-CTCAE — Figure 4c",
-    Inches(0.4), Inches(4.85), Inches(12.0), Inches(0.4),
-    font_size=14, bold=True, fg=BLEU)
-
-grades = [
-    ("Neutrophiles", "Nadir = 2.30 × 10⁹/L  →  Grade 0"),
-    ("Plaquettes",   "Nadir = 190 × 10⁹/L   →  Grade 0"),
-]
-for i, (cell, grade) in enumerate(grades):
-    cx = Inches(0.4) + Inches(6.2) * i
-    rect(s, cx, Inches(5.35), Inches(5.8), Inches(0.5), VERT)
-    box(s, cell, cx + Inches(0.15), Inches(5.38), Inches(5.5), Inches(0.42),
-        font_size=13, bold=True, fg=BLANC)
-    box(s, grade, cx + Inches(0.15), Inches(5.95), Inches(5.5), Inches(0.4),
-        font_size=12, fg=BLEU)
+# Figure4c_grades (1200×750, paysage)
+s.shapes.add_picture("img/Figure4c_grades_AUC5.png",
+                     Inches(4.8), Inches(4.1), Inches(8.2), Inches(2.75))
 
 
 # ═════════════════════════════════════════════════════════════════════════════
