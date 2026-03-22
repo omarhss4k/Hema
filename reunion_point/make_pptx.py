@@ -208,7 +208,7 @@ for i, r in enumerate(resultats):
         font_size=11, fg=RGBColor(0x11, 0x55, 0x11))
 
 # Graphique droite — Figure3_simulation (1800×1650, ~carré)
-s.shapes.add_picture("img/Figure3_simulation.png",
+s.shapes.add_picture("img/Figure3_simulation.jpg",
                      Inches(5.9), Inches(1.38), Inches(7.1), Inches(5.72))
 
 
@@ -226,7 +226,7 @@ box(s, "Carboplatin AUC=5 — Q21D × 2  |  Nadirs neutrophiles & plaquettes",
     font_size=13, bold=True, fg=BLEU)
 
 # Graphique pleine largeur — Figure4_Q21D_x2 (1500×750, 2:1)
-s.shapes.add_picture("img/Figure4_Q21D_x2.png",
+s.shapes.add_picture("img/Figure4_Q21D_x2.jpg",
                      Inches(0.4), Inches(2.0), Inches(12.5), Inches(4.55))
 
 # Box résultat
@@ -250,7 +250,7 @@ box(s, "VPC (Visual Predictive Check) — AUC=5, GFR=125 fixe",
     font_size=14, bold=True, fg=BLEU)
 
 # VPC portrait (1050×1350) à gauche
-s.shapes.add_picture("img/Figure4_VPC_AUC5.png",
+s.shapes.add_picture("img/Figure4_VPC_AUC5.jpg",
                      Inches(0.3), Inches(1.42), Inches(4.2), Inches(5.65))
 
 # Texte + grades droite
@@ -273,7 +273,7 @@ box(s, "Grades NCI-CTCAE (Figure 4c)",
     font_size=12, bold=True, fg=BLEU)
 
 # Figure4c_grades (1200×750, paysage)
-s.shapes.add_picture("img/Figure4c_grades_AUC5.png",
+s.shapes.add_picture("img/Figure4c_grades_AUC5.jpg",
                      Inches(4.8), Inches(4.1), Inches(8.2), Inches(2.75))
 
 
