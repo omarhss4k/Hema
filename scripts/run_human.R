@@ -14,7 +14,7 @@ if (!dir.exists("results_HUMAN")) dir.create("results_HUMAN")
 
 # ── Dose Calvert ─────────────────────────────────────────
 AUC_target   <- 5
-GFR_mLmin    <- 125   # normal renal function (Fornari 2019 S11)
+GFR_mLmin    <- 78    # GFR médian population (Fornari 2019)
 dose_calvert <- AUC_target * (GFR_mLmin + 25)
 cat(sprintf("=== Dose Calvert : AUC=%g, GFR=%g => Dose = %.0f mg ===\n",
             AUC_target, GFR_mLmin, dose_calvert))
@@ -56,7 +56,7 @@ cat("\n--- VPC humain : AUC=5, Q21D x 2 ---\n")
 save_vpc_human(
   sim = sim_hu, pars = init_pars,
   file = "results_HUMAN/Figure4_VPC.pdf",
-  titre = "VPC - Carboplatin (Human) AUC=5 Q21D x 2 (1000 patients, GFR=125 fixe — Supp. S11)",
+  titre = "VPC - Carboplatin (Human) AUC=5 Q21D x 2 (1000 patients, GFR=78 fixe — médian population)",
   n_sim = 1000, dose_days = dose_days_hu,
   obs_list = obs_list_human,
   auc_target = AUC_target, times = times_hu,

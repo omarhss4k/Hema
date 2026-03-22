@@ -302,7 +302,7 @@ save_vpc_human <- function(sim, pars, file, titre,
                            height     = 9) {
 
   # Supp. S11 : GFR=125 fixe, même PK pour tous les patients
-  cat(sprintf("  → VPC humain : %d patients (GFR=%g fixe — Supp. S11) + erreur résiduelle...\n",
+  cat(sprintf("  → VPC humain : %d patients (GFR=%g fixe) + erreur résiduelle...\n",
               n_sim, gfr_fixed))
 
   set.seed(42)
