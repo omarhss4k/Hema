@@ -203,23 +203,16 @@ save_grade_figure4c <- function(base_pars, init_state,
   cat(sprintf("  → Figure 4c : %d patients (GFR=%g fixe, PK identique — Supp. S11/S12)...\n",
               n_patients, gfr_fixed))
 
-  # ── IIV PD — paramètres du modèle de Friberg (De Carlo 2025, Table 2) ──
+  # ── IIV PD — variabilité résiduelle du modèle rat (Fornari 2019, Table S4) ──
   # S11 : GFR=125 mL/min fixe, dose = AUC × (GFR+25) identique pour tous
   # S12 : "same PK per patient" → pas d'IIV sur CL ni sur la dose
-  # IIV log-normales (ω = SD sur log) tirées de De Carlo 2025 Table 2
-  # (meilleure approximation disponible des paramètres Friberg/Schmitt et al.)
-  #
-  # Mapping Friberg → Fornari :
-  #   Slope_NT  (De Carlo ω=0.624) → Slope_CMP  (neutrophiles/monocytes)
-  #   Slope_PLT (De Carlo ω=0.547) → Slope_MEP  (plaquettes/réticulocytes)
-  #   Slope_MPP : moyenne des deux = 0.585
-  #   CircO_NT  (De Carlo ω=0.326) → Neut0 (log-normale)
-  #   CircO_PLT (De Carlo ω=0.268) → Plt0  (log-normale)
-  omega_Slope_CMP <- 0.624   # De Carlo 2025 Table 2 : omega_Slope_NT
-  omega_Slope_MEP <- 0.547   # De Carlo 2025 Table 2 : omega_Slope_PLT
-  omega_Slope_MPP <- 0.585   # moyenne NT/PLT
-  omega_Neut0     <- 0.326   # De Carlo 2025 Table 2 : omega_CircO_NT
-  omega_Plt0      <- 0.268   # De Carlo 2025 Table 2 : omega_CircO_PLT
+  # IIV log-normales (ω = SD sur log) tirées de Fornari 2019 Table S4 :
+  # σ ajustés par compartiment depuis le fit rat → utilisés comme proxy IIV humain
+  omega_Slope_MPP <- 0.33    # Fornari Table S4 : σ_MPP
+  omega_Slope_CMP <- 0.19    # Fornari Table S4 : σ_CMP
+  omega_Slope_MEP <- 0.33    # Fornari Table S4 : σ_MEP
+  omega_Neut0     <- 0.17    # Fornari Table S4 : σ_Neut
+  omega_Plt0      <- 0.17    # Fornari Table S4 : σ_Plt
 
   # Dose unique et PK identiques pour tous les patients (Supp. S11/S12)
   dose_fixe <- auc_target * (gfr_fixed + 25)
