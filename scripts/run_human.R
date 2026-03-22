@@ -56,7 +56,7 @@ cat("\n--- VPC humain : AUC=5, Q21D x 2 ---\n")
 save_vpc_human(
   sim = sim_hu, pars = init_pars,
   file = "results_HUMAN/Figure4_VPC.pdf",
-  titre = "VPC - Carboplatin (Human) AUC=5 Q21D x 2 (1000 patients, GFR~N(78,20))",
+  titre = "VPC - Carboplatin (Human) AUC=5 Q21D x 2 (1000 patients, GFR=125 fixe — Supp. S11)",
   n_sim = 1000, dose_days = dose_days_hu,
   obs_list = obs_list_human,
   auc_target = AUC_target, times = times_hu,

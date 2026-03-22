@@ -294,16 +294,16 @@ save_vpc_human <- function(sim, pars, file, titre,
                            dose_days  = NULL,
                            obs_list   = NULL,
                            auc_target = 5,
-                           gfr_mean   = 78,
-                           gfr_sd     = 20,
+                           gfr_fixed  = 125,
                            times      = NULL,
                            interval_h = 21 * 24,
                            n_cycles   = 2,
                            width      = 7,
                            height     = 9) {
 
-  cat(sprintf("  → VPC humain : %d patients (GFR~N(%g,%g²)) + erreur résiduelle...\n",
-              n_sim, gfr_mean, gfr_sd))
+  # Supp. S11 : GFR=125 fixe, même PK pour tous les patients
+  cat(sprintf("  → VPC humain : %d patients (GFR=%g fixe — Supp. S11) + erreur résiduelle...\n",
+              n_sim, gfr_fixed))
 
   set.seed(42)
 
@@ -311,14 +311,13 @@ save_vpc_human <- function(sim, pars, file, titre,
   if (is.null(times)) times <- seq(0, 63 * 24, by = 1)
   n_t <- length(times)
 
-  # ── Simuler n_sim patients avec GFR variable (Calvert) ──────
-  gfr_vals <- pmax(20, pmin(150, rnorm(n_sim, mean = gfr_mean, sd = gfr_sd)))
+  # ── Même PK pour tous (Supp. S11/S12) ──────────────────────
+  dose_fixe <- auc_target * (gfr_fixed + 25)   # Calvert dose fixe
   mat_Neut <- matrix(NA, nrow = n_sim, ncol = n_t)
   mat_Plt  <- matrix(NA, nrow = n_sim, ncol = n_t)
 
   for (i in seq_len(n_sim)) {
-    gfr_i  <- gfr_vals[i]
-    dose_i <- auc_target * (gfr_i + 25)   # Calvert
+    dose_i <- dose_fixe
 
     pars_i          <- pars
     pars_i$rate_fun <- make_repeated_infusion(

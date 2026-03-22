@@ -192,8 +192,7 @@ save_grade_figure4c <- function(base_pars, init_state,
                                 n_cycles   = 2,
                                 interval_h = 21 * 24,
                                 n_patients = 1000,
-                                gfr_mean   = 78,
-                                gfr_sd     = 20,
+                                gfr_fixed  = 125,
                                 file       = "Figure4c_grades.pdf",
                                 titre      = "% patients par grade",
                                 seed       = 42,
@@ -201,52 +200,38 @@ save_grade_figure4c <- function(base_pars, init_state,
                                 height     = 5) {
 
   set.seed(seed)
-  cat(sprintf("  → Figure 4c : %d patients (GFR~N(%g,%g) + IIV CL/Neut0/Plt0)...\n",
-              n_patients, gfr_mean, gfr_sd))
+  cat(sprintf("  → Figure 4c : %d patients (GFR=%g fixe, PK identique — Supp. S11/S12)...\n",
+              n_patients, gfr_fixed))
 
-  # ── Sources de variabilité inter-individuelle ──────────────
-  # 1. IIV log-normale sur CL résiduel (au-delà de la prédiction GFR)
-  #    omega_CL = 0.35 (Zandvliet 2008 Table 3 : ~30-35% CV)
-  omega_CL   <- 0.35
-  # 2. IIV log-normale sur les Slopes (sensibilité médicament)
-  #    omega_Slope = 0.55 (CV ~58%, cohérent avec la variabilité PD clinique
-  #    observée dans les études carboplatin : Fornari 2019 Figure 4c montre
-  #    des G3/G4 → nécessite une queue suffisamment épaisse)
-  omega_Slope <- 0.55
-  # 3. Variabilité des baselines (Table 1 : Neut0 1-8, Plt0 50-700)
-  #    Clips élargis pour permettre des G3/G4 cohérents avec Fornari 2019 :
-  #    - Neut0 ≥ 1.0 : neutropénie G1 pré-traitement possible en clinique
-  #    - Plt0 ≥ 50   : thrombocytopénie G2 pré-traitement possible
-  neut0_mean <- base_pars$Neut0;  neut0_sd <- 1.5
-  plt0_mean  <- base_pars$Plt0;   plt0_sd  <- 100
+  # ── Source de variabilité : uniquement PD (Friberg model IIV, Supp. S12) ──
+  # S11 : GFR=125 mL/min fixe, dose = AUC × (GFR+25) identique pour tous
+  # S12 : "same PK per patient" → pas d'IIV sur CL ni sur la dose
+  # La variabilité inter-individuelle sur les grades vient de l'IIV PD
+  # du modèle de Friberg (Schmitt et al., réf. 5) — paramètres non publiés.
+  # On applique ici une IIV log-normale sur les Slopes (sensibilité médicament)
+  # comme approximation de l'IIV PD de Friberg.
+  omega_Slope <- 0.40   # CV ~41%, approximation IIV PD (Friberg)
 
-  times    <- seq(0, n_cycles * interval_h + 21*24, by = 1)
-  gfr_vals <- pmax(20, pmin(150,
-               rnorm(n_patients, mean = gfr_mean, sd = gfr_sd)))
-  eta_CL    <- rnorm(n_patients, 0, omega_CL)
+  # Dose unique et PK identiques pour tous les patients (Supp. S11/S12)
+  dose_fixe <- auc_target * (gfr_fixed + 25)
+  cat(sprintf("  Dose fixe : AUC=%g, GFR=%g => Dose = %.0f mg\n",
+              auc_target, gfr_fixed, dose_fixe))
+
+  times     <- seq(0, n_cycles * interval_h + 21*24, by = 1)
   eta_Slope <- rnorm(n_patients, 0, omega_Slope)
-  neut0_i   <- pmax(1.0, pmin(10,  rnorm(n_patients, neut0_mean, neut0_sd)))
-  plt0_i    <- pmax(50,  pmin(700, rnorm(n_patients, plt0_mean, plt0_sd)))
 
   grade_neut <- integer(n_patients)
   grade_plt  <- integer(n_patients)
 
   for (i in seq_len(n_patients)) {
-    # Dose Calvert sur GFR individuel
-    dose_i <- auc_target * (gfr_vals[i] + 25)
+    # Dose et PK identiques pour tous (Supp. S11/S12)
+    dose_i <- dose_fixe
+    pars_i <- base_pars    # CL identique pour tous
 
-    # PK avec IIV sur CL (variabilité résiduelle post-Calvert)
-    pars_i     <- base_pars
-    pars_i$CL  <- base_pars$CL * exp(eta_CL[i])
-
-    # PD : IIV sur sensibilité médicament (Slope)
+    # IIV PD uniquement : sensibilité médicament (approximation Friberg)
     pars_i$Slope_MPP <- base_pars$Slope_MPP * exp(eta_Slope[i])
     pars_i$Slope_CMP <- base_pars$Slope_CMP * exp(eta_Slope[i])
     pars_i$Slope_MEP <- base_pars$Slope_MEP * exp(eta_Slope[i])
-
-    # PD : baselines individuelles
-    pars_i$Neut0 <- neut0_i[i]
-    pars_i$Plt0  <- plt0_i[i]
 
     pars_i$rate_fun <- make_repeated_infusion(
       dose_mg    = dose_i,
@@ -255,22 +240,8 @@ save_grade_figure4c <- function(base_pars, init_state,
       n_cycles   = n_cycles
     )
 
-    # État initial adapté aux baselines individuelles
-    state_i        <- init_state
-    state_i["Neut"] <- neut0_i[i]
-    state_i["Plt"]  <- plt0_i[i]
-    # Rééquilibrer les compartiments transit Neut et Plt
-    a_Neut <- 3 / pars_i$MTT_Neut
-    a_Plt  <- 3 / pars_i$MTT_Plt
-    T_Neut <- pars_i$k_circ_Neut * neut0_i[i] / a_Neut
-    T_Plt  <- pars_i$k_circ_Plt  * plt0_i[i]  / a_Plt
-    state_i["T1_Neut"] <- T_Neut
-    state_i["T2_Neut"] <- T_Neut
-    state_i["T3_Neut"] <- T_Neut
-    T1_Plt <- T_Plt / pars_i$lambda2
-    state_i["T1_Plt"] <- T1_Plt
-    state_i["T2_Plt"] <- T_Plt
-    state_i["T3_Plt"] <- T_Plt
+    # État initial : baselines fixes (Table 1)
+    state_i <- init_state
 
     tryCatch({
       out_i <- as.data.frame(lsoda(
@@ -323,9 +294,9 @@ save_grade_figure4c <- function(base_pars, init_state,
     scale_y_continuous(limits = c(0, max(df_plot$Pct) * 1.25),
                        labels = function(x) paste0(x, "%")) +
     labs(title = titre,
-         subtitle = sprintf("AUC=%.0f  Q%dD×%d  n=%d patients  GFR~N(%g,%g²)",
+         subtitle = sprintf("AUC=%.0f  Q%dD×%d  n=%d patients  GFR=%g mL/min fixe (Supp. S11)",
                             auc_target, interval_h/24, n_cycles,
-                            n_patients, gfr_mean, gfr_sd),
+                            n_patients, gfr_fixed),
          x = "NCI-CTCAE v5.0 Grade",
          y = "% patients") +
     theme_bw(base_size = 10) +
