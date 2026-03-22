@@ -52,7 +52,12 @@ init_pars$Slope_CMP <- 1.47
 init_pars$Slope_MEP <- 2.19
 init_pars$delta_Ret <- 2.8
 init_pars$delta_Plt <- 0.54
-init_pars$delta_Neut <- 0.003
+
+# ── IC50 colony-forming unit assays (Table S2) ──
+init_pars$IC50_CMP_rat   <- 2.83  # μM, CD45+ cells
+init_pars$IC50_CMP_human <- 4.04  # μM, CD45+ cells
+init_pars$IC50_MEP_rat   <- 0.86  # μM, CD71+ cells
+init_pars$IC50_MEP_human <- 1.56  # μM, CD71+ cells
 
 # ── Feedback powers (Table 1) ──
 init_pars$gamma_stem      <- 0.07
