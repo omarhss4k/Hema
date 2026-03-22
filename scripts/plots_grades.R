@@ -203,22 +203,41 @@ save_grade_figure4c <- function(base_pars, init_state,
   cat(sprintf("  → Figure 4c : %d patients (GFR=%g fixe, PK identique — Supp. S11/S12)...\n",
               n_patients, gfr_fixed))
 
-  # ── Source de variabilité : uniquement PD (Friberg model IIV, Supp. S12) ──
+  # ── IIV PD — paramètres du modèle de Friberg (De Carlo 2025, Table 2) ──
   # S11 : GFR=125 mL/min fixe, dose = AUC × (GFR+25) identique pour tous
   # S12 : "same PK per patient" → pas d'IIV sur CL ni sur la dose
-  # La variabilité inter-individuelle sur les grades vient de l'IIV PD
-  # du modèle de Friberg (Schmitt et al., réf. 5) — paramètres non publiés.
-  # On applique ici une IIV log-normale sur les Slopes (sensibilité médicament)
-  # comme approximation de l'IIV PD de Friberg.
-  omega_Slope <- 0.40   # CV ~41%, approximation IIV PD (Friberg)
+  # IIV log-normales (ω = SD sur log) tirées de De Carlo 2025 Table 2
+  # (meilleure approximation disponible des paramètres Friberg/Schmitt et al.)
+  #
+  # Mapping Friberg → Fornari :
+  #   Slope_NT  (De Carlo ω=0.624) → Slope_CMP  (neutrophiles/monocytes)
+  #   Slope_PLT (De Carlo ω=0.547) → Slope_MEP  (plaquettes/réticulocytes)
+  #   Slope_MPP : moyenne des deux = 0.585
+  #   CircO_NT  (De Carlo ω=0.326) → Neut0 (log-normale)
+  #   CircO_PLT (De Carlo ω=0.268) → Plt0  (log-normale)
+  omega_Slope_CMP <- 0.624   # De Carlo 2025 Table 2 : omega_Slope_NT
+  omega_Slope_MEP <- 0.547   # De Carlo 2025 Table 2 : omega_Slope_PLT
+  omega_Slope_MPP <- 0.585   # moyenne NT/PLT
+  omega_Neut0     <- 0.326   # De Carlo 2025 Table 2 : omega_CircO_NT
+  omega_Plt0      <- 0.268   # De Carlo 2025 Table 2 : omega_CircO_PLT
 
   # Dose unique et PK identiques pour tous les patients (Supp. S11/S12)
   dose_fixe <- auc_target * (gfr_fixed + 25)
   cat(sprintf("  Dose fixe : AUC=%g, GFR=%g => Dose = %.0f mg\n",
               auc_target, gfr_fixed, dose_fixe))
 
-  times     <- seq(0, n_cycles * interval_h + 21*24, by = 1)
-  eta_Slope <- rnorm(n_patients, 0, omega_Slope)
+  times <- seq(0, n_cycles * interval_h + 21*24, by = 1)
+
+  # Tirages IIV (log-normaux, indépendants)
+  eta_CMP   <- rnorm(n_patients, 0, omega_Slope_CMP)
+  eta_MEP   <- rnorm(n_patients, 0, omega_Slope_MEP)
+  eta_MPP   <- rnorm(n_patients, 0, omega_Slope_MPP)
+  eta_Neut0 <- rnorm(n_patients, 0, omega_Neut0)
+  eta_Plt0  <- rnorm(n_patients, 0, omega_Plt0)
+
+  # Baselines individuelles (log-normales centrées sur les valeurs Table 1)
+  neut0_i <- base_pars$Neut0 * exp(eta_Neut0)
+  plt0_i  <- base_pars$Plt0  * exp(eta_Plt0)
 
   grade_neut <- integer(n_patients)
   grade_plt  <- integer(n_patients)
@@ -228,10 +247,14 @@ save_grade_figure4c <- function(base_pars, init_state,
     dose_i <- dose_fixe
     pars_i <- base_pars    # CL identique pour tous
 
-    # IIV PD uniquement : sensibilité médicament (approximation Friberg)
-    pars_i$Slope_MPP <- base_pars$Slope_MPP * exp(eta_Slope[i])
-    pars_i$Slope_CMP <- base_pars$Slope_CMP * exp(eta_Slope[i])
-    pars_i$Slope_MEP <- base_pars$Slope_MEP * exp(eta_Slope[i])
+    # IIV PD : sensibilité médicament (Friberg via De Carlo 2025)
+    pars_i$Slope_MPP <- base_pars$Slope_MPP * exp(eta_MPP[i])
+    pars_i$Slope_CMP <- base_pars$Slope_CMP * exp(eta_CMP[i])
+    pars_i$Slope_MEP <- base_pars$Slope_MEP * exp(eta_MEP[i])
+
+    # IIV PD : baselines individuelles (log-normales)
+    pars_i$Neut0 <- neut0_i[i]
+    pars_i$Plt0  <- plt0_i[i]
 
     pars_i$rate_fun <- make_repeated_infusion(
       dose_mg    = dose_i,
@@ -240,8 +263,22 @@ save_grade_figure4c <- function(base_pars, init_state,
       n_cycles   = n_cycles
     )
 
-    # État initial : baselines fixes (Table 1)
+    # État initial adapté aux baselines individuelles
     state_i <- init_state
+    state_i["Neut"] <- neut0_i[i]
+    state_i["Plt"]  <- plt0_i[i]
+    # Rééquilibrer les compartiments transit (Eq. S3)
+    a_Neut <- 3 / pars_i$MTT_Neut
+    a_Plt  <- 3 / pars_i$MTT_Plt
+    T_Neut <- pars_i$k_circ_Neut * neut0_i[i] / a_Neut
+    T_Plt  <- pars_i$k_circ_Plt  * plt0_i[i]  / a_Plt
+    state_i["T1_Neut"] <- T_Neut
+    state_i["T2_Neut"] <- T_Neut
+    state_i["T3_Neut"] <- T_Neut
+    T1_Plt <- T_Plt / pars_i$lambda2
+    state_i["T1_Plt"] <- T1_Plt
+    state_i["T2_Plt"] <- T_Plt
+    state_i["T3_Plt"] <- T_Plt
 
     tryCatch({
       out_i <- as.data.frame(lsoda(
@@ -294,7 +331,7 @@ save_grade_figure4c <- function(base_pars, init_state,
     scale_y_continuous(limits = c(0, max(df_plot$Pct) * 1.25),
                        labels = function(x) paste0(x, "%")) +
     labs(title = titre,
-         subtitle = sprintf("AUC=%.0f  Q%dD×%d  n=%d patients  GFR=%g mL/min fixe (Supp. S11)",
+         subtitle = sprintf("AUC=%.0f  Q%dD×%d  n=%d  GFR=%g fixe  IIV PD: De Carlo 2025",
                             auc_target, interval_h/24, n_cycles,
                             n_patients, gfr_fixed),
          x = "NCI-CTCAE v5.0 Grade",
