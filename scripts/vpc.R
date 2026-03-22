@@ -352,7 +352,7 @@ save_vpc_human <- function(sim, pars, file, titre,
     tryCatch({
       out_i <- as.data.frame(lsoda(
         y=state0, times=times, func=pkpd_fornari, parms=pars_i,
-        rtol=1e-6, atol=1e-8, maxsteps=100000
+        rtol=1e-4, atol=1e-6, maxsteps=10000
       ))
       mat_Neut[i,] <- out_i$Neut * exp(rnorm(n_t, 0, SIGMA["Neut"]))
       mat_Plt[i,]  <- out_i$Plt  * exp(rnorm(n_t, 0, SIGMA["Plt"]))
