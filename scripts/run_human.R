@@ -63,6 +63,19 @@ save_vpc_human(
   interval_h = 21*24, n_cycles = 2
 )
 
+# ── VPC élargi — variabilité baselines ──────────────────
+cat("\n--- VPC élargi : Neut0~LogU[2,7], Plt0~LogU[150,400] ---\n")
+save_vpc_human_extended(
+  sim = sim_hu, pars = init_pars,
+  file = "results_HUMAN/Figure4_VPC_extended.pdf",
+  titre = "VPC élargi — AUC=5 Q21D×2 | Neut0~LogU[2,7] | Plt0~LogU[150,400] ×10⁹/L",
+  n_sim = 1000, dose_days = dose_days_hu,
+  obs_list = obs_list_human,
+  auc_target = AUC_target, times = times_hu,
+  interval_h = 21*24, n_cycles = 2,
+  gfr_fixed = GFR_mLmin
+)
+
 # ── Figure 4c — % patients par grade ────────────────────
 cat("\n=== Figure 4c : % patients par grade (AUC=5) ===\n")
 save_grade_figure4c(
@@ -82,5 +95,6 @@ cat("Fichiers dans results_HUMAN/ :\n")
 cat("  -> Figure4_Q21D_x2.pdf              (courbes Neut+Plt)\n")
 cat("  -> Figure4_grades_deterministe.pdf  (grades courbe det.)\n")
 cat("  -> Figure4_VPC.pdf                  (VPC population)\n")
+cat("  -> Figure4_VPC_extended.pdf         (VPC élargi, baselines variables)\n")
 cat("  -> Figure4c_grades_AUC5.pdf         (Figure 4c, 1000 patients)\n")
 cat("=======================================================\n")

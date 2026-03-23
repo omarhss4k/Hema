@@ -386,3 +386,113 @@ save_vpc_human <- function(sim, pars, file, titre,
   message("✓ VPC humain sauvegardé : ", file)
   invisible(vpc_stats)
 }
+
+# ════════════════════════════════════════════════════════
+# 6. VPC ÉLARGI — variabilité des baselines Neut0 + Plt0
+#    Neut0 ~ log-uniforme [2, 7]   (range adulte, Fornari Table 1)
+#    Plt0  ~ log-uniforme [150, 400] (range adulte, littérature)
+#    + erreur résiduelle log-additive (SIGMA, Table S4)
+# ════════════════════════════════════════════════════════
+save_vpc_human_extended <- function(sim, pars, file, titre,
+                                    n_sim      = 1000,
+                                    dose_days  = NULL,
+                                    obs_list   = NULL,
+                                    auc_target = 5,
+                                    gfr_fixed  = 78,
+                                    times      = NULL,
+                                    interval_h = 21 * 24,
+                                    n_cycles   = 2,
+                                    neut0_range = c(2.0, 7.0),
+                                    plt0_range  = c(150.0, 400.0),
+                                    width      = 7,
+                                    height     = 9) {
+
+  cat(sprintf(
+    "  → VPC élargi : %d patients | Neut0 ~ LogU[%.1f,%.1f] | Plt0 ~ LogU[%.1f,%.1f]\n",
+    n_sim, neut0_range[1], neut0_range[2], plt0_range[1], plt0_range[2]))
+
+  set.seed(42)
+  if (is.null(times)) times <- seq(0, 63 * 24, by = 1)
+  n_t <- length(times)
+
+  dose_fixe <- auc_target * (gfr_fixed + 25)
+
+  # Tirages log-uniformes sur les ranges physiologiques
+  neut0_vec <- exp(runif(n_sim,
+                         log(neut0_range[1]), log(neut0_range[2])))
+  plt0_vec  <- exp(runif(n_sim,
+                         log(plt0_range[1]),  log(plt0_range[2])))
+
+  mat_Neut <- matrix(NA, nrow = n_sim, ncol = n_t)
+  mat_Plt  <- matrix(NA, nrow = n_sim, ncol = n_t)
+
+  for (i in seq_len(n_sim)) {
+    pars_i        <- pars
+    pars_i$Neut0  <- neut0_vec[i]
+    pars_i$Plt0   <- plt0_vec[i]
+    pars_i$rate_fun <- make_repeated_infusion(
+      dose_mg = dose_fixe, Tinfu_h = 1,
+      interval_h = interval_h, n_cycles = n_cycles
+    )
+
+    # État initial rééquilibré pour ce patient
+    a_Neut <- 3 / pars_i$MTT_Neut
+    T_Neut <- pars_i$k_circ_Neut * neut0_vec[i] / a_Neut
+    a_Plt  <- 3 / pars_i$MTT_Plt
+    T_Plt  <- pars_i$k_circ_Plt  * plt0_vec[i]  / a_Plt
+    T1_Plt <- T_Plt / pars_i$lambda2
+
+    ss_T <- function(k, c0, mtt) k * c0 / (3 / mtt)
+    state_i <- c(
+      C1=0, C2=0, Damage=0,
+      MPP=pars$MPP0, CMP=pars$CMP0, MEP=pars$MEP0,
+      T1_Neut=T_Neut, T2_Neut=T_Neut, T3_Neut=T_Neut,
+      Neut=neut0_vec[i],
+      T1_Mono=ss_T(pars$k_circ_Mono,pars$Mono0,pars$MTT_Mono),
+      T2_Mono=ss_T(pars$k_circ_Mono,pars$Mono0,pars$MTT_Mono),
+      T3_Mono=ss_T(pars$k_circ_Mono,pars$Mono0,pars$MTT_Mono),
+      Mono=pars$Mono0,
+      T1_Ret=ss_T(pars$k_circ_RBC,pars$Ret0,pars$MTT_Ret),
+      T2_Ret=ss_T(pars$k_circ_RBC,pars$Ret0,pars$MTT_Ret),
+      T3_Ret=ss_T(pars$k_circ_RBC,pars$Ret0,pars$MTT_Ret),
+      Ret=pars$Ret0, RBC=pars$RBC0,
+      T1_Plt=T1_Plt, T2_Plt=T_Plt, T3_Plt=T_Plt,
+      Plt=plt0_vec[i]
+    )
+
+    tryCatch({
+      out_i <- as.data.frame(lsoda(
+        y=state_i, times=times, func=pkpd_fornari, parms=pars_i,
+        rtol=1e-4, atol=1e-6, maxsteps=10000
+      ))
+      mat_Neut[i,] <- out_i$Neut * exp(rnorm(n_t, 0, SIGMA["Neut"]))
+      mat_Plt[i,]  <- out_i$Plt  * exp(rnorm(n_t, 0, SIGMA["Plt"]))
+    }, error = function(e) NULL)
+
+    if (i %% 200 == 0)
+      cat(sprintf("    %d/%d patients simulés\n", i, n_sim))
+  }
+
+  days_vec   <- times / 24
+  make_stats <- function(mat, Yref) data.frame(
+    days = days_vec,
+    p05  = apply(mat, 2, quantile, probs=0.05, na.rm=TRUE),
+    p50  = apply(mat, 2, quantile, probs=0.50, na.rm=TRUE),
+    p95  = apply(mat, 2, quantile, probs=0.95, na.rm=TRUE),
+    pred = Yref
+  )
+  vpc_stats <- list(
+    Neut = make_stats(mat_Neut, sim$Neut),
+    Plt  = make_stats(mat_Plt,  sim$Plt)
+  )
+
+  pdf(file, width = width, height = height)
+  plot_vpc_human(vpc_stats, pars,
+                 titre     = titre,
+                 dose_days = dose_days,
+                 obs_list  = obs_list)
+  dev.off()
+
+  message("✓ VPC élargi sauvegardé : ", file)
+  invisible(vpc_stats)
+}
