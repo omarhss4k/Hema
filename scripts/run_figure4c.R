@@ -29,12 +29,12 @@ N_PAT      <- 1000
 AUC_TARGET <- 5
 GFR_FIXED  <- 125
 INTERVAL_H <- 21 * 24
-N_CYCLES   <- 1
+N_CYCLES   <- 2   # Fornari 2019 Fig4c : "Two cycles of 21 days" (légende Fig4)
 SEED       <- 42
 
 cat("══════════════════════════════════════════════════════\n")
 cat("Figure 4c — Population simulation (n=", N_PAT, ")\n")
-cat("  AUC=", AUC_TARGET, " GFR=", GFR_FIXED, " 1 cycle\n")
+cat("  AUC=", AUC_TARGET, " GFR=", GFR_FIXED, " 2 cycles (Q21D)\n")
 cat("══════════════════════════════════════════════════════\n\n")
 
 # ══════════════════════════════════════════════════════════
@@ -108,8 +108,8 @@ p <- ggplot(df, aes(x = Grade, y = Pct, fill = Model)) +
   scale_y_continuous(limits = c(0, max(df$Pct, na.rm = TRUE) * 1.25),
                      labels = function(x) paste0(x, "%")) +
   labs(
-    title    = "Figure 4c — Carboplatin AUC=5 Q21D×1 (n=1000)",
-    subtitle = "Friberg/Schmitt 2010 vs QSP Fornari 2019  |  GFR=125, dose=750 mg fixe",
+    title    = "Figure 4c — Carboplatin AUC=5 Q21D×2 (n=1000)",
+    subtitle = "Friberg/Schmitt 2010 vs QSP Fornari 2019  |  GFR=125 | 2 cycles (Fig4 Fornari 2019)",
     x        = "NCI-CTCAE v5.0 Grade (nadir)",
     y        = "% patients"
   ) +
@@ -124,7 +124,7 @@ p <- ggplot(df, aes(x = Grade, y = Pct, fill = Model)) +
   )
 
 if (!dir.exists("results_HUMAN")) dir.create("results_HUMAN")
-pdf("results_HUMAN/Figure4c_Friberg_vs_QSP.pdf", width = 10, height = 6)
+pdf("results_HUMAN/Figure4c_2cycles.pdf", width = 10, height = 6)
 print(p)
 dev.off()
 message("✓ Figure4c_Friberg_vs_QSP.pdf")
