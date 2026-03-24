@@ -37,10 +37,13 @@ init_pars$RBC0  <- 5000.0   # range 4100–5900, ref. 32
 init_pars$Plt0  <-  345.0   # ref. 5
 
 # ── MTTs humains (Table 1, en heures) ──
-init_pars$MTT_Neut <- 210.0   # scaled from ref. 5
-init_pars$MTT_Mono <- 121.5   # scaled from ref. 47
-init_pars$MTT_Ret  <-  66.0   # scaled from internal AZ study
-init_pars$MTT_Plt  <- 168.0   # scaled from ref. 5
+# CORRECTION S10 : MTT_Fornari = (n/(n+1)) × MTT_Friberg (n=3 → ×3/4)
+# Schmitt 2010 (Friberg) : MTT_Neut_Friberg=152.9h → 3/4×152.9=114.7h
+#                          MTT_Plt_Friberg=175.3h  → 3/4×175.3=131.5h
+init_pars$MTT_Neut <- 114.7   # (3/4) × 152.9h (Schmitt/Friberg, S10)
+init_pars$MTT_Mono <-  91.1   # (3/4) × 121.5h (ref. 47, scaled)
+init_pars$MTT_Ret  <-  49.5   # (3/4) × 66.0h  (AZ internal)
+init_pars$MTT_Plt  <- 131.5   # (3/4) × 175.3h (Schmitt/Friberg, S10)
 
 # ── Circulating rates (Table 1, en h⁻¹) ──
 init_pars$k_circ_Neut <- 0.100    # ref. 22
