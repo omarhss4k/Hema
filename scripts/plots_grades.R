@@ -203,15 +203,16 @@ save_grade_figure4c <- function(base_pars, init_state,
   cat(sprintf("  → Figure 4c : %d patients (GFR=%g fixe, PK identique — Supp. S11/S12)...\n",
               n_patients, gfr_fixed))
 
-  # ── IIV PD — variabilités résiduelles Fornari 2019 Table S4 ──
-  # S11 : GFR=125 mL/min fixe, dose = AUC × (GFR+25) identique pour tous
+  # ── IIV PD — Schmitt 2010 (même source que Friberg pour comparaison équitable) ──
   # S12 : "same PK per patient" → pas d'IIV sur CL ni sur la dose
-  # σ log-additifs (Table S4) utilisés comme proxy IIV pour la simulation humaine
-  omega_Slope_CMP <- 0.19   # σ_CMP  Fornari 2019 Table S4
-  omega_Slope_MEP <- 0.33   # σ_MEP  Fornari 2019 Table S4
-  omega_Slope_MPP <- 0.33   # σ_MPP  Fornari 2019 Table S4
-  omega_Neut0     <- 0.17   # σ_Neut Fornari 2019 Table S4
-  omega_Plt0      <- 0.17   # σ_Plt  Fornari 2019 Table S4
+  # Pour comparer QSP vs Friberg à structure égale (Fig 4c), on utilise les
+  # mêmes ω inter-patients que Schmitt 2010 (ajustés au carboplatin humain).
+  # Friberg utilise : ω_Slope_N=0.624, ω_Slope_P=0.547, ω_Circ0_N=0.326, ω_Circ0_P=0.268
+  omega_Slope_CMP <- 0.624  # ω_Slope Schmitt 2010 (neutrophiles/CMP)
+  omega_Slope_MEP <- 0.547  # ω_Slope Schmitt 2010 (plaquettes/MEP)
+  omega_Slope_MPP <- 0.624  # ω_Slope Schmitt 2010 (MPP → utilise ω_neut)
+  omega_Neut0     <- 0.326  # ω_Circ0 Schmitt 2010 (neutrophiles)
+  omega_Plt0      <- 0.268  # ω_Circ0 Schmitt 2010 (plaquettes)
 
   # Dose unique et PK identiques pour tous les patients (Supp. S11/S12)
   dose_fixe <- auc_target * (gfr_fixed + 25)
