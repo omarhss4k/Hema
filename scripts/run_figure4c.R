@@ -124,7 +124,7 @@ p <- ggplot(df, aes(x = Grade, y = Pct, fill = Model)) +
   )
 
 if (!dir.exists("results_HUMAN")) dir.create("results_HUMAN")
-pdf("results_HUMAN/Figure4c_2cycles.pdf", width = 10, height = 6)
+pdf("results_HUMAN/Figure4c_Friberg_vs_QSP.pdf", width = 10, height = 6)
 print(p)
 dev.off()
 message("✓ Figure4c_Friberg_vs_QSP.pdf")
