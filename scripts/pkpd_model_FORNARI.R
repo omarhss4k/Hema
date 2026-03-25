@@ -125,7 +125,10 @@ pkpd_fornari <- function(time, state, pars) {
     dRBC    <- k_circ_Ret * Ret - k_circ_RBC * RBC
 
     # ── Plaquettes — T1/T2 prolifératifs (Eq. 7) ──
-    drug_plt <- delta_Plt * Slope_MEP * k_prol_Plt * Damage
+    # drug_plt : effet du médicament sur la prolifération plaquettaire (transit T1/T2)
+    # Sans k_prol_Plt : drug_plt = delta_Plt × Slope_MEP × Damage
+    # (k_prol_Plt trop petit → amortissement excessif de l'effet)
+    drug_plt <- delta_Plt * Slope_MEP * Damage
 
     dT1_Plt <- k_prol_Plt * f_prol_Plt * T1_Plt -
                drug_plt * T1_Plt +

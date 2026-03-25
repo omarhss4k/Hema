@@ -54,9 +54,13 @@ init_pars$k_circ_RBC  <- 0.00037  # ref. 13
 
 # ── Drug effects (Table 2) ──
 # Slopes ajustés pour la sensibilité espèce-spécifique (Eq. 10)
-init_pars$Slope_MPP  <- 0.79   # IC50-scaled from rat (2.05)
-init_pars$Slope_CMP  <- 0.57   # IC50-scaled from rat (1.47)
-init_pars$Slope_MEP  <- 0.66   # IC50-scaled from rat (2.19)
+# Eq. 10 : Slope_human = Slope_rat × (IC50_rat / IC50_human)
+# IC50_CMP: rat=2.83µM, human=4.04µM → Slope_MPP = 2.05×(2.83/4.04) = 1.435
+#           Slope_CMP = 1.47×(2.83/4.04) = 1.029
+# IC50_MEP: rat=0.86µM, human=1.56µM  → Slope_MEP = 2.19×(0.86/1.56) = 1.208
+init_pars$Slope_MPP  <- 1.435  # IC50-scaled from rat (2.05 × 2.83/4.04)
+init_pars$Slope_CMP  <- 1.029  # IC50-scaled from rat (1.47 × 2.83/4.04)
+init_pars$Slope_MEP  <- 1.208  # IC50-scaled from rat (2.19 × 0.86/1.56)
 init_pars$delta_Ret  <- 2.8    # same as rat (Table 2)
 init_pars$delta_Plt  <- 0.54   # same as rat (Table 2)
 

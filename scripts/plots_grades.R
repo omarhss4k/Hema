@@ -204,24 +204,26 @@ save_grade_figure4c <- function(base_pars, init_state,
               n_patients, gfr_fixed))
 
   # ── IIV PD — Schmitt 2010 (même source que Friberg pour comparaison équitable) ──
-  # S12 : "same PK per patient" → pas d'IIV sur CL ni sur la dose
-  # Pour comparer QSP vs Friberg à structure égale (Fig 4c), on utilise les
-  # mêmes ω inter-patients que Schmitt 2010 (ajustés au carboplatin humain).
-  # Friberg utilise : ω_Slope_N=0.624, ω_Slope_P=0.547, ω_Circ0_N=0.326, ω_Circ0_P=0.268
+  # IIV PK (CL) : variabilité inter-individuelle sur la clairance rénale
+  # omega_CL = 0.35 (log-normal, basé sur la variabilité GFR observée en clinique)
+  omega_CL        <- 0.35   # ω_CL (variabilité clairance rénale)
   omega_Slope_CMP <- 0.624  # ω_Slope Schmitt 2010 (neutrophiles/CMP)
   omega_Slope_MEP <- 0.547  # ω_Slope Schmitt 2010 (plaquettes/MEP)
   omega_Slope_MPP <- 0.624  # ω_Slope Schmitt 2010 (MPP → utilise ω_neut)
   omega_Neut0     <- 0.326  # ω_Circ0 Schmitt 2010 (neutrophiles)
   omega_Plt0      <- 0.268  # ω_Circ0 Schmitt 2010 (plaquettes)
 
-  # Dose unique et PK identiques pour tous les patients (Supp. S11/S12)
-  dose_fixe <- auc_target * (gfr_fixed + 25)
+  # Dose unique pour tous les patients (Calvert : AUC × (GFR + 25))
+  # CL typique pour GFR_fixe (Calvert : CL = GFR + 25 mL/min → L/h)
+  CL_typical <- (gfr_fixed + 25) * 60 / 1000   # L/h (ex: GFR=125 → CL=9 L/h)
+  dose_fixe  <- auc_target * (gfr_fixed + 25)
   cat(sprintf("  Dose fixe : AUC=%g, GFR=%g => Dose = %.0f mg\n",
               auc_target, gfr_fixed, dose_fixe))
 
   times <- seq(0, n_cycles * interval_h + 21*24, by = 1)
 
   # Tirages IIV (log-normaux, indépendants)
+  eta_CL    <- rnorm(n_patients, 0, omega_CL)
   eta_CMP   <- rnorm(n_patients, 0, omega_Slope_CMP)
   eta_MEP   <- rnorm(n_patients, 0, omega_Slope_MEP)
   eta_MPP   <- rnorm(n_patients, 0, omega_Slope_MPP)
@@ -236,9 +238,11 @@ save_grade_figure4c <- function(base_pars, init_state,
   grade_plt  <- integer(n_patients)
 
   for (i in seq_len(n_patients)) {
-    # Dose et PK identiques pour tous (Supp. S11/S12)
+    # Dose identique pour tous (Calvert fixe)
     dose_i <- dose_fixe
-    pars_i <- base_pars    # CL identique pour tous
+    pars_i <- base_pars
+    # CL individuelle : GFR typique + IIV log-normale (ω_CL=0.35)
+    pars_i$CL <- CL_typical * exp(eta_CL[i])
 
     # IIV PD : sensibilité médicament (Friberg via De Carlo 2025)
     pars_i$Slope_MPP <- base_pars$Slope_MPP * exp(eta_MPP[i])
