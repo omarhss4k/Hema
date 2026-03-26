@@ -81,23 +81,18 @@ pkpd_fornari <- function(time, state, pars) {
     f_prol_Plt <- pmin(pmax(r_pPlt, 0.2), 10)^gamma_prolTrans
 
     # ── Progeniteurs (Eq. 1, 4) ──
-    # Cap Emax=1 : le médicament peut arrêter complètement la prolifération (G0 arrest)
-    # mais ne peut pas causer de mort cellulaire active au-delà des taux naturels.
-    # Cohérent avec Friberg : E = min(1, Slope × Damage) → effet net ≥ 0.
-    eff_MPP <- max(0, 1 - Slope_MPP * Damage)
-    eff_CMP <- max(0, 1 - Slope_CMP * Damage)
-    eff_MEP <- max(0, 1 - Slope_MEP * Damage)
-
+    # Modèle linéaire Fornari : (1 - Slope × Damage)
+    # k_dam réduit pour que Slope × Damage_max < 1 au niveau typique
     dMPP <- k_stem * f_stem +
-            k_prol_MPP * eff_MPP * MPP -
+            k_prol_MPP * (1 - Slope_MPP * Damage) * MPP -
             k_tr_CMP * f_mat_CMP * MPP -
             k_tr_MEP * f_mat_MEP * MPP
 
-    dCMP <- k_prol_CMP * eff_CMP * CMP +
+    dCMP <- k_prol_CMP * (1 - Slope_CMP * Damage) * CMP +
             k_tr_CMP * f_mat_CMP * MPP -
             (k_tr_Neut + k_tr_Mono) * CMP
 
-    dMEP <- k_prol_MEP * eff_MEP * MEP +
+    dMEP <- k_prol_MEP * (1 - Slope_MEP * Damage) * MEP +
             k_tr_MEP * f_mat_MEP * MPP -
             (k_tr_Ret + k_tr_Plt) * MEP
 
