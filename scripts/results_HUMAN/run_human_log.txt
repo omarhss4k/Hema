@@ -1,0 +1,87 @@
+╔══════════════════════════════════════════════════════════╗
+║  PARAMÈTRES FORNARI — EQUATION S4 EXACTE               ║
+╚══════════════════════════════════════════════════════════╝
+
+── λ (Table 1) ──
+  λ1=2  λ2=2  λ3=1.8  λ4=1.8  λ5=1.8
+
+── 1. k_circ_Ret (Eq S4) ──
+  k_circ_Ret = k_circ_RBC × RBC0/Ret0
+             = 0.0004 × 5000/70 = 0.02643 /h  (lifespan = 37.8h)
+
+── 2. k_tr_Neut, k_tr_Mono (Eq S4) ──
+  k_tr_Neut = 0.021531 /h
+  k_tr_Mono = 0.000957 /h
+
+── 3. k_tr_Ret, k_tr_Plt (Eq S4) ← CORRECTION: ÷λ² ──
+  k_tr_Ret = k_circ_Ret × Ret0 / (λ1² × MEP0)
+           = 0.02643 × 70 / (2² × 15) = 0.030833 /h
+  k_tr_Plt = 0.029900 /h
+
+── 4. k_prol_Ret, k_prol_Plt (Eq S4) ──
+  k_prol_Ret = a_Ret × (1 - 1/λ1) = 0.030303 /h
+  k_prol_Plt = a_Plt × (1 - 1/λ2) = 0.011407 /h
+
+── 5. k_prol_CMP, k_prol_MEP (Eq S4) ──
+  k_prol_CMP = (k_tr_Neut + k_tr_Mono) / λ3 = 0.012493 /h
+  k_prol_MEP = (k_tr_Ret  + k_tr_Plt)  / λ4 = 0.033741 /h
+
+── 6. k_tr_CMP, k_tr_MEP (Eq S4) ──
+  k_tr_CMP = 0.160684 /h
+  k_tr_MEP = 0.311453 /h
+
+── 7. k_prol_MPP (Eq S4) ──
+  k_prol_MPP = (k_tr_CMP + k_tr_MEP) / λ5 = 0.262298 /h
+
+── 8. k_stem (Eq S4) ──
+  k_stem = (k_tr_CMP + k_tr_MEP - k_prol_MPP) × MPP0 = 0.272790
+
+── États initiaux transit (Eq S3) ──
+  T1_Ret = T2_Ret/λ1 = 15.2625
+  T2_Ret = T3_Ret    = 30.5250
+  T1_Plt = T2_Plt/λ2 = 39.3185
+  T2_Plt = T3_Plt    = 78.6370
+
+═══════════════════════════════════════════════════════════
+  TOUTES LES FORMULES EQ S4 APPLIQUÉES ✓
+═══════════════════════════════════════════════════════════
+
+
+Attaching package: 'readr'
+
+The following object is masked from 'package:scales':
+
+    col_factor
+
+
+Attaching package: 'dplyr'
+
+The following object is masked from 'package:gridExtra':
+
+    combine
+
+The following objects are masked from 'package:stats':
+
+    filter, lag
+
+The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union
+
+=== Dose Calvert : AUC=5, GFR=78 => Dose = 515 mg ===
+
+=== Figure 4 : simulation Q21D x 2 ===
+  ✓ MPP∈[0.29,1]  Neut_nadir=1.9486  Plt_nadir=130.1  Ret_nadir=5.546
+  ✓ PK/PD diag : C1_max=41.12 mg/L (110.8 uM)  Damage_max=1.9568
+    Slope_MPP=1.435  x  Damage_max=1.9568  =  2.808  <<< KILL DOMINANT : nadir trop profond
+    Slope_CMP=1.029  x  Damage_max=1.9568  =  2.014  <<< KILL DOMINANT : nadir trop profond
+    Slope_MEP=1.208  x  Damage_max=1.9568  =  2.364  <<< KILL DOMINANT : nadir trop profond
+✓ Sauvegardé : results_HUMAN/Figure4_Q21D_x2.pdf
+
+--- Grades NCI-CTCAE : simulation déterministe ---
+✓ Grades sauvegardés : results_HUMAN/Figure4_grades_deterministe.pdf
+  Neut : nadir=1.949 → Grade 1
+  Plt  : nadir=130.1  → Grade 1
+
+--- VPC humain : AUC=5, Q21D x 2 ---
+  → VPC humain : 1000 patients (GFR=125 fixe) + erreur résiduelle...
