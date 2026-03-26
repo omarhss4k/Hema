@@ -37,10 +37,11 @@ init_pars$RBC0  <- 5000.0   # range 4100–5900, ref. 32
 init_pars$Plt0  <-  345.0   # ref. 5
 
 # ── MTTs humains (Table 1, en heures) ──
-# CORRECTION S10 : MTT_Fornari = (n/(n+1)) × MTT_Friberg (n=3 → ×3/4)
-# Schmitt 2010 (Friberg) : MTT_Neut_Friberg=152.9h → 3/4×152.9=114.7h
-#                          MTT_Plt_Friberg=175.3h  → 3/4×175.3=131.5h
-init_pars$MTT_Neut <- 114.7   # (3/4) × 152.9h (Schmitt/Friberg, S10)
+# MTT_Neut calibré sur données Schmitt 2010 (nadir j14 cycle 1) :
+# Scan MTT_Neut 114.7→250h : 200h donne nadir=2.53 @j13.1 ≈ données 2.52 @j14 ✓
+# La correction théorique ×3/4 (114.7h) donnait nadir trop précoce (j10) et trop profond.
+# MTT_Plt : correction S10 ×3/4 maintenue (Plt nadir j14 bien calibré : 175 vs données 170).
+init_pars$MTT_Neut <- 200.0   # calibré Schmitt 2010 : nadir j13-14 ✓ (vs 114.7h → j10)
 init_pars$MTT_Mono <-  91.1   # (3/4) × 121.5h (ref. 47, scaled)
 init_pars$MTT_Ret  <-  49.5   # (3/4) × 66.0h  (AZ internal)
 init_pars$MTT_Plt  <- 131.5   # (3/4) × 175.3h (Schmitt/Friberg, S10)
