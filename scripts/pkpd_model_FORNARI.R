@@ -81,16 +81,23 @@ pkpd_fornari <- function(time, state, pars) {
     f_prol_Plt <- pmin(pmax(r_pPlt, 0.2), 10)^gamma_prolTrans
 
     # ── Progeniteurs (Eq. 1, 4) ──
+    # Cap Emax=1 : le médicament peut arrêter complètement la prolifération (G0 arrest)
+    # mais ne peut pas causer de mort cellulaire active au-delà des taux naturels.
+    # Cohérent avec Friberg : E = min(1, Slope × Damage) → effet net ≥ 0.
+    eff_MPP <- max(0, 1 - Slope_MPP * Damage)
+    eff_CMP <- max(0, 1 - Slope_CMP * Damage)
+    eff_MEP <- max(0, 1 - Slope_MEP * Damage)
+
     dMPP <- k_stem * f_stem +
-            k_prol_MPP * (1 - Slope_MPP * Damage) * MPP -
+            k_prol_MPP * eff_MPP * MPP -
             k_tr_CMP * f_mat_CMP * MPP -
             k_tr_MEP * f_mat_MEP * MPP
 
-    dCMP <- k_prol_CMP * (1 - Slope_CMP * Damage) * CMP +
+    dCMP <- k_prol_CMP * eff_CMP * CMP +
             k_tr_CMP * f_mat_CMP * MPP -
             (k_tr_Neut + k_tr_Mono) * CMP
 
-    dMEP <- k_prol_MEP * (1 - Slope_MEP * Damage) * MEP +
+    dMEP <- k_prol_MEP * eff_MEP * MEP +
             k_tr_MEP * f_mat_MEP * MPP -
             (k_tr_Ret + k_tr_Plt) * MEP
 
@@ -110,7 +117,10 @@ pkpd_fornari <- function(time, state, pars) {
     dMono    <- a_Mono*T3_Mono   - k_circ_Mono*Mono
 
     # ── Réticulocytes — T1/T2 prolifératifs (Eq. 7) ──
-    drug_ret <- delta_Ret * Slope_MEP * k_prol_Ret * Damage
+    # Cap Emax : drug_ret plafonné à k_prol_Ret × f_prol_Ret
+    # → taux de prolifération net ≥ 0 (arrest complet au max, pas de mort active)
+    drug_ret <- min(delta_Ret * Slope_MEP * k_prol_Ret * Damage,
+                    k_prol_Ret * f_prol_Ret)
 
     dT1_Ret <- k_prol_Ret * f_prol_Ret * T1_Ret -
                drug_ret * T1_Ret +
@@ -125,10 +135,10 @@ pkpd_fornari <- function(time, state, pars) {
     dRBC    <- k_circ_Ret * Ret - k_circ_RBC * RBC
 
     # ── Plaquettes — T1/T2 prolifératifs (Eq. 7) ──
-    # drug_plt : effet du médicament sur la prolifération plaquettaire (transit T1/T2)
-    # Sans k_prol_Plt : drug_plt = delta_Plt × Slope_MEP × Damage
-    # (k_prol_Plt trop petit → amortissement excessif de l'effet)
-    drug_plt <- delta_Plt * Slope_MEP * Damage
+    # Formule correcte (papier Fornari Eq. 7) : drug_plt inclut k_prol_Plt
+    # → drug_plt en /h cohérent avec k_prol_Plt (correction du bug e2cc5ec)
+    # → drug_ret inclut déjà k_prol_Ret → symétrie maintenant respectée
+    drug_plt <- delta_Plt * Slope_MEP * k_prol_Plt * Damage
 
     dT1_Plt <- k_prol_Plt * f_prol_Plt * T1_Plt -
                drug_plt * T1_Plt +
