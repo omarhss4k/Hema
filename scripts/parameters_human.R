@@ -63,7 +63,7 @@ init_pars$Slope_MPP  <- 1.435  # IC50-scaled from rat (2.05 × 2.83/4.04)
 init_pars$Slope_CMP  <- 1.029  # IC50-scaled from rat (1.47 × 2.83/4.04)
 init_pars$Slope_MEP  <- 1.208  # IC50-scaled from rat (2.19 × 0.86/1.56)
 init_pars$delta_Ret  <- 2.8    # same as rat (Table 2)
-init_pars$delta_Plt  <- 0.54   # same as rat (Table 2)
+init_pars$delta_Plt  <- 0.54  # calibration auto : nadir1~132 nadir2~117
 
 # ── IC50 colony-forming unit assays (Table S2) ──
 # Utilisés pour scaler les Slope via Eq. 10 : Slope_H = Slope_R × (IC50_R/IC50_H)
@@ -79,7 +79,7 @@ init_pars$gamma_mat_MEP   <- 0.30
 # gamma_prolTrans calibré sur Schmitt 2010 (2 cycles Plt) :
 # Table 1 rat = 0.70 → trop fort (récupération inter-cycles trop rapide, Plt[j21]=285 vs 237)
 # gamma=0.50 donne Plt[j14]=168 (±1%), [j21]=240 (±1%), [j35]=166 (données: 170/237/149)
-init_pars$gamma_prolTrans <- 0.50  # calibré Schmitt 2010 (vs 0.70 papier)
+init_pars$gamma_prolTrans <- 0.50
 
 # ── MW carboplatin ──
 init_pars$MW_carboplatin <- 371.25

@@ -129,11 +129,11 @@ pkpd_fornari <- function(time, state, pars) {
     dRet    <- a_Ret * T3_Ret - k_circ_Ret * Ret
     dRBC    <- k_circ_Ret * Ret - k_circ_RBC * RBC
 
-    # ── Plaquettes — T1/T2 prolifératifs (Eq. 7) ──
-    # Formule correcte (papier Fornari Eq. 7) : drug_plt inclut k_prol_Plt
-    # → drug_plt en /h cohérent avec k_prol_Plt (correction du bug e2cc5ec)
-    # → drug_ret inclut déjà k_prol_Ret → symétrie maintenant respectée
-    drug_plt <- delta_Plt * Slope_MEP * k_prol_Plt * Damage
+    # ── Plaquettes — T1/T2 prolifératifs (Eq. 7 Fornari 2019) ──
+    # Formulation papier : dT1 = k_prol × f × (1 - delta×Slope×D) × T1 + k_tr×MEP - a×T1
+    # Quand delta×Slope×D > 1 : term (1-E) < 0 → mort nette des T1/T2
+    # feedback f_prol inclus dans le kill (boucle positive voulue par le papier)
+    drug_plt <- delta_Plt * Slope_MEP * k_prol_Plt * f_prol_Plt * Damage
 
     dT1_Plt <- k_prol_Plt * f_prol_Plt * T1_Plt -
                drug_plt * T1_Plt +
