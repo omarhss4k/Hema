@@ -76,7 +76,10 @@ init_pars$IC50_MEP_human <- 1.56  # μM, CD71+ cells
 init_pars$gamma_stem      <- 0.07
 init_pars$gamma_mat_CMP   <- 0.60
 init_pars$gamma_mat_MEP   <- 0.30
-init_pars$gamma_prolTrans <- 0.70  # Table 1 : "as in the rat"
+# gamma_prolTrans calibré sur Schmitt 2010 (2 cycles Plt) :
+# Table 1 rat = 0.70 → trop fort (récupération inter-cycles trop rapide, Plt[j21]=285 vs 237)
+# gamma=0.50 donne Plt[j14]=168 (±1%), [j21]=240 (±1%), [j35]=166 (données: 170/237/149)
+init_pars$gamma_prolTrans <- 0.50  # calibré Schmitt 2010 (vs 0.70 papier)
 
 # ── MW carboplatin ──
 init_pars$MW_carboplatin <- 371.25
