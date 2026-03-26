@@ -496,3 +496,232 @@ save_vpc_human_extended <- function(sim, pars, file, titre,
   message("✓ VPC élargi sauvegardé : ", file)
   invisible(vpc_stats)
 }
+
+# ════════════════════════════════════════════════════════
+# 7. VPC POPULATION avec IIV PD complète (Figure 4 style)
+#    IIV : omega_CL=0.35, omega_Slope_MEP=0.547, etc.
+#    Bandes [5e–95e] + [25e–75e] + médiane + seuils grade
+# ════════════════════════════════════════════════════════
+plot_vpc_iiv_panel <- function(vpc_df, title, color,
+                               thresholds = NULL,
+                               baseline   = NULL,
+                               dose_days  = NULL,
+                               obs        = NULL) {
+
+  all_vals <- c(vpc_df$p05, vpc_df$p95)
+  if (!is.null(obs) && length(obs$value) > 0)
+    all_vals <- c(all_vals, obs$value[obs$value > 0])
+  all_pos  <- all_vals[is.finite(all_vals) & all_vals > 0]
+  ymin     <- 10^floor(log10(min(all_pos) * 0.3))
+  ymax     <- 10^ceiling(log10(max(all_pos) * 3.0))
+  breaks_y <- 10^seq(log10(ymin), log10(ymax), by = 1)
+
+  vpc_df <- as.data.frame(lapply(vpc_df, function(x)
+    if (is.numeric(x)) pmax(x, ymin * 0.5) else x))
+
+  p <- ggplot(vpc_df, aes(x = days)) +
+    geom_ribbon(aes(ymin = p05, ymax = p95),
+                fill = color, alpha = 0.15) +
+    geom_ribbon(aes(ymin = p25, ymax = p75),
+                fill = color, alpha = 0.25) +
+    geom_line(aes(y = p50), color = color, linewidth = 1.0)
+
+  if (!is.null(thresholds)) {
+    grade_cols <- c("#fee08b", "#fc8d59", "#d73027", "#7b0404")
+    grade_lbls <- names(thresholds)
+    for (g in seq_along(thresholds)) {
+      p <- p + geom_hline(yintercept = thresholds[g],
+                          linetype = "dashed", linewidth = 0.4,
+                          color = grade_cols[g], alpha = 0.8) +
+               annotate("text", x = max(vpc_df$days) * 0.02,
+                        y = thresholds[g] * 1.18,
+                        label = grade_lbls[g], size = 2.5,
+                        color = grade_cols[g], hjust = 0)
+    }
+  }
+
+  if (!is.null(obs) && length(obs$time) > 0) {
+    df_obs <- data.frame(x = obs$time,
+                         y = pmax(obs$value, ymin * 0.5))
+    p <- p + geom_point(data = df_obs, aes(x = x, y = y),
+                        shape = 21, fill = "white", color = "black",
+                        size = 1.8, stroke = 0.65, alpha = 0.85)
+  }
+
+  if (!is.null(baseline) && baseline > 0)
+    p <- p + geom_hline(yintercept = baseline, linetype = "dashed",
+                        color = "grey50", linewidth = 0.45, alpha = 0.6)
+
+  if (!is.null(dose_days)) {
+    vd <- dose_days[dose_days <= max(vpc_df$days)]
+    if (length(vd) > 0)
+      p <- p + geom_vline(xintercept = vd, linetype = "dotted",
+                          color = "grey55", linewidth = 0.35, alpha = 0.55)
+  }
+
+  p + scale_y_log10(limits = c(ymin, ymax), breaks = breaks_y,
+                    labels = trans_format("log10", math_format(10^.x))) +
+    labs(title = title, x = "Time (d)",
+         y = expression(10^9~cells~L^{-1})) +
+    theme_bw(base_size = 9.5) +
+    theme(panel.grid.minor  = element_blank(),
+          panel.grid.major  = element_line(color = "grey92"),
+          plot.title        = element_text(face = "bold", size = 9, hjust = 0.5),
+          axis.title        = element_text(size = 7.5),
+          axis.text         = element_text(size = 7))
+}
+
+save_vpc_human_pd_iiv <- function(pars, init_state_arg,
+                                  file,
+                                  titre      = "VPC — IIV PD complète",
+                                  n_sim      = 500,
+                                  auc_target = 5,
+                                  gfr_fixed  = 125,
+                                  n_cycles   = 2,
+                                  interval_h = 21 * 24,
+                                  dose_days  = NULL,
+                                  obs_list   = NULL,
+                                  seed       = 42,
+                                  width      = 7,
+                                  height     = 9) {
+
+  set.seed(seed)
+  times <- seq(0, n_cycles * interval_h + 21 * 24, by = 1)
+  n_t   <- length(times)
+
+  omega_CL        <- 0.35
+  omega_Slope_CMP <- 0.624
+  omega_Slope_MEP <- 0.547
+  omega_Slope_MPP <- 0.624
+  omega_Neut0     <- 0.326
+  omega_Plt0      <- 0.268
+
+  CL_typical <- (gfr_fixed + 25) * 60 / 1000
+  dose_fixe  <- auc_target * (gfr_fixed + 25)
+
+  eta_CL    <- rnorm(n_sim, 0, omega_CL)
+  eta_CMP   <- rnorm(n_sim, 0, omega_Slope_CMP)
+  eta_MEP   <- rnorm(n_sim, 0, omega_Slope_MEP)
+  eta_MPP   <- rnorm(n_sim, 0, omega_Slope_MPP)
+  eta_Neut0 <- rnorm(n_sim, 0, omega_Neut0)
+  eta_Plt0  <- rnorm(n_sim, 0, omega_Plt0)
+
+  neut0_i <- pars$Neut0 * exp(eta_Neut0)
+  plt0_i  <- pars$Plt0  * exp(eta_Plt0)
+
+  mat_Neut <- matrix(NA, nrow = n_sim, ncol = n_t)
+  mat_Plt  <- matrix(NA, nrow = n_sim, ncol = n_t)
+
+  cat(sprintf("  → VPC IIV PD : %d patients (GFR=%g, AUC=%g)...\n",
+              n_sim, gfr_fixed, auc_target))
+
+  for (i in seq_len(n_sim)) {
+    pars_i           <- pars
+    pars_i$CL        <- CL_typical * exp(eta_CL[i])
+    pars_i$Slope_MPP <- pars$Slope_MPP * exp(eta_MPP[i])
+    pars_i$Slope_CMP <- pars$Slope_CMP * exp(eta_CMP[i])
+    pars_i$Slope_MEP <- pars$Slope_MEP * exp(eta_MEP[i])
+    pars_i$Neut0     <- neut0_i[i]
+    pars_i$Plt0      <- plt0_i[i]
+    pars_i$rate_fun  <- make_repeated_infusion(
+      dose_mg = dose_fixe, Tinfu_h = 1,
+      interval_h = interval_h, n_cycles = n_cycles
+    )
+
+    a_Neut  <- 3 / pars_i$MTT_Neut
+    a_Plt   <- 3 / pars_i$MTT_Plt
+    T_Neut  <- pars_i$k_circ_Neut * neut0_i[i] / a_Neut
+    T_Plt   <- pars_i$k_circ_Plt  * plt0_i[i]  / a_Plt
+    T1_Plt  <- T_Plt / pars_i$lambda2
+
+    state_i              <- init_state_arg
+    state_i["Neut"]      <- neut0_i[i]
+    state_i["Plt"]       <- plt0_i[i]
+    state_i["T1_Neut"]   <- T_Neut
+    state_i["T2_Neut"]   <- T_Neut
+    state_i["T3_Neut"]   <- T_Neut
+    state_i["T1_Plt"]    <- T1_Plt
+    state_i["T2_Plt"]    <- T_Plt
+    state_i["T3_Plt"]    <- T_Plt
+
+    tryCatch({
+      out_i <- as.data.frame(lsoda(
+        y = state_i, times = times, func = pkpd_fornari, parms = pars_i,
+        rtol = 1e-6, atol = 1e-8, maxsteps = 100000
+      ))
+      mat_Neut[i, ] <- out_i$Neut
+      mat_Plt[i, ]  <- out_i$Plt
+    }, error = function(e) NULL)
+
+    if (i %% 100 == 0)
+      cat(sprintf("    %d/%d\n", i, n_sim))
+  }
+
+  days_vec <- times / 24
+  make_stats <- function(mat) data.frame(
+    days = days_vec,
+    p05  = apply(mat, 2, quantile, probs = 0.05, na.rm = TRUE),
+    p25  = apply(mat, 2, quantile, probs = 0.25, na.rm = TRUE),
+    p50  = apply(mat, 2, quantile, probs = 0.50, na.rm = TRUE),
+    p75  = apply(mat, 2, quantile, probs = 0.75, na.rm = TRUE),
+    p95  = apply(mat, 2, quantile, probs = 0.95, na.rm = TRUE)
+  )
+
+  vpc_stats <- list(
+    Neut = make_stats(mat_Neut),
+    Plt  = make_stats(mat_Plt)
+  )
+
+  neut_thr <- c(G1 = 2.0, G2 = 1.5, G3 = 1.0, G4 = 0.5)
+  plt_thr  <- c(G1 = 150, G2 = 75,  G3 = 50,  G4 = 25)
+
+  get_obs <- function(name)
+    if (!is.null(obs_list) && name %in% names(obs_list)) obs_list[[name]] else NULL
+
+  p_neut <- plot_vpc_iiv_panel(
+    vpc_df    = vpc_stats$Neut,
+    title     = "Neutrophils — population IIV",
+    color     = "#d7191c",
+    thresholds = neut_thr,
+    baseline  = pars$Neut0,
+    dose_days = dose_days,
+    obs       = get_obs("Neut")
+  )
+  p_plt <- plot_vpc_iiv_panel(
+    vpc_df    = vpc_stats$Plt,
+    title     = "Platelets — population IIV",
+    color     = "#1b9e77",
+    thresholds = plt_thr,
+    baseline  = pars$Plt0,
+    dose_days = dose_days,
+    obs       = get_obs("Plt")
+  )
+
+  legend_grob <- textGrob(
+    paste0("Ruban clair = [5e–95e percentile]  |  ",
+           "Ruban foncé = [25e–75e]  |  ",
+           "Ligne = médiane  |  ● = données"),
+    gp = gpar(fontsize = 7.5, col = "grey30")
+  )
+
+  pdf(file, width = width, height = height)
+  grid.arrange(p_neut, p_plt, ncol = 1,
+               top    = textGrob(titre,
+                                 gp = gpar(fontface = "bold", fontsize = 11)),
+               bottom = legend_grob)
+  dev.off()
+
+  # Résumé des percentiles au nadir
+  plt_min_p05 <- min(vpc_stats$Plt$p05, na.rm = TRUE)
+  plt_min_p50 <- min(vpc_stats$Plt$p50, na.rm = TRUE)
+  plt_min_p95 <- min(vpc_stats$Plt$p95, na.rm = TRUE)
+  cat(sprintf("  Plt nadir : p05=%.1f  p50=%.1f  p95=%.1f\n",
+              plt_min_p05, plt_min_p50, plt_min_p95))
+  cat(sprintf("  → p05 Plt < 150 (G1)? %s  < 75 (G2)? %s  < 50 (G3)? %s\n",
+              ifelse(plt_min_p05 < 150, "OUI", "non"),
+              ifelse(plt_min_p05 < 75,  "OUI", "non"),
+              ifelse(plt_min_p05 < 50,  "OUI", "non")))
+
+  message("✓ VPC IIV PD sauvegardé : ", file)
+  invisible(vpc_stats)
+}

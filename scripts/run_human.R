@@ -90,11 +90,29 @@ save_grade_figure4c(
   seed       = 42
 )
 
+# ── VPC IIV PD complète (bandes de percentiles avec IIV Slope + CL) ──
+cat("\n--- VPC IIV PD complète (Slope_MEP, CL, Plt0, Neut0) ---\n")
+save_vpc_human_pd_iiv(
+  pars           = init_pars,
+  init_state_arg = init_state,
+  file           = "results_HUMAN/Figure4_VPC_IIV_PD.pdf",
+  titre          = "VPC — IIV PD (ω_Slope_MEP=0.547, ω_CL=0.35) | AUC=5 Q21D×2 GFR=125",
+  n_sim          = 500,
+  auc_target     = AUC_target,
+  gfr_fixed      = 125,
+  n_cycles       = 2,
+  interval_h     = 21 * 24,
+  dose_days      = dose_days_hu,
+  obs_list       = obs_list_human,
+  seed           = 42
+)
+
 cat("\n=======================================================\n")
 cat("Fichiers dans results_HUMAN/ :\n")
 cat("  -> Figure4_Q21D_x2.pdf              (courbes Neut+Plt)\n")
 cat("  -> Figure4_grades_deterministe.pdf  (grades courbe det.)\n")
 cat("  -> Figure4_VPC.pdf                  (VPC population)\n")
 cat("  -> Figure4_VPC_extended.pdf         (VPC élargi, baselines variables)\n")
+cat("  -> Figure4_VPC_IIV_PD.pdf          (VPC IIV PD complète + seuils grade)\n")
 cat("  -> Figure4c_grades_AUC5.pdf         (Figure 4c, 1000 patients)\n")
 cat("=======================================================\n")
