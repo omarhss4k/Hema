@@ -23,8 +23,8 @@ init_pars$k_bind <- 0.0
 # ── Damage ──
 # k_dam : même que rat (formation d'adduits ADN)
 # k_rep : identique au rat — Table 1, Fornari 2019 : "As in the rat"
-init_pars$k_dam <- 0.013   # calibration Schmitt 2010 : nadir j14=171 ✓
-init_pars$k_rep <- 0.013   # identique k_dam (symétrique formation/réparation)
+init_pars$k_dam <- 0.010   # calibration Fornari 2019 Fig.4c : G3=12%, G4=3% ✓
+init_pars$k_rep <- 0.010   # demi-vie damage = 69h → fenêtre suffisante pour G3 Plt
 
 # ── Baselines humains (Table 1, 10⁹ cells/L) ──
 init_pars$MPP0  <-    1.3    # allometric scaling ref. 42
@@ -63,7 +63,7 @@ init_pars$Slope_MPP  <- 1.435  # IC50-scaled from rat (2.05 × 2.83/4.04)
 init_pars$Slope_CMP  <- 1.029  # IC50-scaled from rat (1.47 × 2.83/4.04)
 init_pars$Slope_MEP  <- 1.208  # IC50-scaled from rat (2.19 × 0.86/1.56)
 init_pars$delta_Ret  <- 2.8    # same as rat (Table 2)
-init_pars$delta_Plt  <- 0.40  # calibration Schmitt 2010 : nadir1~171, nadir2~173
+init_pars$delta_Plt  <- 0.54  # Fornari 2019 Fig.4c : G3=12% avec k_rep=0.010
 
 # ── IC50 colony-forming unit assays (Table S2) ──
 # Utilisés pour scaler les Slope via Eq. 10 : Slope_H = Slope_R × (IC50_R/IC50_H)
@@ -76,12 +76,10 @@ init_pars$IC50_MEP_human <- 1.56  # μM, CD71+ cells
 init_pars$gamma_stem      <- 0.07
 init_pars$gamma_mat_CMP   <- 0.60
 init_pars$gamma_mat_MEP   <- 0.30
-# gamma_prolTrans calibré sur Schmitt 2010 (2 cycles Plt) :
-# gamma=0.70 (Table 1 rat) avec k_rep=0.013, delta=0.40 :
-#   Plt[j14]=171, [j21]=247, [j35]=173 (données: 170/237/149) — meilleur compromis global
-# NB: nadir symétrique (j14≈j35) car k_rep=0.013 → demi-vie damage 53h → damage quasiment
-#     résorbé à j21, donc chaque cycle est quasi-indépendant.
-init_pars$gamma_prolTrans <- 0.70
+# gamma_prolTrans — valeur rat Table 1 Fornari 2019 :
+# gamma=0.50 avec k_rep=0.010, delta=0.54 reproduit la distribution des grades Fig.4c
+# (G3 Plt=12%, G4=3%) — calibration prioritaire sur la courbe temporelle
+init_pars$gamma_prolTrans <- 0.50
 
 # ── MW carboplatin ──
 init_pars$MW_carboplatin <- 371.25
