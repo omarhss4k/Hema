@@ -210,29 +210,30 @@ save_grade_figure4c <- function(base_pars, init_state,
   omega_Slope_CMP <- 0.624  # ω_Slope Schmitt 2010 (neutrophiles/CMP)
   omega_Slope_MEP <- 0.547  # ω_Slope Schmitt 2010 (plaquettes/MEP)
   omega_Slope_MPP <- 0.624  # ω_Slope Schmitt 2010 (MPP → utilise ω_neut)
-  omega_Neut0     <- 0.326  # ω_Circ0 Schmitt 2010 (neutrophiles)
-  omega_Plt0      <- 0.268  # ω_Circ0 Schmitt 2010 (plaquettes)
 
-  # Dose unique pour tous les patients (Calvert : AUC × (GFR + 25))
+  # Baselines : range physiologique log-uniforme (comme VPC élargi)
+  neut0_range <- c(2.0, 7.0)    # ANC physiologique [10^9/L]
+  plt0_range  <- c(150.0, 400.0) # Plaquettes physiologiques [10^9/L]
+
   # CL typique pour GFR_fixe (Calvert : CL = GFR + 25 mL/min → L/h)
   CL_typical <- (gfr_fixed + 25) * 60 / 1000   # L/h (ex: GFR=125 → CL=9 L/h)
-  dose_fixe  <- auc_target * (gfr_fixed + 25)
+
   cat(sprintf("  Calvert individuel : AUC=%g × CL_i → AUC=%g pour tous (%g patients)\n",
               auc_target, auc_target, n_patients))
+  cat(sprintf("  Neut0 ~ LogU[%.1f, %.1f]  Plt0 ~ LogU[%.1f, %.1f]\n",
+              neut0_range[1], neut0_range[2], plt0_range[1], plt0_range[2]))
 
   times <- seq(0, n_cycles * interval_h + 21*24, by = 1)
 
-  # Tirages IIV (log-normaux, indépendants)
-  eta_CL    <- rnorm(n_patients, 0, omega_CL)
-  eta_CMP   <- rnorm(n_patients, 0, omega_Slope_CMP)
-  eta_MEP   <- rnorm(n_patients, 0, omega_Slope_MEP)
-  eta_MPP   <- rnorm(n_patients, 0, omega_Slope_MPP)
-  eta_Neut0 <- rnorm(n_patients, 0, omega_Neut0)
-  eta_Plt0  <- rnorm(n_patients, 0, omega_Plt0)
+  # Tirages IIV (log-normaux pour Slope/CL, log-uniformes pour baselines)
+  eta_CL  <- rnorm(n_patients, 0, omega_CL)
+  eta_CMP <- rnorm(n_patients, 0, omega_Slope_CMP)
+  eta_MEP <- rnorm(n_patients, 0, omega_Slope_MEP)
+  eta_MPP <- rnorm(n_patients, 0, omega_Slope_MPP)
 
-  # Baselines individuelles (log-normales centrées sur les valeurs Table 1)
-  neut0_i <- base_pars$Neut0 * exp(eta_Neut0)
-  plt0_i  <- base_pars$Plt0  * exp(eta_Plt0)
+  # Baselines log-uniformes sur le range physiologique
+  neut0_i <- exp(runif(n_patients, log(neut0_range[1]), log(neut0_range[2])))
+  plt0_i  <- exp(runif(n_patients, log(plt0_range[1]),  log(plt0_range[2])))
 
   grade_neut <- integer(n_patients)
   grade_plt  <- integer(n_patients)
