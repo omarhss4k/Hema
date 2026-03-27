@@ -302,78 +302,16 @@ save_vpc_human <- function(sim, pars, file, titre,
                            height     = 9) {
 
   # Supp. S11 : GFR=125 fixe, même PK pour tous les patients
-  cat(sprintf("  → VPC humain : %d patients (GFR=%g fixe) + erreur résiduelle...\n",
-              n_sim, gfr_fixed))
+  # Optimisation : run_vpc() applique le bruit résiduel de façon vectorisée
+  # sur la simulation déterministe (sim) — 1 seul appel ODE au lieu de n_sim.
+  cat(sprintf("  → VPC humain : %d simulations (bruit résiduel vectorisé)...\n", n_sim))
 
   set.seed(42)
+  vpc_all <- run_vpc(sim, n_sim = n_sim)
 
-  # Grille temporelle identique à run_human.R si non fournie
-  if (is.null(times)) times <- seq(0, 63 * 24, by = 1)
-  n_t <- length(times)
-
-  # ── Même PK pour tous (Supp. S11/S12) ──────────────────────
-  dose_fixe <- auc_target * (gfr_fixed + 25)   # Calvert dose fixe
-  mat_Neut <- matrix(NA, nrow = n_sim, ncol = n_t)
-  mat_Plt  <- matrix(NA, nrow = n_sim, ncol = n_t)
-
-  for (i in seq_len(n_sim)) {
-    dose_i <- dose_fixe
-
-    pars_i          <- pars
-    pars_i$rate_fun <- make_repeated_infusion(
-      dose_mg    = dose_i,
-      Tinfu_h    = 1,
-      interval_h = interval_h,
-      n_cycles   = n_cycles
-    )
-
-    ss_T <- function(k, c0, mtt) k * c0 / (3 / mtt)
-    state0 <- c(
-      C1=0, C2=0, Damage=0,
-      MPP=pars$MPP0, CMP=pars$CMP0, MEP=pars$MEP0,
-      T1_Neut=ss_T(pars$k_circ_Neut,pars$Neut0,pars$MTT_Neut),
-      T2_Neut=ss_T(pars$k_circ_Neut,pars$Neut0,pars$MTT_Neut),
-      T3_Neut=ss_T(pars$k_circ_Neut,pars$Neut0,pars$MTT_Neut),
-      Neut=pars$Neut0,
-      T1_Mono=ss_T(pars$k_circ_Mono,pars$Mono0,pars$MTT_Mono),
-      T2_Mono=ss_T(pars$k_circ_Mono,pars$Mono0,pars$MTT_Mono),
-      T3_Mono=ss_T(pars$k_circ_Mono,pars$Mono0,pars$MTT_Mono),
-      Mono=pars$Mono0,
-      T1_Ret=ss_T(pars$k_circ_RBC,pars$Ret0,pars$MTT_Ret),
-      T2_Ret=ss_T(pars$k_circ_RBC,pars$Ret0,pars$MTT_Ret),
-      T3_Ret=ss_T(pars$k_circ_RBC,pars$Ret0,pars$MTT_Ret),
-      Ret=pars$Ret0, RBC=pars$RBC0,
-      T1_Plt=ss_T(pars$k_circ_Plt,pars$Plt0,pars$MTT_Plt),
-      T2_Plt=ss_T(pars$k_circ_Plt,pars$Plt0,pars$MTT_Plt),
-      T3_Plt=ss_T(pars$k_circ_Plt,pars$Plt0,pars$MTT_Plt),
-      Plt=pars$Plt0
-    )
-
-    tryCatch({
-      out_i <- as.data.frame(lsoda(
-        y=state0, times=times, func=pkpd_fornari, parms=pars_i,
-        rtol=1e-4, atol=1e-6, maxsteps=10000
-      ))
-      mat_Neut[i,] <- out_i$Neut * exp(rnorm(n_t, 0, SIGMA["Neut"]))
-      mat_Plt[i,]  <- out_i$Plt  * exp(rnorm(n_t, 0, SIGMA["Plt"]))
-    }, error = function(e) NULL)
-
-    if (i %% 200 == 0)
-      cat(sprintf("    %d/%d patients simulés\n", i, n_sim))
-  }
-
-  # ── Percentiles ──────────────────────────────────────────────
-  days_vec  <- times / 24
-  make_stats <- function(mat, Yref) data.frame(
-    days = days_vec,
-    p05  = apply(mat, 2, quantile, probs=0.05, na.rm=TRUE),
-    p50  = apply(mat, 2, quantile, probs=0.50, na.rm=TRUE),
-    p95  = apply(mat, 2, quantile, probs=0.95, na.rm=TRUE),
-    pred = Yref
-  )
   vpc_stats <- list(
-    Neut = make_stats(mat_Neut, sim$Neut),
-    Plt  = make_stats(mat_Plt,  sim$Plt)
+    Neut = vpc_all[["Neut"]][, c("days","p05","p50","p95","pred")],
+    Plt  = vpc_all[["Plt"]] [, c("days","p05","p50","p95","pred")]
   )
 
   pdf(file, width = width, height = height)

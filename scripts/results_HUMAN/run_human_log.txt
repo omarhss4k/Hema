@@ -84,5 +84,8 @@ The following objects are masked from 'package:base':
   Plt  : nadir=130.1  → Grade 1
 
 --- VPC humain : AUC=5, Q21D x 2 ---
-  → VPC humain : 1000 patients (GFR=125 fixe) + erreur résiduelle...
-    200/1000 patients simulés
+  → VPC humain : 1000 simulations (bruit résiduel vectorisé)...
+✓ VPC humain sauvegardé : results_HUMAN/Figure4_VPC.pdf
+
+--- VPC élargi : Neut0~LogU[2,7], Plt0~LogU[150,400] ---
+  → VPC élargi : 500 patients | Neut0 ~ LogU[2.0,7.0] | Plt0 ~ LogU[150.0,400.0]
