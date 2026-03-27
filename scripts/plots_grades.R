@@ -217,8 +217,8 @@ save_grade_figure4c <- function(base_pars, init_state,
   # CL typique pour GFR_fixe (Calvert : CL = GFR + 25 mL/min → L/h)
   CL_typical <- (gfr_fixed + 25) * 60 / 1000   # L/h (ex: GFR=125 → CL=9 L/h)
   dose_fixe  <- auc_target * (gfr_fixed + 25)
-  cat(sprintf("  Dose fixe : AUC=%g, GFR=%g => Dose = %.0f mg\n",
-              auc_target, gfr_fixed, dose_fixe))
+  cat(sprintf("  Calvert individuel : AUC=%g × CL_i → AUC=%g pour tous (%g patients)\n",
+              auc_target, auc_target, n_patients))
 
   times <- seq(0, n_cycles * interval_h + 21*24, by = 1)
 
@@ -238,11 +238,11 @@ save_grade_figure4c <- function(base_pars, init_state,
   grade_plt  <- integer(n_patients)
 
   for (i in seq_len(n_patients)) {
-    # Dose identique pour tous (Calvert fixe)
-    dose_i <- dose_fixe
     pars_i <- base_pars
-    # CL individuelle : GFR typique + IIV log-normale (ω_CL=0.35)
+    # Calvert individuel : dose_i = AUC_target × CL_i → AUC = 5 pour tous
+    # (chaque patient reçoit sa dose Calvert selon sa propre CL)
     pars_i$CL <- CL_typical * exp(eta_CL[i])
+    dose_i    <- auc_target * (pars_i$CL * 1000 / 60)  # AUC[mg.min/mL] × CL[mL/min]
 
     # IIV PD : sensibilité médicament (Friberg via De Carlo 2025)
     pars_i$Slope_MPP <- base_pars$Slope_MPP * exp(eta_MPP[i])

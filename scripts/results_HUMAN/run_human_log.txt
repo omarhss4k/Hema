@@ -97,11 +97,11 @@ The following objects are masked from 'package:base':
 
 === Figure 4c : % patients par grade (AUC=5) ===
   → Figure 4c : 200 patients (GFR=125 fixe, PK identique — Supp. S11/S12)...
-  Dose fixe : AUC=5, GFR=125 => Dose = 750 mg
+  Calvert individuel : AUC=5 × CL_i → AUC=5 pour tous (200 patients)
     100/200 patients
     200/200 patients
-  Neutropénie  : G1=37.0%  G2=17.5%  G3=1.0%  G4=0.0%
-  Thrombopénie : G1=53.0%  G2=7.5%  G3=3.0%  G4=0.5%
+  Neutropénie  : G1=41.0%  G2=12.5%  G3=0.5%  G4=0.0%
+  Thrombopénie : G1=56.5%  G2=7.5%  G3=1.0%  G4=0.0%
 ✓ Figure 4c sauvegardée : results_HUMAN/Figure4c_grades_AUC5.pdf
 
 --- VPC IIV PD complète (Slope_MEP, CL, Plt0, Neut0) ---
