@@ -412,13 +412,21 @@ save_vpc_human_extended <- function(sim, pars, file, titre,
   }
 
   days_vec   <- times / 24
-  make_stats <- function(mat, Yref) data.frame(
-    days = days_vec,
-    p05  = apply(mat, 2, quantile, probs=0.05, na.rm=TRUE),
-    p50  = apply(mat, 2, quantile, probs=0.50, na.rm=TRUE),
-    p95  = apply(mat, 2, quantile, probs=0.95, na.rm=TRUE),
-    pred = Yref
-  )
+  make_stats <- function(mat, Yref) {
+    # Interpoler Yref si grille temporelle différente de mat
+    pred_interp <- if (length(Yref) == length(days_vec)) {
+      Yref
+    } else {
+      approx(sim$time / 24, Yref, days_vec, rule = 2)$y
+    }
+    data.frame(
+      days = days_vec,
+      p05  = apply(mat, 2, quantile, probs=0.05, na.rm=TRUE),
+      p50  = apply(mat, 2, quantile, probs=0.50, na.rm=TRUE),
+      p95  = apply(mat, 2, quantile, probs=0.95, na.rm=TRUE),
+      pred = pred_interp
+    )
+  }
   vpc_stats <- list(
     Neut = make_stats(mat_Neut, sim$Neut),
     Plt  = make_stats(mat_Plt,  sim$Plt)

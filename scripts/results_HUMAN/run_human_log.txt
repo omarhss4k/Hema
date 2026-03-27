@@ -92,3 +92,32 @@ The following objects are masked from 'package:base':
     50/200 patients simulés
     100/200 patients simulés
     150/200 patients simulés
+    200/200 patients simulés
+✓ VPC élargi sauvegardé : results_HUMAN/Figure4_VPC_extended.pdf
+
+=== Figure 4c : % patients par grade (AUC=5) ===
+  → Figure 4c : 200 patients (GFR=125 fixe, PK identique — Supp. S11/S12)...
+  Dose fixe : AUC=5, GFR=125 => Dose = 750 mg
+    100/200 patients
+    200/200 patients
+  Neutropénie  : G1=37.0%  G2=17.5%  G3=1.0%  G4=0.0%
+  Thrombopénie : G1=53.0%  G2=7.5%  G3=3.0%  G4=0.5%
+✓ Figure 4c sauvegardée : results_HUMAN/Figure4c_grades_AUC5.pdf
+
+--- VPC IIV PD complète (Slope_MEP, CL, Plt0, Neut0) ---
+  → VPC IIV PD : 200 patients (GFR=125, AUC=5)...
+    100/200
+    200/200
+  Plt nadir : p05=56.8  p50=133.3  p95=208.7
+  → p05 Plt < 150 (G1)? OUI  < 75 (G2)? OUI  < 50 (G3)? non
+✓ VPC IIV PD sauvegardé : results_HUMAN/Figure4_VPC_IIV_PD.pdf
+
+=======================================================
+Fichiers dans results_HUMAN/ :
+  -> Figure4_Q21D_x2.pdf              (courbes Neut+Plt)
+  -> Figure4_grades_deterministe.pdf  (grades courbe det.)
+  -> Figure4_VPC.pdf                  (VPC population)
+  -> Figure4_VPC_extended.pdf         (VPC élargi, baselines variables)
+  -> Figure4_VPC_IIV_PD.pdf          (VPC IIV PD complète + seuils grade)
+  -> Figure4c_grades_AUC5.pdf         (Figure 4c, 1000 patients)
+=======================================================
