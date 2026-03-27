@@ -132,18 +132,18 @@ pD <- ggplot(vpc_plt, aes(days)) +
 # ── Panels E/F : Barplot grades population (Figure 4c) ──
 set.seed(42)
 n_pat     <- 500
-omega_CL  <- 0.35; omega_Slope_CMP <- 0.624; omega_Slope_MEP <- 0.547
-omega_Slope_MPP <- 0.624; omega_Neut0 <- 0.326; omega_Plt0 <- 0.268
+omega_CL  <- 0.35
+omega_Slope_CMP <- 1.20
+omega_Slope_MEP <- 1.20
+omega_Slope_MPP <- 1.20
 CL_typical <- (125 + 25) * 60 / 1000
 
 eta_CL    <- rnorm(n_pat, 0, omega_CL)
 eta_CMP   <- rnorm(n_pat, 0, omega_Slope_CMP)
 eta_MEP   <- rnorm(n_pat, 0, omega_Slope_MEP)
 eta_MPP   <- rnorm(n_pat, 0, omega_Slope_MPP)
-eta_Neut0 <- rnorm(n_pat, 0, omega_Neut0)
-eta_Plt0  <- rnorm(n_pat, 0, omega_Plt0)
-neut0_i   <- init_pars$Neut0 * exp(eta_Neut0)
-plt0_i    <- init_pars$Plt0  * exp(eta_Plt0)
+neut0_i   <- exp(runif(n_pat, log(2.0), log(7.0)))
+plt0_i    <- exp(runif(n_pat, log(150),  log(400)))
 
 times_g    <- seq(0, 2*21*24 + 21*24, by=4)
 grade_neut <- integer(n_pat)
