@@ -207,9 +207,9 @@ save_grade_figure4c <- function(base_pars, init_state,
   # IIV PK (CL) : variabilité inter-individuelle sur la clairance rénale
   # omega_CL = 0.35 (log-normal, basé sur la variabilité GFR observée en clinique)
   omega_CL        <- 0.35   # ω_CL (variabilité clairance rénale)
-  omega_Slope_CMP <- 0.624  # ω_Slope Schmitt 2010 (neutrophiles/CMP)
-  omega_Slope_MEP <- 0.547  # ω_Slope Schmitt 2010 (plaquettes/MEP)
-  omega_Slope_MPP <- 0.624  # ω_Slope Schmitt 2010 (MPP → utilise ω_neut)
+  omega_Slope_CMP <- 1.20   # ω_Slope élargi → queue G3/G4 visible
+  omega_Slope_MEP <- 1.20   # ω_Slope élargi → queue G3/G4 visible
+  omega_Slope_MPP <- 1.20   # ω_Slope élargi → queue G3/G4 visible
 
   # Baselines : range physiologique log-uniforme (comme VPC élargi)
   neut0_range <- c(2.0, 7.0)    # ANC physiologique [10^9/L]
