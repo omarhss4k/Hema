@@ -401,13 +401,13 @@ save_vpc_human_extended <- function(sim, pars, file, titre,
     tryCatch({
       out_i <- as.data.frame(lsoda(
         y=state_i, times=times, func=pkpd_fornari, parms=pars_i,
-        rtol=1e-4, atol=1e-6, maxsteps=10000
+        rtol=1e-3, atol=1e-5, maxsteps=50000
       ))
       mat_Neut[i,] <- out_i$Neut * exp(rnorm(n_t, 0, SIGMA["Neut"]))
       mat_Plt[i,]  <- out_i$Plt  * exp(rnorm(n_t, 0, SIGMA["Plt"]))
     }, error = function(e) NULL)
 
-    if (i %% 200 == 0)
+    if (i %% 50 == 0)
       cat(sprintf("    %d/%d patients simulés\n", i, n_sim))
   }
 
@@ -585,7 +585,7 @@ save_vpc_human_pd_iiv <- function(pars, init_state_arg,
     tryCatch({
       out_i <- as.data.frame(lsoda(
         y = state_i, times = times, func = pkpd_fornari, parms = pars_i,
-        rtol = 1e-6, atol = 1e-8, maxsteps = 100000
+        rtol = 1e-3, atol = 1e-5, maxsteps = 50000
       ))
       mat_Neut[i, ] <- out_i$Neut
       mat_Plt[i, ]  <- out_i$Plt

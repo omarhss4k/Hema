@@ -26,7 +26,8 @@ pars_hu$rate_fun <- make_repeated_infusion(
   dose_mg = dose_calvert, Tinfu_h = 1,
   interval_h = 21*24, n_cycles = 2
 )
-times_hu     <- seq(0, 63*24, by = 1)
+times_hu     <- seq(0, 63*24, by = 1)   # grille fine pour courbes déterministes
+times_pop    <- seq(0, 63*24, by = 4)   # grille grossière pour simulations population
 dose_days_hu <- c(0, 21)
 
 sim_hu <- simulate_all(times_hu, pars_hu, init_state)
@@ -69,9 +70,9 @@ save_vpc_human_extended(
   sim = sim_hu, pars = init_pars,
   file = "results_HUMAN/Figure4_VPC_extended.pdf",
   titre = "VPC élargi — AUC=5 Q21D×2 | Neut0~LogU[2,7] | Plt0~LogU[150,400] ×10⁹/L",
-  n_sim = 500, dose_days = dose_days_hu,
+  n_sim = 200, dose_days = dose_days_hu,
   obs_list = obs_list_human,
-  auc_target = AUC_target, times = times_hu,
+  auc_target = AUC_target, times = times_pop,
   interval_h = 21*24, n_cycles = 2,
   gfr_fixed = GFR_mLmin
 )
@@ -84,7 +85,7 @@ save_grade_figure4c(
   auc_target = 5,
   n_cycles   = 2,
   interval_h = 21*24,
-  n_patients = 500,
+  n_patients = 200,
   file       = "results_HUMAN/Figure4c_grades_AUC5.pdf",
   titre      = "Carboplatine AUC=5, Q21D x 2 — % patients par grade",
   seed       = 42
@@ -97,7 +98,7 @@ save_vpc_human_pd_iiv(
   init_state_arg = init_state,
   file           = "results_HUMAN/Figure4_VPC_IIV_PD.pdf",
   titre          = "VPC — IIV PD (ω_Slope_MEP=0.547, ω_CL=0.35) | AUC=5 Q21D×2 GFR=125",
-  n_sim          = 300,
+  n_sim          = 200,
   auc_target     = AUC_target,
   gfr_fixed      = 125,
   n_cycles       = 2,

@@ -88,5 +88,7 @@ The following objects are masked from 'package:base':
 ✓ VPC humain sauvegardé : results_HUMAN/Figure4_VPC.pdf
 
 --- VPC élargi : Neut0~LogU[2,7], Plt0~LogU[150,400] ---
-  → VPC élargi : 500 patients | Neut0 ~ LogU[2.0,7.0] | Plt0 ~ LogU[150.0,400.0]
-    200/500 patients simulés
+  → VPC élargi : 200 patients | Neut0 ~ LogU[2.0,7.0] | Plt0 ~ LogU[150.0,400.0]
+    50/200 patients simulés
+    100/200 patients simulés
+    150/200 patients simulés

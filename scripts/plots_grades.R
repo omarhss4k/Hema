@@ -283,8 +283,8 @@ save_grade_figure4c <- function(base_pars, init_state,
         times    = times,
         func     = pkpd_fornari,
         parms    = pars_i,
-        rtol     = 1e-6, atol = 1e-8,
-        maxsteps = 100000
+        rtol     = 1e-3, atol = 1e-5,
+        maxsteps = 50000
       ))
       grade_neut[i] <- nadir_grade_neut(out_i$Neut)
       grade_plt[i]  <- nadir_grade_plt(out_i$Plt)
