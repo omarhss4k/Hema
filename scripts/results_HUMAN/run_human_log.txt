@@ -85,3 +85,4 @@ The following objects are masked from 'package:base':
 
 --- VPC humain : AUC=5, Q21D x 2 ---
   → VPC humain : 1000 patients (GFR=125 fixe) + erreur résiduelle...
+    200/1000 patients simulés
