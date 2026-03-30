@@ -213,6 +213,12 @@ save_grade_figure4c <- function(base_pars, init_state,
   omega_Slope_MEP <- 0.33    # Fornari Table S4 : σ_MEP
   omega_Neut0     <- 0.17    # Fornari Table S4 : σ_Neut
   omega_Plt0      <- 0.17    # Fornari Table S4 : σ_Plt
+  # IIV sur MTT_Neut et MTT_Plt : la variabilité inter-individuelle du temps de
+  # transit est la principale source de dispersion du nadir en régime kill-dominant
+  # (quand Slope × Damage >> 1, l'IIV sur Slopes n'affecte pas le nadir).
+  # ω_MTT = 0.25 (CV ~25%) — estimation clinique raisonnable (range ~140–280 h).
+  omega_MTT_Neut  <- 0.25
+  omega_MTT_Plt   <- 0.25
 
   # Dose unique et PK identiques pour tous les patients (Supp. S11/S12)
   dose_fixe <- auc_target * (gfr_fixed + 25)
@@ -227,6 +233,8 @@ save_grade_figure4c <- function(base_pars, init_state,
   eta_MPP   <- rnorm(n_patients, 0, omega_Slope_MPP)
   eta_Neut0 <- rnorm(n_patients, 0, omega_Neut0)
   eta_Plt0  <- rnorm(n_patients, 0, omega_Plt0)
+  eta_MTT_N <- rnorm(n_patients, 0, omega_MTT_Neut)
+  eta_MTT_P <- rnorm(n_patients, 0, omega_MTT_Plt)
 
   # Baselines individuelles (log-normales centrées sur les valeurs Table 1)
   neut0_i <- base_pars$Neut0 * exp(eta_Neut0)
@@ -245,9 +253,22 @@ save_grade_figure4c <- function(base_pars, init_state,
     pars_i$Slope_CMP <- base_pars$Slope_CMP * exp(eta_CMP[i])
     pars_i$Slope_MEP <- base_pars$Slope_MEP * exp(eta_MEP[i])
 
+    # IIV PD : temps de transit individuels (log-normaux)
+    pars_i$MTT_Neut <- base_pars$MTT_Neut * exp(eta_MTT_N[i])
+    pars_i$MTT_Plt  <- base_pars$MTT_Plt  * exp(eta_MTT_P[i])
+
     # IIV PD : baselines individuelles (log-normales)
     pars_i$Neut0 <- neut0_i[i]
     pars_i$Plt0  <- plt0_i[i]
+    # Scaler les progeniteurs myéloïdes avec Neut0 (même facteur η_Neut0) :
+    # sans ce scaling, CMP/MPP constants normalisent Neut vers la moyenne
+    # population avant que l'effet médicament ne soit visible → IIV inefficace.
+    sf_neut <- neut0_i[i] / base_pars$Neut0   # facteur de scaling (ex: 0.8 ou 1.2)
+    pars_i$CMP0 <- base_pars$CMP0 * sf_neut
+    pars_i$MPP0 <- base_pars$MPP0 * sf_neut
+    # MEP (lignée plaquettes/érythrocytes) scalé avec Plt0
+    sf_plt <- plt0_i[i] / base_pars$Plt0
+    pars_i$MEP0 <- base_pars$MEP0 * sf_plt
 
     pars_i$rate_fun <- make_repeated_infusion(
       dose_mg    = dose_i,
@@ -260,6 +281,9 @@ save_grade_figure4c <- function(base_pars, init_state,
     state_i <- init_state
     state_i["Neut"] <- neut0_i[i]
     state_i["Plt"]  <- plt0_i[i]
+    state_i["MPP"]  <- pars_i$MPP0
+    state_i["CMP"]  <- pars_i$CMP0
+    state_i["MEP"]  <- pars_i$MEP0
     # Rééquilibrer les compartiments transit (Eq. S3)
     a_Neut <- 3 / pars_i$MTT_Neut
     a_Plt  <- 3 / pars_i$MTT_Plt
@@ -279,8 +303,8 @@ save_grade_figure4c <- function(base_pars, init_state,
         times    = times,
         func     = pkpd_fornari,
         parms    = pars_i,
-        rtol     = 1e-6, atol = 1e-8,
-        maxsteps = 100000
+        rtol     = 1e-4, atol = 1e-6,
+        maxsteps = 20000
       ))
       grade_neut[i] <- nadir_grade_neut(out_i$Neut)
       grade_plt[i]  <- nadir_grade_plt(out_i$Plt)

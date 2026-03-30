@@ -322,6 +322,8 @@ save_vpc_human <- function(sim, pars, file, titre,
   omega_Slope_MEP <- SIGMA["MEP"]
   omega_Neut0     <- SIGMA["Neut"]
   omega_Plt0      <- SIGMA["Plt"]
+  omega_MTT_Neut  <- 0.25   # CV ~25% sur temps de transit — principale source de
+  omega_MTT_Plt   <- 0.25   # dispersion du nadir en régime kill-dominant
 
   # Tirages IIV (log-normaux, indépendants) — 1 par patient
   eta_MPP   <- rnorm(n_sim, 0, omega_Slope_MPP)
@@ -329,6 +331,8 @@ save_vpc_human <- function(sim, pars, file, titre,
   eta_MEP   <- rnorm(n_sim, 0, omega_Slope_MEP)
   eta_Neut0 <- rnorm(n_sim, 0, omega_Neut0)
   eta_Plt0  <- rnorm(n_sim, 0, omega_Plt0)
+  eta_MTT_N <- rnorm(n_sim, 0, omega_MTT_Neut)
+  eta_MTT_P <- rnorm(n_sim, 0, omega_MTT_Plt)
 
   ss_T <- function(k, c0, mtt) k * c0 / (3 / mtt)
 
@@ -340,12 +344,21 @@ save_vpc_human <- function(sim, pars, file, titre,
     pars_i$Slope_MPP   <- pars$Slope_MPP * exp(eta_MPP[i])
     pars_i$Slope_CMP   <- pars$Slope_CMP * exp(eta_CMP[i])
     pars_i$Slope_MEP   <- pars$Slope_MEP * exp(eta_MEP[i])
+    # IIV sur temps de transit (principale source de dispersion nadir)
+    pars_i$MTT_Neut    <- pars$MTT_Neut * exp(eta_MTT_N[i])
+    pars_i$MTT_Plt     <- pars$MTT_Plt  * exp(eta_MTT_P[i])
 
     # IIV PD : baselines individuelles (log-normales)
     neut0_i            <- pars$Neut0 * exp(eta_Neut0[i])
     plt0_i             <- pars$Plt0  * exp(eta_Plt0[i])
     pars_i$Neut0       <- neut0_i
     pars_i$Plt0        <- plt0_i
+    # Scaler progeniteurs avec les baselines (sinon CMP/MPP normalisent Neut)
+    sf_neut            <- neut0_i / pars$Neut0
+    sf_plt             <- plt0_i  / pars$Plt0
+    pars_i$CMP0        <- pars$CMP0 * sf_neut
+    pars_i$MPP0        <- pars$MPP0 * sf_neut
+    pars_i$MEP0        <- pars$MEP0 * sf_plt
 
     pars_i$rate_fun <- make_repeated_infusion(
       dose_mg    = dose_i,
@@ -356,10 +369,10 @@ save_vpc_human <- function(sim, pars, file, titre,
 
     state0 <- c(
       C1=0, C2=0, Damage=0,
-      MPP=pars$MPP0, CMP=pars$CMP0, MEP=pars$MEP0,
-      T1_Neut=ss_T(pars$k_circ_Neut,neut0_i,pars$MTT_Neut),
-      T2_Neut=ss_T(pars$k_circ_Neut,neut0_i,pars$MTT_Neut),
-      T3_Neut=ss_T(pars$k_circ_Neut,neut0_i,pars$MTT_Neut),
+      MPP=pars_i$MPP0, CMP=pars_i$CMP0, MEP=pars_i$MEP0,
+      T1_Neut=ss_T(pars$k_circ_Neut,neut0_i,pars_i$MTT_Neut),
+      T2_Neut=ss_T(pars$k_circ_Neut,neut0_i,pars_i$MTT_Neut),
+      T3_Neut=ss_T(pars$k_circ_Neut,neut0_i,pars_i$MTT_Neut),
       Neut=neut0_i,
       T1_Mono=ss_T(pars$k_circ_Mono,pars$Mono0,pars$MTT_Mono),
       T2_Mono=ss_T(pars$k_circ_Mono,pars$Mono0,pars$MTT_Mono),
@@ -369,9 +382,9 @@ save_vpc_human <- function(sim, pars, file, titre,
       T2_Ret=ss_T(pars$k_circ_RBC,pars$Ret0,pars$MTT_Ret),
       T3_Ret=ss_T(pars$k_circ_RBC,pars$Ret0,pars$MTT_Ret),
       Ret=pars$Ret0, RBC=pars$RBC0,
-      T1_Plt=ss_T(pars$k_circ_Plt,plt0_i,pars$MTT_Plt),
-      T2_Plt=ss_T(pars$k_circ_Plt,plt0_i,pars$MTT_Plt),
-      T3_Plt=ss_T(pars$k_circ_Plt,plt0_i,pars$MTT_Plt),
+      T1_Plt=ss_T(pars$k_circ_Plt,plt0_i,pars_i$MTT_Plt),
+      T2_Plt=ss_T(pars$k_circ_Plt,plt0_i,pars_i$MTT_Plt),
+      T3_Plt=ss_T(pars$k_circ_Plt,plt0_i,pars_i$MTT_Plt),
       Plt=plt0_i
     )
 
