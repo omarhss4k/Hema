@@ -53,9 +53,12 @@ run_sim_neut <- function(slope_cmp) {
 sc_min <- 0.30   # en dessous : nadir trop élevé
 sc_max <- 3.00   # au dessus  : kill dominant (Slope_CMP × Damage > 1)
 
-# ── Tolérances ±15 % autour des valeurs digitalisées ──────────────
-t1_lo <- 2.52 * 0.85 ; t1_hi <- 2.52 * 1.15   # [2.14, 2.90]
-t2_lo <- 2.32 * 0.85 ; t2_hi <- 2.32 * 1.15   # [1.97, 2.67]
+# ── Tolérances ±5 % autour des valeurs digitalisées ───────────────
+# Tolérance serrée nécessaire : avec nadir_median > 2.5 et IIV ω=0.17,
+# P(nadir < 2.0) < 1% → 0% G1 affiché sur 1000 patients.
+# Avec nadir_median ≈ 2.32 et ω=0.19 sur Slope_CMP → P(G1) ≈ 22%.
+t1_lo <- 2.52 * 0.95 ; t1_hi <- 2.52 * 1.05   # [2.39, 2.65]
+t2_lo <- 2.32 * 0.95 ; t2_hi <- 2.32 * 1.05   # [2.20, 2.44]
 
 # ── Point de départ : valeur courante ─────────────────────────────
 sc <- max(sc_min, min(sc_max, init_pars$Slope_CMP))
@@ -63,8 +66,8 @@ sc <- max(sc_min, min(sc_max, init_pars$Slope_CMP))
 cat(sprintf("\n╔══════════════════════════════════════════════════╗\n"))
 cat(sprintf("║  CALIBRATION NEUTROPHILES — Slope_CMP            ║\n"))
 cat(sprintf("╚══════════════════════════════════════════════════╝\n"))
-cat(sprintf("  Objectif nadir1 = 2.52  plage [2.14 – 2.90]  (donnée j12.4)\n"))
-cat(sprintf("  Objectif nadir2 = 2.32  plage [1.97 – 2.67]  (donnée j34.4)\n\n"))
+cat(sprintf("  Objectif nadir1 = 2.52  plage [2.39 - 2.65]  (donnee j12.4)\n"))
+cat(sprintf("  Objectif nadir2 = 2.32  plage [2.20 - 2.44]  (donnee j34.4)\n\n"))
 cat(sprintf("  Départ : Slope_CMP = %.3f\n\n", sc))
 
 MAX_ITER <- 80
@@ -125,9 +128,9 @@ cat(sprintf("\n═════════════════════�
 cat(sprintf("  RÉSULTATS FINAUX\n"))
 cat(sprintf("══════════════════════════════════════════════════\n"))
 cat(sprintf("  Slope_CMP   = %.3f\n", sc))
-cat(sprintf("  Neut_nadir1 = %.3f  (cible 2.52, plage 2.14–2.90) %s\n",
+cat(sprintf("  Neut_nadir1 = %.3f  (cible 2.52, plage 2.39-2.65) %s\n",
             n1, ifelse(n1 >= t1_lo & n1 <= t1_hi, "✓", "✗")))
-cat(sprintf("  Neut_nadir2 = %.3f  (cible 2.32, plage 1.97–2.67) %s\n",
+cat(sprintf("  Neut_nadir2 = %.3f  (cible 2.32, plage 2.20-2.44) %s\n",
             n2, ifelse(n2 >= t2_lo & n2 <= t2_hi, "✓", "✗")))
 cat(sprintf("  Convergence : %s\n", ifelse(ok, "OUI ✓", "NON ✗")))
 cat(sprintf("══════════════════════════════════════════════════\n\n"))
