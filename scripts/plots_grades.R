@@ -203,22 +203,22 @@ save_grade_figure4c <- function(base_pars, init_state,
   cat(sprintf("  → Figure 4c : %d patients (GFR=%g fixe, PK identique — Supp. S11/S12)...\n",
               n_patients, gfr_fixed))
 
-  # ── IIV PD — variabilité résiduelle du modèle rat (Fornari 2019, Table S4) ──
-  # S11 : GFR=125 mL/min fixe, dose = AUC × (GFR+25) identique pour tous
-  # S12 : "same PK per patient" → pas d'IIV sur CL ni sur la dose
-  # IIV log-normales (ω = SD sur log) tirées de Fornari 2019 Table S4 :
-  # σ ajustés par compartiment depuis le fit rat → utilisés comme proxy IIV humain
+  # ── IIV PD — ω dérivés des ranges physiologiques (log-normale ±2σ) ──────────
+  # Formule : ω = log(hi/lo) / 4  (range = intervalle 95% d'une log-normale)
+  # Sources des ranges : commentaires de parameters_human.R
+  #
+  # Slopes : σ Fornari Table S4 (residual error du fit rat → proxy IIV humain)
   omega_Slope_MPP <- 0.33    # Fornari Table S4 : σ_MPP
   omega_Slope_CMP <- 0.19    # Fornari Table S4 : σ_CMP
   omega_Slope_MEP <- 0.33    # Fornari Table S4 : σ_MEP
-  omega_Neut0     <- 0.17    # Fornari Table S4 : σ_Neut
-  omega_Plt0      <- 0.17    # Fornari Table S4 : σ_Plt
-  # IIV sur MTT_Neut et MTT_Plt : la variabilité inter-individuelle du temps de
-  # transit est la principale source de dispersion du nadir en régime kill-dominant
-  # (quand Slope × Damage >> 1, l'IIV sur Slopes n'affecte pas le nadir).
-  # ω_MTT = 0.25 (CV ~25%) — estimation clinique raisonnable (range ~140–280 h).
-  omega_MTT_Neut  <- 0.25
-  omega_MTT_Plt   <- 0.25
+  #
+  # Baselines : ω depuis range clinique (parameters_human.R, ref. 22/5/1)
+  omega_Neut0     <- 0.313   # Neut0  range [2, 7]  × 10⁹/L  (ref. 22)
+  omega_Plt0      <- 0.245   # Plt0   range [150, 400] × 10⁹/L (ref. 5)
+  #
+  # Temps de transit : ω depuis range littérature (Friberg/Quartino)
+  omega_MTT_Neut  <- 0.214   # MTT_Neut range [140, 330] h
+  omega_MTT_Plt   <- 0.257   # MTT_Plt  range [100, 280] h
 
   # Dose unique et PK identiques pour tous les patients (Supp. S11/S12)
   dose_fixe <- auc_target * (gfr_fixed + 25)

@@ -316,14 +316,17 @@ save_vpc_human <- function(sim, pars, file, titre,
   mat_Neut <- matrix(NA, nrow = n_sim, ncol = n_t)
   mat_Plt  <- matrix(NA, nrow = n_sim, ncol = n_t)
 
-  # ── IIV (proxy ω = σ Fornari Table S4, même convention que plots_grades.R) ──
+  # ── IIV — ω dérivés des ranges physiologiques (log-normale ±2σ) ─────────────
+  # Slopes : σ Fornari Table S4 (même convention que plots_grades.R)
   omega_Slope_MPP <- SIGMA["MPP"]
   omega_Slope_CMP <- SIGMA["CMP"]
   omega_Slope_MEP <- SIGMA["MEP"]
-  omega_Neut0     <- SIGMA["Neut"]
-  omega_Plt0      <- SIGMA["Plt"]
-  omega_MTT_Neut  <- 0.25   # CV ~25% sur temps de transit — principale source de
-  omega_MTT_Plt   <- 0.25   # dispersion du nadir en régime kill-dominant
+  # Baselines : ω = log(hi/lo)/4, range clinique (parameters_human.R)
+  omega_Neut0     <- 0.313   # Neut0  range [2, 7]   × 10⁹/L (ref. 22)
+  omega_Plt0      <- 0.245   # Plt0   range [150, 400] × 10⁹/L
+  # MTT : ω depuis range littérature (Friberg/Quartino)
+  omega_MTT_Neut  <- 0.214   # MTT_Neut range [140, 330] h
+  omega_MTT_Plt   <- 0.257   # MTT_Plt  range [100, 280] h
 
   # Tirages IIV (log-normaux, indépendants) — 1 par patient
   eta_MPP   <- rnorm(n_sim, 0, omega_Slope_MPP)
