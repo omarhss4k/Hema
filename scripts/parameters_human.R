@@ -9,8 +9,12 @@ init_pars <- list()
 
 # ── PK carboplatin humain (modèle 2 compartiments) ──
 # Ref. 22 = Zandvliet et al. 2008 (Br J Clin Pharmacol 66:485-497)
-# CL calvert : GFR + 25 mL/min → 103 mL/min = 6.18 L/h (GFR médian 78)
-init_pars$CL <- 6.18   # L/h  (= GFR+25 mL/min = 103 mL/min)
+# CL carboplatin = GFR + 25 (formule de Calvert, mL/min)
+# Patient de référence : GFR = 125 mL/min (Fornari 2019, Supplementary S11)
+# → CL = (125 + 25) mL/min = 150 mL/min = 9.0 L/h
+GFR_ref_mLmin    <- 125                              # mL/min — patient ref. Fornari S11
+init_pars$GFR    <- GFR_ref_mLmin                   # stocké pour traçabilité
+init_pars$CL     <- (GFR_ref_mLmin + 25) * 60 / 1000  # L/h = 9.0
 init_pars$V1 <- 7.87   # L    (Zandvliet 2008)
 init_pars$Q  <- 1.98   # L/h  (= 33 mL/min, Zandvliet 2008)
 init_pars$V2 <- 8.06   # L    (Zandvliet 2008)
