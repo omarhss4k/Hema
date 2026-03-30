@@ -1,9 +1,14 @@
 ############################################################
 # calibrate_plt.R — Calibration 2D : delta_Plt + gamma_prolTrans
 # Stratégie :
-#   Phase 1 : delta_Plt pour mettre nadir1 dans [127.5, 172.5]
-#   Phase 2 : gamma_prolTrans pour mettre nadir2 dans [110.5, 149.5]
+#   Phase 1 : delta_Plt pour mettre nadir1 dans [144.5, 195.5]
+#   Phase 2 : gamma_prolTrans pour mettre nadir2 dans [126.9, 171.5]
 #   (réajustement delta_Plt si nadir1 sort de sa plage)
+#
+# Cibles tirées des données digitalisées Fornari 2019 Figure 4 :
+#   nadir1 ≈ 170 × 10⁹/L (Plt, j14.5, cycle 1)
+#   nadir2 ≈ 149 × 10⁹/L (Plt, j35.7, cycle 2)
+# Paramètres CL cohérents avec AUC=5 (GFR=125, CL=9.0 L/h)
 ############################################################
 
 if (interactive()) setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -42,22 +47,22 @@ run_sim_quiet <- function(delta_plt, gamma_pt) {
 }
 
 # ── Bornes ──
-dp_min  <- 0.80 ; dp_max  <- 1.50
-gpt_min <- 0.40 ; gpt_max <- 0.70
+dp_min  <- 0.40 ; dp_max  <- 2.00   # élargi pour couvrir l'espace après fix CL
+gpt_min <- 0.30 ; gpt_max <- 0.80
 
-# ── Tolérances ──
-t1_lo <- 127.5 ; t1_hi <- 172.5   # 150 ± 15%
-t2_lo <- 110.5 ; t2_hi <- 149.5   # 130 ± 15%
+# ── Tolérances (cibles issues des données Figure 4 digitalisées) ──
+t1_lo <- 144.5 ; t1_hi <- 195.5   # 170 ± 15%  (nadir cycle 1 observé : 169.7)
+t2_lo <- 126.9 ; t2_hi <- 171.5   # 149 ± 15%  (nadir cycle 2 observé : 149.4)
 
 # ── Paramètres initiaux ──
-dp  <- init_pars$delta_Plt
-gpt <- init_pars$gamma_prolTrans
+dp  <- max(dp_min, min(dp_max, init_pars$delta_Plt))
+gpt <- max(gpt_min, min(gpt_max, init_pars$gamma_prolTrans))
 
 cat(sprintf("\n╔══════════════════════════════════════════════════╗\n"))
 cat(sprintf("║  CALIBRATION PLAQUETTES — STRATÉGIE 2D          ║\n"))
 cat(sprintf("╚══════════════════════════════════════════════════╝\n"))
-cat(sprintf("  Objectif nadir1 = 150  plage [127.5 – 172.5]\n"))
-cat(sprintf("  Objectif nadir2 = 130  plage [110.5 – 149.5]\n\n"))
+cat(sprintf("  Objectif nadir1 = 170  plage [144.5 – 195.5]  (donnée j14.5)\n"))
+cat(sprintf("  Objectif nadir2 = 149  plage [126.9 – 171.5]  (donnée j35.7)\n\n"))
 cat(sprintf("  Départ : delta_Plt=%.2f  gamma_prolTrans=%.2f\n\n", dp, gpt))
 
 MAX_ITER <- 100
@@ -141,9 +146,9 @@ cat(sprintf("  RÉSULTATS FINAUX\n"))
 cat(sprintf("══════════════════════════════════════════════════\n"))
 cat(sprintf("  delta_Plt       = %.2f\n", dp))
 cat(sprintf("  gamma_prolTrans = %.2f\n", gpt))
-cat(sprintf("  Plt_nadir1      = %.1f  (cible 150, plage 127.5–172.5) %s\n",
+cat(sprintf("  Plt_nadir1      = %.1f  (cible 170, plage 144.5–195.5) %s\n",
             n1, ifelse(n1>=t1_lo & n1<=t1_hi, "✓", "✗")))
-cat(sprintf("  Plt_nadir2      = %.1f  (cible 130, plage 110.5–149.5) %s\n",
+cat(sprintf("  Plt_nadir2      = %.1f  (cible 149, plage 126.9–171.5) %s\n",
             n2, ifelse(n2>=t2_lo & n2<=t2_hi, "✓", "✗")))
 cat(sprintf("  Asymétrie       = %.1f  (nadir1 - nadir2)\n", n1-n2))
 cat(sprintf("  Convergence     : %s\n", ifelse(ok, "OUI ✓", "NON ✗")))
