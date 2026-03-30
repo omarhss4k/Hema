@@ -25,7 +25,10 @@ cd scripts && Rscript run_CORRECT.R
 # Simulation humaine — Figure 4 + VPC + Figure 4c (grades)
 cd scripts && Rscript run_human.R
 
-# Calibration des paramètres plaquettaires (humain)
+# Calibration neutrophiles (humain) — à lancer EN PREMIER
+cd scripts && Rscript calibrate_neut.R
+
+# Calibration plaquettes (humain) — à lancer APRÈS calibrate_neut.R
 cd scripts && Rscript calibrate_plt.R
 
 # Générer les présentations PowerPoint
@@ -67,6 +70,7 @@ run_CORRECT.R (rat)                run_human.R (humain)
 | `data_fornari.R` | Chargement CSVs digitalisés depuis `../data/` → liste `obs_fornari` |
 | `vpc.R` | VPC Monte Carlo (1000 simulations, erreur résiduelle log-additive, sigma Table S4) |
 | `plots_grades.R` | Grading NCI-CTCAE v5.0 (neutropénie + thrombocytopénie) |
+| `calibrate_neut.R` | Calibration 1D de `Slope_CMP` — nadir Neut cycles 1/2 vs Figure 4 — **modifie `parameters_human.R`** |
 | `calibrate_plt.R` | Calibration 2D de `delta_Plt` et `gamma_prolTrans` — **modifie `parameters_human.R`** |
 | `compare_options.R` | Comparaison de 3 stratégies IIV pour la Figure 4c |
 
@@ -118,7 +122,7 @@ run_CORRECT.R (rat)                run_human.R (humain)
 
 6. **Calvert dosing (humain) :** Dose (mg) = AUC_cible × (GFR + 25). Patient de référence : GFR = 125 mL/min (Supplementary S11).
 
-7. **`calibrate_plt.R` modifie les fichiers source :** Quand la calibration converge, il réécrit les valeurs de `delta_Plt` et `gamma_prolTrans` dans `parameters_human.R`. Garder une copie de sauvegarde si nécessaire.
+7. **Ordre de calibration :** Lancer `calibrate_neut.R` (Slope_CMP) **avant** `calibrate_plt.R` (delta_Plt, gamma_prolTrans). Les deux scripts réécrivent `parameters_human.R` à la convergence — garder une copie de sauvegarde. Si `calibrate_neut.R` change Slope_CMP, relancer ensuite `calibrate_plt.R` car delta_Plt peut légèrement interagir via MPP.
 
 8. **VPC vs IIV :** Le VPC standard utilise uniquement l'erreur résiduelle log-additive (sigma de la Table S4), pas d'IIV. L'IIV (sur Slopes et baselines) n'est ajoutée que dans `save_grade_figure4c()` dans `plots_grades.R`.
 
