@@ -316,10 +316,37 @@ save_vpc_human <- function(sim, pars, file, titre,
   mat_Neut <- matrix(NA, nrow = n_sim, ncol = n_t)
   mat_Plt  <- matrix(NA, nrow = n_sim, ncol = n_t)
 
+  # ── IIV (proxy ω = σ Fornari Table S4, même convention que plots_grades.R) ──
+  omega_Slope_MPP <- SIGMA["MPP"]
+  omega_Slope_CMP <- SIGMA["CMP"]
+  omega_Slope_MEP <- SIGMA["MEP"]
+  omega_Neut0     <- SIGMA["Neut"]
+  omega_Plt0      <- SIGMA["Plt"]
+
+  # Tirages IIV (log-normaux, indépendants) — 1 par patient
+  eta_MPP   <- rnorm(n_sim, 0, omega_Slope_MPP)
+  eta_CMP   <- rnorm(n_sim, 0, omega_Slope_CMP)
+  eta_MEP   <- rnorm(n_sim, 0, omega_Slope_MEP)
+  eta_Neut0 <- rnorm(n_sim, 0, omega_Neut0)
+  eta_Plt0  <- rnorm(n_sim, 0, omega_Plt0)
+
+  ss_T <- function(k, c0, mtt) k * c0 / (3 / mtt)
+
   for (i in seq_len(n_sim)) {
     dose_i <- dose_fixe
 
-    pars_i          <- pars
+    # IIV PD : sensibilité médicament (log-normale, Fornari Table S4 comme proxy ω)
+    pars_i             <- pars
+    pars_i$Slope_MPP   <- pars$Slope_MPP * exp(eta_MPP[i])
+    pars_i$Slope_CMP   <- pars$Slope_CMP * exp(eta_CMP[i])
+    pars_i$Slope_MEP   <- pars$Slope_MEP * exp(eta_MEP[i])
+
+    # IIV PD : baselines individuelles (log-normales)
+    neut0_i            <- pars$Neut0 * exp(eta_Neut0[i])
+    plt0_i             <- pars$Plt0  * exp(eta_Plt0[i])
+    pars_i$Neut0       <- neut0_i
+    pars_i$Plt0        <- plt0_i
+
     pars_i$rate_fun <- make_repeated_infusion(
       dose_mg    = dose_i,
       Tinfu_h    = 1,
@@ -327,14 +354,13 @@ save_vpc_human <- function(sim, pars, file, titre,
       n_cycles   = n_cycles
     )
 
-    ss_T <- function(k, c0, mtt) k * c0 / (3 / mtt)
     state0 <- c(
       C1=0, C2=0, Damage=0,
       MPP=pars$MPP0, CMP=pars$CMP0, MEP=pars$MEP0,
-      T1_Neut=ss_T(pars$k_circ_Neut,pars$Neut0,pars$MTT_Neut),
-      T2_Neut=ss_T(pars$k_circ_Neut,pars$Neut0,pars$MTT_Neut),
-      T3_Neut=ss_T(pars$k_circ_Neut,pars$Neut0,pars$MTT_Neut),
-      Neut=pars$Neut0,
+      T1_Neut=ss_T(pars$k_circ_Neut,neut0_i,pars$MTT_Neut),
+      T2_Neut=ss_T(pars$k_circ_Neut,neut0_i,pars$MTT_Neut),
+      T3_Neut=ss_T(pars$k_circ_Neut,neut0_i,pars$MTT_Neut),
+      Neut=neut0_i,
       T1_Mono=ss_T(pars$k_circ_Mono,pars$Mono0,pars$MTT_Mono),
       T2_Mono=ss_T(pars$k_circ_Mono,pars$Mono0,pars$MTT_Mono),
       T3_Mono=ss_T(pars$k_circ_Mono,pars$Mono0,pars$MTT_Mono),
@@ -343,10 +369,10 @@ save_vpc_human <- function(sim, pars, file, titre,
       T2_Ret=ss_T(pars$k_circ_RBC,pars$Ret0,pars$MTT_Ret),
       T3_Ret=ss_T(pars$k_circ_RBC,pars$Ret0,pars$MTT_Ret),
       Ret=pars$Ret0, RBC=pars$RBC0,
-      T1_Plt=ss_T(pars$k_circ_Plt,pars$Plt0,pars$MTT_Plt),
-      T2_Plt=ss_T(pars$k_circ_Plt,pars$Plt0,pars$MTT_Plt),
-      T3_Plt=ss_T(pars$k_circ_Plt,pars$Plt0,pars$MTT_Plt),
-      Plt=pars$Plt0
+      T1_Plt=ss_T(pars$k_circ_Plt,plt0_i,pars$MTT_Plt),
+      T2_Plt=ss_T(pars$k_circ_Plt,plt0_i,pars$MTT_Plt),
+      T3_Plt=ss_T(pars$k_circ_Plt,plt0_i,pars$MTT_Plt),
+      Plt=plt0_i
     )
 
     tryCatch({
