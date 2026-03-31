@@ -17,18 +17,18 @@
 #   - 04_scoring_toxicity.R (pour grade_distribution, nadir_summary)
 # =============================================================================
 
-# --- Chargement des dépendances ---
-for (pkg in c("ggplot2", "dplyr", "tidyr", "scales", "patchwork")) {
-  if (!requireNamespace(pkg, quietly = TRUE))
-    stop(sprintf("Package '%s' requis. Installez via : install.packages('%s')", pkg, pkg))
+# --- Chargement des dépendances (auto-installation si absent) ---
+.required_pkgs <- c("ggplot2", "dplyr", "tidyr", "scales", "patchwork")
+for (pkg in .required_pkgs) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    message(sprintf("Installation de '%s'...", pkg))
+    install.packages(pkg, repos = getOption("repos"),
+                     lib = .libPaths()[1], quiet = TRUE)
+  }
+  suppressPackageStartupMessages(
+    library(pkg, character.only = TRUE, lib.loc = .libPaths())
+  )
 }
-suppressPackageStartupMessages({
-  library(ggplot2)
-  library(dplyr)
-  library(tidyr)
-  library(scales)
-  library(patchwork)
-})
 
 # =============================================================================
 # THÈME GLOBAL
