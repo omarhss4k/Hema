@@ -24,7 +24,7 @@ source(file.path(.dir, "05_visualization.R"))
 
 N_PATIENTS   <- 1000         # Nombre de patients dans la population
 SPECIES      <- "human"      # "human" ou "rat"
-AUC_TARGET   <- 5            # AUC cible carboplatine (mg.min/mL)
+AUC_TARGET   <- 7.5          # AUC cible carboplatine (mg.min/mL)
 GFR          <- 125          # GFR moyen de la population (mL/min)
 INFUSION_H   <- 0.5          # Durée de perfusion (h)
 
