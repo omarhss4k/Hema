@@ -262,25 +262,40 @@ IIV_sigma <- list(
   sigma_RBC  = 0.06
 )
 
-#' CV% des paramètres physiologiques (Table 1 — Fornari 2019, rat)
-#' Utilisés pour la variabilité des paramètres individuels (population)
+#' Sigma (log-normal) de l'IIV pour la simulation populationnelle humaine
+#'
+#' Sources :
+#'   - Baselines circulants : dérivés des plages cliniques normales (Table 1 Fornari)
+#'     sigma = (ln(P95) - ln(P5)) / (2 * 1.645)
+#'     Neut0  [2–7]     → sigma = 0.381
+#'     Mono0  [0.2–10]  → sigma = 0.594 (plafonné pour stabilité numérique)
+#'     Plt0   [150–400] → sigma = 0.298
+#'     Ret0   [40–115]  → sigma = 0.321
+#'     RBC0   [4100–5900] → sigma = 0.111
+#'   - MTT, kcirc : CV du rat (Table 1 Fornari) — aucune donnée humaine publiée
+#'   - Slopes : CV du rat (Table 2 Fornari)
 IIV_params_CV <- list(
+  # Baselines circulants — variabilité clinique humaine (Table 1)
+  cv_Neut0     = 0.381,
+  cv_Mono0     = 0.594,
+  cv_Plt0      = 0.298,
+  cv_Ret0      = 0.321,
+  cv_RBC0      = 0.111,
+  # Progéniteurs — même ordre de grandeur, faute de données humaines
+  cv_MPP0      = 0.30,
+  cv_CMP0      = 0.30,
+  cv_MEP0      = 0.30,
+  # kcirc — CV rat (Table 1)
   cv_kcircNeut = 0.45,
   cv_kcircMono = 0.45,
   cv_kcircPlt  = 0.46,
   cv_kcircRBC  = 0.45,
-  cv_Neut0     = 0.026,
-  cv_Mono0     = 0.026,
-  cv_Plt0      = 0.025,
-  cv_Ret0      = 0.027,
-  cv_RBC0      = 0.022,
-  cv_MPP0      = 0.046,
-  cv_CMP0      = 0.041,
-  cv_MEP0      = 0.052,
+  # MTT — CV rat (Table 1) — valeurs larges, cohérentes avec la biologie
   cv_MTTNeut   = 0.56,
   cv_MTTMono   = 0.55,
   cv_MTTPlt    = 0.056,
   cv_MTTRet    = 0.048,
+  # Slopes drogue — CV rat (Table 2)
   cv_SlopeMPP  = 0.118,
   cv_SlopeCMP  = 0.086,
   cv_SlopeMEP  = 0.103,
