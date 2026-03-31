@@ -18,7 +18,7 @@
 # =============================================================================
 
 # --- Chargement des dépendances (auto-installation si absent) ---
-.required_pkgs <- c("ggplot2", "dplyr", "tidyr", "scales", "patchwork")
+.required_pkgs <- c("ggplot2", "dplyr", "tidyr", "scales")
 for (pkg in .required_pkgs) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     message(sprintf("Installation de '%s'...", pkg))
