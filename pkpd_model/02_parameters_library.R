@@ -98,7 +98,7 @@
   # MPP = α * M^(3/4),  log10(α)=7.46, M=70 kg → MPP ≈ 1.3 × 10^9/L
   MPP0  = 1.3,
   CMP0  = 20.9,    # CMP0/MPP0 = 16
-  MEP0  = 14.3,    # MEP0/MPP0 = 11
+  MEP0  = 15.0,    # MEP0/MPP0 = 11 (Table 1 Fornari 2019)
 
   # Temps de transit moyen humains (h) — Table 1
   MTTNeut = 210.0,

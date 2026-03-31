@@ -24,14 +24,14 @@ source(file.path(.dir, "05_visualization.R"))
 
 N_PATIENTS   <- 1000         # Nombre de patients dans la population
 SPECIES      <- "human"      # "human" ou "rat"
-AUC_TARGET   <- 7.5          # AUC cible carboplatine (mg.min/mL)
+AUC_TARGET   <- 5            # AUC cible (mg.min/mL) — Fornari 2019 / Schmitt
 GFR          <- 125          # GFR moyen de la population (mL/min)
 INFUSION_H   <- 0.5          # Durée de perfusion (h)
 
-# Cycles : doses à J0, J21, J42 (3 cycles q21j)
-SCHEDULE_H   <- c(0, 21*24, 42*24)
+# 2 cycles q21j — exactement comme Fornari Figure 4
+SCHEDULE_H   <- c(0, 21*24)
 
-T_END_DAYS   <- 90           # Durée de simulation (jours)
+T_END_DAYS   <- 42           # 42 jours (durée Figure 4 du paper)
 T_RES_H      <- 2            # Résolution (h)
 
 SEED         <- 42           # Reproductibilité
