@@ -34,7 +34,8 @@
 #'  Circulants   : 19=Neut,20=Mono,21=Ret,22=Plt
 #'  RBC          : 23=RBC
 #'  (réservé IIV): 24-25 non utilisés ici
-pkpd_ode <- function(t, y, p, dose_fun = NULL) {
+pkpd_ode <- function(t, y, p) {
+  dose_fun <- p$dose_fun
 
   # --- Déballage du vecteur d'état ---
   Cen    <- max(y[1],  0)

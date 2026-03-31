@@ -308,14 +308,26 @@ IIV_pk_omega <- list(
 #' @param creat   Créatinine sérique (µmol/L)
 #' @param sex     "M" ou "F"
 #' @return CL (L/h)
-calc_carboplatin_CL <- function(age = 60, weight = 70, creat = 80, sex = "M") {
-  # Cockcroft-Gault (L/h)
-  sex_factor <- if (sex == "F") 0.85 else 1.0
-  CLCG <- (140 - age) * weight * sex_factor / (0.074 * creat)  # L/h
+calc_carboplatin_CL <- function(age = 60, weight = 70, creat = 80, sex = "M",
+                                GFR = NULL) {
+  # Si GFR fourni directement, on l'utilise (plus simple et cohérent avec Calvert)
+  if (!is.null(GFR)) {
+    # Calvert : CL_carbo (mL/min) = GFR + 25
+    CL <- (GFR + 25) * 60 / 1000   # L/h
+    return(CL)
+  }
 
-  # Zandvliet 2008 : CL_carbo = CLcreat_CG * theta1 + theta2
-  # theta1 = 0.76, theta2 = 1.5 L/h
-  CL <- CLCG * 0.76 + 1.5
+  # Cockcroft-Gault : SCr en µmol/L → CLcr en mL/min
+  # CLcr (mL/min) = (140-age) × weight × sex_factor / (0.815 × SCr_µmol/L)
+  # (0.815 = 72 / 88.4, conversion depuis la formule originale en mg/dL)
+  sex_factor <- if (sex == "F") 0.85 else 1.0
+  CLcg_mLmin <- (140 - age) * weight * sex_factor / (0.815 * creat)
+
+  # Conversion mL/min → L/h, puis modèle Zandvliet 2008 :
+  # CL_carbo (L/h) = CLcg (L/h) × theta1 + theta2
+  # theta1 = 0.76, theta2 = 1.5 L/h (clairance non-rénale)
+  CLcg_Lh <- CLcg_mLmin * 60 / 1000
+  CL <- CLcg_Lh * 0.76 + 1.5
   CL
 }
 
@@ -365,7 +377,8 @@ build_parameters <- function(species = "human",
         age    = patient$age,
         weight = patient$weight,
         creat  = patient$creat,
-        sex    = patient$sex
+        sex    = patient$sex,
+        GFR    = patient$GFR   # NULL si non fourni → utilise CG
       )
     }
   }

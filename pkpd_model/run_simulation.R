@@ -10,11 +10,7 @@
 # =============================================================================
 
 # --- Chemin vers les modules ---
-.dir <- if (sys.nframe() > 0 && !is.null(sys.frame(1)$ofile)) {
-  dirname(sys.frame(1)$ofile)
-} else {
-  "pkpd_model"
-}
+.dir <- tryCatch(dirname(sys.frame(1)$ofile), error = function(e) "pkpd_model")
 
 source(file.path(.dir, "01_model_ode.R"))
 source(file.path(.dir, "02_parameters_library.R"))
@@ -61,13 +57,14 @@ message(sprintf("Dose calculée : %.1f mg (%.0f µmol)", dosing$dose_mg, dosing$
 
 # 2. Simulation populationnelle
 pop_result <- simulate_population(
-  n_patients = N_PATIENTS,
-  species    = SPECIES,
-  dosing     = dosing,
-  t_end      = T_END_DAYS * 24,
-  t_res      = T_RES_H,
-  seed       = SEED,
-  verbose    = TRUE
+  n_patients  = N_PATIENTS,
+  species     = SPECIES,
+  dosing      = dosing,
+  t_end       = T_END_DAYS * 24,
+  t_res       = T_RES_H,
+  seed        = SEED,
+  patient_cov = data.frame(age=60, weight=70, creat=80, sex="M", GFR=GFR),
+  verbose     = TRUE
 )
 
 # 3. Résumé populationnel (percentiles)

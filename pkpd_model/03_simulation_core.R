@@ -14,14 +14,15 @@
 #   - 02_parameters_library.R
 # =============================================================================
 
-# --- Chargement des modules ---
-source(file.path(dirname(sys.frame(1)$ofile %||% "03_simulation_core.R"),
-                 "01_model_ode.R"))
-source(file.path(dirname(sys.frame(1)$ofile %||% "03_simulation_core.R"),
-                 "02_parameters_library.R"))
-
 # Opérateur null-coalesce
 `%||%` <- function(a, b) if (!is.null(a)) a else b
+
+# --- Détection du répertoire courant ---
+.module_dir <- tryCatch(dirname(sys.frame(1)$ofile), error = function(e) "pkpd_model")
+
+# --- Chargement des modules ---
+source(file.path(.module_dir, "01_model_ode.R"))
+source(file.path(.module_dir, "02_parameters_library.R"))
 
 if (!requireNamespace("deSolve", quietly = TRUE))
   stop("Package 'deSolve' requis. Installez-le avec : install.packages('deSolve')")
@@ -138,17 +139,16 @@ simulate_patient <- function(p,
   # Conditions initiales
   y0 <- build_initial_state(p)
 
-  # --- Fonction de taux de perfusion (bolus tabulaire) ---
-  dose_fun <- .make_dose_function(dosing)
+  # --- Intégration de dose_fun dans parms (deSolve passe uniquement parms) ---
+  p$dose_fun <- .make_dose_function(dosing)
 
   # --- Résolution ODE avec lsoda ---
   out <- tryCatch({
     ode(
-      y     = y0,
-      times = times,
-      func  = pkpd_ode,
-      parms = p,
-      dose_fun = dose_fun,
+      y        = y0,
+      times    = times,
+      func     = pkpd_ode,
+      parms    = p,
       method   = "lsoda",
       rtol     = solver_opt$rtol,
       atol     = solver_opt$atol,
