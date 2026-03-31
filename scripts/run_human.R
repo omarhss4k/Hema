@@ -51,36 +51,29 @@ cat(sprintf("  Neut : nadir=%.3f → Grade %d\n",
 cat(sprintf("  Plt  : nadir=%.1f  → Grade %d\n",
             grades_det$nadir_plt, grades_det$grade_nadir_plt))
 
-# ── VPC population ───────────────────────────────────────
+# ── VPC population + grades (figure combinée) ───────────
 cat("\n--- VPC humain : AUC=5, Q21D x 2 ---\n")
+# save_vpc_human génère en une seule simulation :
+#   • Panneau VPC Neut avec zones de grade NCI-CTCAE
+#   • Panneau VPC Plt avec zones de grade NCI-CTCAE
+#   • Barplot % patients par grade (remplace save_grade_figure4c)
 save_vpc_human(
-  sim = sim_hu, pars = init_pars,
-  file = "results_HUMAN/Figure4_VPC.pdf",
-  titre = "VPC - Carboplatin (Human) AUC=5 Q21D x 2 (1000 patients, GFR=125 fixe — Supp. S11)",
-  n_sim = 1000, dose_days = dose_days_hu,
-  obs_list = obs_list_human,
-  auc_target = AUC_target, times = times_hu,
-  interval_h = 21*24, n_cycles = 2
-)
-
-# ── Figure 4c — % patients par grade ────────────────────
-cat("\n=== Figure 4c : % patients par grade (AUC=5) ===\n")
-save_grade_figure4c(
-  base_pars  = init_pars,
-  init_state = init_state,
-  auc_target = 5,
-  n_cycles   = 2,
-  interval_h = 21*24,
-  n_patients = 1000,
-  file       = "results_HUMAN/Figure4c_grades_AUC5.pdf",
-  titre      = "Carboplatine AUC=5, Q21D x 2 — % patients par grade",
-  seed       = 42
+  sim        = sim_hu,
+  pars       = init_pars,
+  file       = "results_HUMAN/Figure4_VPC.pdf",
+  titre      = "VPC - Carboplatin (Human) AUC=5 Q21D x 2 (1000 patients, GFR=125 fixe — Supp. S11)",
+  n_sim      = 1000,
+  dose_days  = dose_days_hu,
+  obs_list   = obs_list_human,
+  auc_target = AUC_target,
+  times      = times_hu,
+  interval_h = 21 * 24,
+  n_cycles   = 2
 )
 
 cat("\n=======================================================\n")
 cat("Fichiers dans results_HUMAN/ :\n")
 cat("  -> Figure4_Q21D_x2.pdf              (courbes Neut+Plt)\n")
 cat("  -> Figure4_grades_deterministe.pdf  (grades courbe det.)\n")
-cat("  -> Figure4_VPC.pdf                  (VPC population)\n")
-cat("  -> Figure4c_grades_AUC5.pdf         (Figure 4c, 1000 patients)\n")
+cat("  -> Figure4_VPC.pdf                  (VPC + grades NCI-CTCAE, 1000 patients)\n")
 cat("=======================================================\n")
