@@ -180,36 +180,35 @@
   # Avec lambda3 : ktrNeut+ktrMono = lambda3 * kprolCMP
   p$kprolCMP <- (p$ktrNeut + p$ktrMono) / p$lambda3
 
-  # --- Transit Ret (prolifératif : T1R, T2R, puis T3R non-prolifératif) ---
-  # T2R0 = T3R0 = (kcircRet/aRet)*Ret0
+  # --- Transit Ret (prolifératif : T1R, T2R ; non-prolifératif : T3R) ---
+  # Équation S3 : T3R0 = T2R0 = (kcircRet/aRet)*Ret0
   T3R0 <- (p$kcircRet / aRet) * p$Ret0
   T2R0 <- T3R0
-  # T1R0 = T2R0 / lambda1
-  T1R0 <- T2R0 / p$lambda1
+  T1R0 <- T2R0 / p$lambda1     # lambda1 = T2R0/T1R0
 
-  # Flux MEP → T1R
-  # ktrRet * MEP0 = kprolRet*T1R0*(lambda1 - 1) + aRet*T1R0  (bilan T1R à ss)
-  # Simplification : bilan global de masse sur la branche Ret
-  # kcircRet*Ret0 = ktrRet*MEP0  (pas de perte interne sans drogue)
-  p$ktrRet <- p$kcircRet * p$Ret0 / p$MEP0
+  # kprolRet — bilan SS de T2Ret (Équation S4, Fornari) :
+  #   kprolRet*T2R0 + aRet*T1R0 = aRet*T2R0
+  #   → kprolRet = aRet*(1 - 1/lambda1) = aRet*(lambda1-1)/lambda1
+  p$kprolRet <- aRet * (p$lambda1 - 1) / p$lambda1
 
-  # Taux de prolifération Ret (Équation S4)
-  # bilan T1R : kprolRet*T1R0 + ktrRet*MEP0 = aRet*T1R0 + kprolRet*T1R0 (boucle)
-  # → en utilisant lambda1 : kprolRet*(lambda1-1)*T1R0 = aRet*T1R0 - ktrRet*MEP0
-  # Forme simplifiée (dérivée de l'eq. S4) :
-  p$kprolRet <- (aRet * T2R0 - p$ktrRet * p$MEP0) / ((p$lambda1 - 1) * T1R0 + 1e-12)
-  # Protection contre valeurs négatives
-  p$kprolRet <- max(p$kprolRet, 1e-6)
+  # ktrRet — bilan SS de T1Ret :
+  #   kprolRet*T1R0 + ktrRet*MEP0 = aRet*T1R0
+  #   → ktrRet = (aRet - kprolRet)*T1R0 / MEP0
+  #            = aRet * T2R0 / (lambda1^2 * MEP0)
+  p$ktrRet <- (aRet - p$kprolRet) * T1R0 / p$MEP0
 
-  # --- Transit Plt (prolifératif : T1P, T2P, puis T3P non-prolifératif) ---
+  # --- Transit Plt (prolifératif : T1P, T2P ; non-prolifératif : T3P) ---
   T3P0 <- (p$kcircPlt / aPlt) * p$Plt0
   T2P0 <- T3P0
   T1P0 <- T2P0 / p$lambda2
 
-  p$ktrPlt <- p$kcircPlt * p$Plt0 / p$MEP0
+  # kprolPlt — bilan SS de T2Plt :
+  #   kprolPlt = aPlt*(lambda2-1)/lambda2
+  p$kprolPlt <- aPlt * (p$lambda2 - 1) / p$lambda2
 
-  p$kprolPlt <- (aPlt * T2P0 - p$ktrPlt * p$MEP0) / ((p$lambda2 - 1) * T1P0 + 1e-12)
-  p$kprolPlt <- max(p$kprolPlt, 1e-6)
+  # ktrPlt — bilan SS de T1Plt :
+  #   ktrPlt = (aPlt - kprolPlt)*T1P0 / MEP0
+  p$ktrPlt <- (aPlt - p$kprolPlt) * T1P0 / p$MEP0
 
   # Taux de prolifération MEP (Équation S4)
   # lambda4 = (ktrRet + ktrPlt) / kprolMEP
