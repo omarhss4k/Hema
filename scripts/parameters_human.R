@@ -9,11 +9,14 @@ init_pars <- list()
 
 # ── PK carboplatin humain (modèle 2 compartiments) ──
 # Ref. 22 = Zandvliet et al. 2008 (Br J Clin Pharmacol 66:485-497)
-# CL calvert : GFR + 25 mL/min → 103 mL/min = 6.18 L/h (GFR médian 78)
-init_pars$CL <- 6.18   # L/h  (= GFR+25 mL/min = 103 mL/min)
-init_pars$V1 <- 7.87   # L    (Zandvliet 2008)
-init_pars$Q  <- 1.98   # L/h  (= 33 mL/min, Zandvliet 2008)
-init_pars$V2 <- 8.06   # L    (Zandvliet 2008)
+# CL cohérent avec la formule de Calvert utilisée dans run_human.R :
+#   Calvert : dose = AUC × (GFR + 25),  GFR = 125 mL/min (Supp. S11)
+#   → CL = (GFR + 25) × 60/1000 = 150 × 0.06 = 9.0 L/h
+# V1, V2, Q : valeurs correctes Zandvliet 2008 (platine libre)
+init_pars$CL <- 9.00   # L/h  (= GFR+25 = 150 mL/min, cohérent Calvert GFR=125)
+init_pars$V1 <- 15.5   # L    (Zandvliet 2008 — volume central platine libre)
+init_pars$Q  <- 3.46   # L/h  (Zandvliet 2008)
+init_pars$V2 <- 9.86   # L    (Zandvliet 2008)
 
 # ── Fraction libre (carboplatin → liaison protéique négligeable) ──
 init_pars$fu0    <- 1.0

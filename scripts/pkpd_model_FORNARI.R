@@ -81,16 +81,22 @@ pkpd_fornari <- function(time, state, pars) {
     f_prol_Plt <- pmin(pmax(r_pPlt, 0.2), 10)^gamma_prolTrans
 
     # ── Progeniteurs (Eq. 1, 4) ──
+    # Clamp à 0 : (1 - Slope×Damage) ne peut pas devenir négatif
+    # (un taux de prolifération négatif n'a pas de sens biologique)
+    eff_MPP <- max(0, 1 - Slope_MPP * Damage)
+    eff_CMP <- max(0, 1 - Slope_CMP * Damage)
+    eff_MEP <- max(0, 1 - Slope_MEP * Damage)
+
     dMPP <- k_stem * f_stem +
-            k_prol_MPP * (1 - Slope_MPP * Damage) * MPP -
+            k_prol_MPP * eff_MPP * MPP -
             k_tr_CMP * f_mat_CMP * MPP -
             k_tr_MEP * f_mat_MEP * MPP
 
-    dCMP <- k_prol_CMP * (1 - Slope_CMP * Damage) * CMP +
+    dCMP <- k_prol_CMP * eff_CMP * CMP +
             k_tr_CMP * f_mat_CMP * MPP -
             (k_tr_Neut + k_tr_Mono) * CMP
 
-    dMEP <- k_prol_MEP * (1 - Slope_MEP * Damage) * MEP +
+    dMEP <- k_prol_MEP * eff_MEP * MEP +
             k_tr_MEP * f_mat_MEP * MPP -
             (k_tr_Ret + k_tr_Plt) * MEP
 
