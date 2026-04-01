@@ -302,36 +302,87 @@ save_vpc_human <- function(sim, pars, file, titre,
                            width      = 10,
                            height     = 11) {
 
-  cat(sprintf("  → VPC humain + grades : %d simulations (σ résiduel Table S4)...\n",
-              n_sim))
+  cat(sprintf(
+    "  → VPC humain + grades : %d simulations ODE (IIV baselines — Table S4)...\n",
+    n_sim))
   set.seed(42)
 
   if (is.null(times)) times <- seq(0, 63 * 24, by = 1)
-  n_t      <- length(times)
-  days_vec <- times / 24
+  n_t       <- length(times)
+  dose_fixe <- auc_target * (gfr_fixed + 25)
 
-  # ── Erreur résiduelle log-additive (Table S4 — Fornari 2019) ────────────
-  # Y_i(t) = Y_det(t) × exp(ε_i(t)),  ε_i(t) ~ N(0, σ²)
-  # Par construction : médiane(Y_i) = Y_det  →  rouge suit les cercles.
-  # Le ruban [5e–95e] reflète la variabilité résiduelle estimée sur humains.
-  sig_n <- SIGMA["Neut"]   # 0.17
-  sig_p <- SIGMA["Plt"]    # 0.17
+  # ── IIV : baselines uniquement (Table S4 — Fornari 2019) ────────────────
+  # Seuls Neut0 et Plt0 sont variés.
+  # - Variation proportionnelle : Neut_i(t) ≈ Neut_det(t) × (Neut0_i/Neut0)
+  #   → médiane populationnelle ≈ prédiction déterministe (log-normale, médiane = µ)
+  # - L'IIV sur Slope (σMPP=0.33) ne peut pas être utilisée ici : le clamp
+  #   max(0,1-Slope×Damage) décale le timing du nadir de façon asymétrique
+  #   (haut Slope → nadir précoce + récup rapide ; bas Slope → nadir tardif)
+  #   → la médiane populationnelle s'élève au-dessus de la prédiction typique.
+  omega_Neut0 <- SIGMA["Neut"]   # 0.17
+  omega_Plt0  <- SIGMA["Plt"]    # 0.17
 
+  # ── Matrices de résultats ────────────────────────────────────────────────
   mat_Neut   <- matrix(NA_real_, nrow = n_sim, ncol = n_t)
   mat_Plt    <- matrix(NA_real_, nrow = n_sim, ncol = n_t)
   grade_neut <- integer(n_sim)
   grade_plt  <- integer(n_sim)
 
   for (i in seq_len(n_sim)) {
-    neut_i <- sim$Neut * exp(rnorm(n_t, 0, sig_n))
-    plt_i  <- sim$Plt  * exp(rnorm(n_t, 0, sig_p))
-    mat_Neut[i, ] <- neut_i
-    mat_Plt[i, ]  <- plt_i
-    grade_neut[i] <- assign_grade_neut(min(neut_i, na.rm = TRUE))
-    grade_plt[i]  <- assign_grade_plt( min(plt_i,  na.rm = TRUE))
+
+    pars_i  <- pars
+    neut0_i <- pars$Neut0 * exp(rnorm(1, 0, omega_Neut0))
+    plt0_i  <- pars$Plt0  * exp(rnorm(1, 0, omega_Plt0))
+    pars_i$Neut0 <- neut0_i
+    pars_i$Plt0  <- plt0_i
+
+    # Schéma posologique (identique pour tous — Supp. S11)
+    pars_i$rate_fun <- make_repeated_infusion(
+      dose_mg    = dose_fixe,
+      Tinfu_h    = 0.5,
+      interval_h = interval_h,
+      n_cycles   = n_cycles
+    )
+
+    # État initial rééquilibré (Eq. S3) — MTT/kcirc fixes
+    a_Neut <- 3 / pars$MTT_Neut
+    a_Plt  <- 3 / pars$MTT_Plt
+    T_Neut <- pars$k_circ_Neut * neut0_i / a_Neut
+    T_Plt  <- pars$k_circ_Plt  * plt0_i  / a_Plt
+    T1_Plt <- T_Plt / pars$lambda2
+
+    state_i <- init_state
+    state_i["Neut"]    <- neut0_i
+    state_i["Plt"]     <- plt0_i
+    state_i["T1_Neut"] <- T_Neut
+    state_i["T2_Neut"] <- T_Neut
+    state_i["T3_Neut"] <- T_Neut
+    state_i["T1_Plt"]  <- T1_Plt
+    state_i["T2_Plt"]  <- T_Plt
+    state_i["T3_Plt"]  <- T_Plt
+
+    tryCatch({
+      out_i <- as.data.frame(lsoda(
+        y        = state_i,
+        times    = times,
+        func     = pkpd_fornari,
+        parms    = pars_i,
+        rtol     = 1e-4,
+        atol     = 1e-6,
+        maxsteps = 10000
+      ))
+      mat_Neut[i, ] <- out_i$Neut
+      mat_Plt[i, ]  <- out_i$Plt
+      grade_neut[i] <- assign_grade_neut(min(out_i$Neut, na.rm = TRUE))
+      grade_plt[i]  <- assign_grade_plt( min(out_i$Plt,  na.rm = TRUE))
+    }, error = function(e) NULL)
+
+    if (i %% 200 == 0)
+      cat(sprintf("    %d/%d patients simulés\n", i, n_sim))
   }
 
   # ── Percentiles VPC ──────────────────────────────────────────────────────
+  days_vec   <- times / 24
   make_stats <- function(mat, Yref) data.frame(
     days = days_vec,
     p05  = apply(mat, 2, quantile, 0.05, na.rm = TRUE),
@@ -373,7 +424,7 @@ save_vpc_human <- function(sim, pars, file, titre,
 
   # ── Panneau grades ────────────────────────────────────────────────────────
   grade_sub <- sprintf(
-    "AUC=%g  Q%dD\u00d7%d  n=%d  \u03c3 r\u00e9siduel Neut/Plt Table S4",
+    "AUC=%g  Q%dD\u00d7%d  n=%d  IIV\u00a0: Neut0/Plt0 (\u03c3 Table S4)",
     auc_target, round(interval_h / 24), n_cycles, n_sim)
   p_grades <- .plot_grade_bar(grade_neut, grade_plt, n_sim,
                                auc_target, interval_h, n_cycles,
@@ -382,9 +433,9 @@ save_vpc_human <- function(sim, pars, file, titre,
   # ── Assemblage figure ─────────────────────────────────────────────────────
   legend_grob <- textGrob(
     paste0(
-      "Ruban = [5e\u201395e percentile]  |  Rouge = m\u00e9diane  |  ",
+      "Ruban = [5e\u201395e percentile]  |  Rouge = m\u00e9diane simul\u00e9e  |  ",
       "Tiret = pr\u00e9diction d\u00e9terministe  |  \u25cf = donn\u00e9es observ\u00e9es  |  ",
-      "Zones = grades NCI-CTCAE  |  Variabilit\u00e9 : \u03c3 Table S4 Fornari 2019"
+      "Zones = grades NCI-CTCAE  |  IIV : Neut0/Plt0 (\u03c3 Table S4 Fornari 2019)"
     ),
     gp = gpar(fontsize = 7, col = "grey30")
   )
