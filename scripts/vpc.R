@@ -239,7 +239,8 @@ save_vpc <- function(sim, pars, file, titre, n_sim = 1000,
 # 5. BARPLOT DISTRIBUTION DES GRADES (panneau interne)
 # ════════════════════════════════════════════════════════
 .plot_grade_bar <- function(grade_neut, grade_plt, n_patients,
-                            auc_target, interval_h, n_cycles) {
+                            auc_target, interval_h, n_cycles,
+                            subtitle = NULL) {
 
   pct_neut <- sapply(1:4, function(g) 100 * mean(grade_neut == g, na.rm = TRUE))
   pct_plt  <- sapply(1:4, function(g) 100 * mean(grade_plt  == g, na.rm = TRUE))
@@ -252,6 +253,10 @@ save_vpc <- function(sim, pars, file, titre, n_sim = 1000,
   df$Grade   <- factor(df$Grade,   levels = paste0("G", 1:4))
   df$Lineage <- factor(df$Lineage, levels = c("Neutropenia", "Thrombocytopenia"))
 
+  if (is.null(subtitle))
+    subtitle <- sprintf("AUC=%g  Q%dD\u00d7%d  n=%d",
+                        auc_target, round(interval_h / 24), n_cycles, n_patients)
+
   ggplot(df, aes(x = Grade, y = Pct, fill = Grade)) +
     geom_col(width = 0.65, alpha = 0.88) +
     geom_text(aes(label = sprintf("%.1f%%", Pct)),
@@ -260,13 +265,8 @@ save_vpc <- function(sim, pars, file, titre, n_sim = 1000,
     scale_fill_manual(values = unname(GRADE_COLORS), guide = "none") +
     scale_y_continuous(limits = c(0, max(df$Pct, 1) * 1.30),
                        labels = function(x) paste0(x, "%")) +
-    labs(
-      title    = "Grades NCI-CTCAE au nadir",
-      subtitle = sprintf(
-        "AUC=%g  Q%dD\u00d7%d  n=%d  IIV\u00a0: Slope\u00a0+\u00a0MTT\u00a0+\u00a0kcirc\u00a0+\u00a0baselines",
-        auc_target, round(interval_h / 24), n_cycles, n_patients),
-      x = NULL, y = "% patients"
-    ) +
+    labs(title = "Grades NCI-CTCAE au nadir", subtitle = subtitle,
+         x = NULL, y = "% patients") +
     theme_bw(base_size = 9.5) +
     theme(
       strip.text       = element_text(face = "bold"),
@@ -302,96 +302,36 @@ save_vpc_human <- function(sim, pars, file, titre,
                            width      = 10,
                            height     = 11) {
 
-  cat(sprintf(
-    "  → VPC humain + grades : %d patients (GFR=%g fixe, IIV étendue)...\n",
-    n_sim, gfr_fixed))
+  cat(sprintf("  → VPC humain + grades : %d simulations (σ résiduel Table S4)...\n",
+              n_sim))
   set.seed(42)
 
   if (is.null(times)) times <- seq(0, 63 * 24, by = 1)
-  n_t       <- length(times)
-  dose_fixe <- auc_target * (gfr_fixed + 25)
+  n_t      <- length(times)
+  days_vec <- times / 24
 
-  # ── Paramètres IIV ──────────────────────────────────────
-  # Seuls les sigma Table S4 (Fornari 2019) sont utilisés.
-  # MTT et kcirc ne sont PAS variés : Table S4 ne rapporte que des sigmas
-  # résiduels pour les humains. Appliquer un CV=56% (rat) sur MTTNeut
-  # disperse le nadir sur des dates très différentes → la médiane
-  # populationnelle s'aplatit et ne suit plus la prédiction typique.
-  omega_MPP   <- SIGMA["MPP"]
-  omega_CMP   <- SIGMA["CMP"]
-  omega_MEP   <- SIGMA["MEP"]
-  omega_Neut0 <- SIGMA["Neut"]
-  omega_Plt0  <- SIGMA["Plt"]
+  # ── Erreur résiduelle log-additive (Table S4 — Fornari 2019) ────────────
+  # Y_i(t) = Y_det(t) × exp(ε_i(t)),  ε_i(t) ~ N(0, σ²)
+  # Par construction : médiane(Y_i) = Y_det  →  rouge suit les cercles.
+  # Le ruban [5e–95e] reflète la variabilité résiduelle estimée sur humains.
+  sig_n <- SIGMA["Neut"]   # 0.17
+  sig_p <- SIGMA["Plt"]    # 0.17
 
-  # ── Matrices de résultats ────────────────────────────────
   mat_Neut   <- matrix(NA_real_, nrow = n_sim, ncol = n_t)
   mat_Plt    <- matrix(NA_real_, nrow = n_sim, ncol = n_t)
   grade_neut <- integer(n_sim)
   grade_plt  <- integer(n_sim)
 
   for (i in seq_len(n_sim)) {
-
-    pars_i <- pars
-
-    # Slopes (sensibilité médicament)
-    pars_i$Slope_MPP <- pars$Slope_MPP * exp(rnorm(1, 0, omega_MPP))
-    pars_i$Slope_CMP <- pars$Slope_CMP * exp(rnorm(1, 0, omega_CMP))
-    pars_i$Slope_MEP <- pars$Slope_MEP * exp(rnorm(1, 0, omega_MEP))
-
-    # Baselines individuelles
-    neut0_i        <- pars$Neut0 * exp(rnorm(1, 0, omega_Neut0))
-    plt0_i         <- pars$Plt0  * exp(rnorm(1, 0, omega_Plt0))
-    pars_i$Neut0   <- neut0_i
-    pars_i$Plt0    <- plt0_i
-
-    # Schéma posologique (PK identique pour tous — Supp. S11/S12)
-    pars_i$rate_fun <- make_repeated_infusion(
-      dose_mg    = dose_fixe,
-      Tinfu_h    = 0.5,
-      interval_h = interval_h,
-      n_cycles   = n_cycles
-    )
-
-    # État initial rééquilibré aux baselines individuelles (Eq. S3)
-    # MTT et kcirc : valeurs population fixes (non variés)
-    a_Neut  <- 3 / pars$MTT_Neut
-    a_Plt   <- 3 / pars$MTT_Plt
-    T_Neut  <- pars$k_circ_Neut * neut0_i / a_Neut
-    T_Plt   <- pars$k_circ_Plt  * plt0_i  / a_Plt
-    T1_Plt  <- T_Plt / pars$lambda2
-
-    state_i <- init_state
-    state_i["Neut"]    <- neut0_i
-    state_i["Plt"]     <- plt0_i
-    state_i["T1_Neut"] <- T_Neut
-    state_i["T2_Neut"] <- T_Neut
-    state_i["T3_Neut"] <- T_Neut
-    state_i["T1_Plt"]  <- T1_Plt
-    state_i["T2_Plt"]  <- T_Plt
-    state_i["T3_Plt"]  <- T_Plt
-
-    tryCatch({
-      out_i <- as.data.frame(lsoda(
-        y        = state_i,
-        times    = times,
-        func     = pkpd_fornari,
-        parms    = pars_i,
-        rtol     = 1e-4,
-        atol     = 1e-6,
-        maxsteps = 10000
-      ))
-      mat_Neut[i, ]  <- out_i$Neut
-      mat_Plt[i, ]   <- out_i$Plt
-      grade_neut[i]  <- assign_grade_neut(min(out_i$Neut, na.rm = TRUE))
-      grade_plt[i]   <- assign_grade_plt( min(out_i$Plt,  na.rm = TRUE))
-    }, error = function(e) NULL)
-
-    if (i %% 200 == 0)
-      cat(sprintf("    %d/%d patients simulés\n", i, n_sim))
+    neut_i <- sim$Neut * exp(rnorm(n_t, 0, sig_n))
+    plt_i  <- sim$Plt  * exp(rnorm(n_t, 0, sig_p))
+    mat_Neut[i, ] <- neut_i
+    mat_Plt[i, ]  <- plt_i
+    grade_neut[i] <- assign_grade_neut(min(neut_i, na.rm = TRUE))
+    grade_plt[i]  <- assign_grade_plt( min(plt_i,  na.rm = TRUE))
   }
 
-  # ── Percentiles VPC ──────────────────────────────────────
-  days_vec   <- times / 24
+  # ── Percentiles VPC ──────────────────────────────────────────────────────
   make_stats <- function(mat, Yref) data.frame(
     days = days_vec,
     p05  = apply(mat, 2, quantile, 0.05, na.rm = TRUE),
@@ -402,7 +342,7 @@ save_vpc_human <- function(sim, pars, file, titre,
   vpc_neut <- make_stats(mat_Neut, sim$Neut)
   vpc_plt  <- make_stats(mat_Plt,  sim$Plt)
 
-  # ── Résumé console ───────────────────────────────────────
+  # ── Résumé console ────────────────────────────────────────────────────────
   pct_n <- sapply(1:4, function(g) 100 * mean(grade_neut == g, na.rm = TRUE))
   pct_p <- sapply(1:4, function(g) 100 * mean(grade_plt  == g, na.rm = TRUE))
   cat(sprintf("  Neutropénie  : G1=%.1f%%  G2=%.1f%%  G3=%.1f%%  G4=%.1f%%\n",
@@ -410,7 +350,7 @@ save_vpc_human <- function(sim, pars, file, titre,
   cat(sprintf("  Thrombopénie : G1=%.1f%%  G2=%.1f%%  G3=%.1f%%  G4=%.1f%%\n",
               pct_p[1], pct_p[2], pct_p[3], pct_p[4]))
 
-  # ── Panneaux VPC ─────────────────────────────────────────
+  # ── Panneaux VPC ──────────────────────────────────────────────────────────
   get_obs <- function(nm) {
     if (!is.null(obs_list) && nm %in% names(obs_list)) obs_list[[nm]]
     else NULL
@@ -431,16 +371,20 @@ save_vpc_human <- function(sim, pars, file, titre,
     thresholds = PLT_THRESHOLDS
   )
 
-  # ── Panneau grades ───────────────────────────────────────
+  # ── Panneau grades ────────────────────────────────────────────────────────
+  grade_sub <- sprintf(
+    "AUC=%g  Q%dD\u00d7%d  n=%d  \u03c3 r\u00e9siduel Neut/Plt Table S4",
+    auc_target, round(interval_h / 24), n_cycles, n_sim)
   p_grades <- .plot_grade_bar(grade_neut, grade_plt, n_sim,
-                               auc_target, interval_h, n_cycles)
+                               auc_target, interval_h, n_cycles,
+                               subtitle = grade_sub)
 
-  # ── Assemblage figure ────────────────────────────────────
+  # ── Assemblage figure ─────────────────────────────────────────────────────
   legend_grob <- textGrob(
     paste0(
-      "Ruban = [5e\u201395e percentile]  |  Rouge = m\u00e9diane simul\u00e9e  |  ",
+      "Ruban = [5e\u201395e percentile]  |  Rouge = m\u00e9diane  |  ",
       "Tiret = pr\u00e9diction d\u00e9terministe  |  \u25cf = donn\u00e9es observ\u00e9es  |  ",
-      "Zones color\u00e9es = grades NCI-CTCAE"
+      "Zones = grades NCI-CTCAE  |  Variabilit\u00e9 : \u03c3 Table S4 Fornari 2019"
     ),
     gp = gpar(fontsize = 7, col = "grey30")
   )
