@@ -359,7 +359,7 @@ save_vpc_human <- function(sim, pars, file, titre,
     # Schéma posologique (PK identique pour tous — Supp. S11/S12)
     pars_i$rate_fun <- make_repeated_infusion(
       dose_mg    = dose_fixe,
-      Tinfu_h    = 1,
+      Tinfu_h    = 0.5,
       interval_h = interval_h,
       n_cycles   = n_cycles
     )

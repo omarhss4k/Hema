@@ -91,7 +91,7 @@ init_state <- c(
 )
 
 # ── Fonction perfusion répétée ──
-make_repeated_infusion <- function(dose_mg, Tinfu_h = 1, interval_h, n_cycles) {
+make_repeated_infusion <- function(dose_mg, Tinfu_h = 0.5, interval_h, n_cycles) {
   rate     <- dose_mg / Tinfu_h
   t_starts <- seq(0, by = interval_h, length.out = n_cycles)
   function(t) {

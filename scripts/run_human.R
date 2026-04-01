@@ -23,7 +23,7 @@ cat(sprintf("=== Dose Calvert : AUC=%g, GFR=%g => Dose = %.0f mg ===\n",
 cat("\n=== Figure 4 : simulation Q21D x 2 ===\n")
 pars_hu          <- init_pars
 pars_hu$rate_fun <- make_repeated_infusion(
-  dose_mg = dose_calvert, Tinfu_h = 1,
+  dose_mg = dose_calvert, Tinfu_h = 0.5,
   interval_h = 21*24, n_cycles = 2
 )
 times_hu     <- seq(0, 63*24, by = 1)
