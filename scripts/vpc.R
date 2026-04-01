@@ -312,20 +312,16 @@ save_vpc_human <- function(sim, pars, file, titre,
   dose_fixe <- auc_target * (gfr_fixed + 25)
 
   # ── Paramètres IIV ──────────────────────────────────────
-  # Slopes & baselines : sigma log-additif (Table S4 Fornari 2019)
+  # Seuls les sigma Table S4 (Fornari 2019) sont utilisés.
+  # MTT et kcirc ne sont PAS variés : Table S4 ne rapporte que des sigmas
+  # résiduels pour les humains. Appliquer un CV=56% (rat) sur MTTNeut
+  # disperse le nadir sur des dates très différentes → la médiane
+  # populationnelle s'aplatit et ne suit plus la prédiction typique.
   omega_MPP   <- SIGMA["MPP"]
   omega_CMP   <- SIGMA["CMP"]
   omega_MEP   <- SIGMA["MEP"]
   omega_Neut0 <- SIGMA["Neut"]
   omega_Plt0  <- SIGMA["Plt"]
-
-  # MTT : CV rat Table 1 → omega = sqrt(log(1 + CV²))
-  omega_MTTNeut <- sqrt(log(1 + 0.56^2))   # CV = 56 %
-  omega_MTTPlt  <- sqrt(log(1 + 0.056^2))  # CV =  6 %
-
-  # kcirc : CV rat Table 1
-  omega_kcircNeut <- sqrt(log(1 + 0.45^2)) # CV = 45 %
-  omega_kcircPlt  <- sqrt(log(1 + 0.46^2)) # CV = 46 %
 
   # ── Matrices de résultats ────────────────────────────────
   mat_Neut   <- matrix(NA_real_, nrow = n_sim, ncol = n_t)
@@ -348,14 +344,6 @@ save_vpc_human <- function(sim, pars, file, titre,
     pars_i$Neut0   <- neut0_i
     pars_i$Plt0    <- plt0_i
 
-    # MTT individuels
-    pars_i$MTT_Neut <- pars$MTT_Neut * exp(rnorm(1, 0, omega_MTTNeut))
-    pars_i$MTT_Plt  <- pars$MTT_Plt  * exp(rnorm(1, 0, omega_MTTPlt))
-
-    # kcirc individuels
-    pars_i$k_circ_Neut <- pars$k_circ_Neut * exp(rnorm(1, 0, omega_kcircNeut))
-    pars_i$k_circ_Plt  <- pars$k_circ_Plt  * exp(rnorm(1, 0, omega_kcircPlt))
-
     # Schéma posologique (PK identique pour tous — Supp. S11/S12)
     pars_i$rate_fun <- make_repeated_infusion(
       dose_mg    = dose_fixe,
@@ -365,10 +353,11 @@ save_vpc_human <- function(sim, pars, file, titre,
     )
 
     # État initial rééquilibré aux baselines individuelles (Eq. S3)
-    a_Neut  <- 3 / pars_i$MTT_Neut
-    a_Plt   <- 3 / pars_i$MTT_Plt
-    T_Neut  <- pars_i$k_circ_Neut * neut0_i / a_Neut
-    T_Plt   <- pars_i$k_circ_Plt  * plt0_i  / a_Plt
+    # MTT et kcirc : valeurs population fixes (non variés)
+    a_Neut  <- 3 / pars$MTT_Neut
+    a_Plt   <- 3 / pars$MTT_Plt
+    T_Neut  <- pars$k_circ_Neut * neut0_i / a_Neut
+    T_Plt   <- pars$k_circ_Plt  * plt0_i  / a_Plt
     T1_Plt  <- T_Plt / pars$lambda2
 
     state_i <- init_state
