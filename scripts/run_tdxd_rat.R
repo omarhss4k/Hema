@@ -1,6 +1,9 @@
 ############################################################
 # run_tdxd_rat.R
-# Simulations PK T-DXd — RAT
+# Simulations PK/Damage T-DXd — RAT
+#
+# Chaîne modélisée :
+#   ADC sérum (2 cpt) → DXd plasma → DXd intracell. → Damage ADN
 #
 # Scénarios :
 #   1. Dose unique 5 mg/kg IV (perfusion 30 min)
@@ -91,9 +94,13 @@ cat(sprintf("  k_int   = %.5f h⁻¹ (t½=%.1fh)\n",
 cat(sprintf("  CL_DXd  = %.5f L/h\n", tdxd_pars$CL_DXd))
 cat(sprintf("  V_DXd   = %.5f L\n",   tdxd_pars$V_DXd))
 cat(sprintf("  IC50    = %.2f µM\n",  tdxd_pars$IC50_DXd_uM))
+cat(sprintf("  V_ic    = %.4f L   (ratio ic/plasma = %.0fx)\n",
+            tdxd_pars$V_ic, tdxd_pars$V_DXd / tdxd_pars$V_ic))
+cat(sprintf("  k_dam   = %.4f h⁻¹  k_rep = %.4f h⁻¹\n",
+            tdxd_pars$k_dam, tdxd_pars$k_rep))
 cat("═══════════════════════════════════════════════════════════\n")
 cat("  Fichiers : results_TDXD/\n")
-cat("    -> PK_5mgkg_single.pdf\n")
+cat("    -> PK_5mgkg_single.pdf   (6 panels : ADC + DXd + DXd_ic + Ratio + Damage + Emax)\n")
 cat("    -> PK_10mgkg_single.pdf\n")
 cat("    -> PK_5mgkg_Q3Wx3.pdf\n")
 cat("═══════════════════════════════════════════════════════════\n")

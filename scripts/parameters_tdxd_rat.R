@@ -69,6 +69,23 @@ tdxd_pars$k_effD <- 0.7             # h⁻¹  (efflux)
 # ── Paramètre PD (pour connexion future) ─────────────────
 tdxd_pars$IC50_DXd_uM <- 0.31       # µM (topoisomérase I)
 
+# ── Compartiment intracellulaire DXd ─────────────────────
+# V_ic : volume intracellulaire des cellules de moelle osseuse (rat)
+#   Moelle osseuse ~ 1.5% du BW → 0.25 × 0.015 = 3.75 mL
+#   Fraction intracellulaire ~ 70% → ~2.6 mL ≈ 0.0026 L
+#   → ratio V_DXd/V_ic ≈ 35 → accumulation intracell ~35×
+tdxd_pars$V_ic <- 0.003      # L  (volume intracell. moelle, rat)
+
+# Ratio d'accumulation à l'équilibre :
+# C_DXd_ic / C_DXd = (k_inD/k_effD) × (V_DXd/V_ic)
+# = 1 × (V_DXd/V_ic) car k_inD = k_effD
+
+# ── Dommage ADN (γH2AX, modèle Fornari adapté DXd) ───────
+# k_dam : taux de formation des dommages (proportionnel à E_drug)
+# k_rep : taux de réparation ADN (t½ réparation ≈ 41h)
+tdxd_pars$k_dam <- 0.017     # h⁻¹
+tdxd_pars$k_rep <- 0.017     # h⁻¹
+
 # ── Conversion de concentration ──────────────────────────
 # C_DXd [mg/L] → C_DXd [µM] : × 1000 / MW_DXd
 tdxd_pars$mgL_to_uM_DXd <- 1000 / tdxd_pars$MW_DXd  # µM per mg/L
@@ -92,11 +109,13 @@ make_tdxd_infusion <- function(dose_mgkg, BW_kg = 0.25,
   }
 }
 
-# ── État initial (PK seul) ───────────────────────────────
+# ── État initial ─────────────────────────────────────────
 tdxd_state0 <- c(
-  C_ADC1 = 0,   # ADC compartiment central    [mg/L]
-  C_ADC2 = 0,   # ADC compartiment périphérique [mg/L]
-  C_DXd  = 0    # DXd plasma                  [mg/L]
+  C_ADC1    = 0,   # ADC compartiment central        [mg/L]
+  C_ADC2    = 0,   # ADC compartiment périphérique   [mg/L]
+  C_DXd     = 0,   # DXd plasma                      [mg/L]
+  C_DXd_ic  = 0,   # DXd intracellulaire (moelle)    [mg/L]
+  Damage    = 0    # Dommages ADN (γH2AX normalisés) [sans unité]
 )
 
 # ── Résumé des paramètres ────────────────────────────────
@@ -125,4 +144,10 @@ cat(sprintf("  k_rel  = %.4f h⁻¹\n", tdxd_pars$k_rel))
 cat(sprintf("  k_inD  = k_effD = %.1f h⁻¹\n", tdxd_pars$k_inD))
 cat(sprintf("  DAR    = %d  |  mass_frac_DXd = %.5f\n",
             tdxd_pars$DAR, tdxd_pars$mass_frac_DXd))
-cat(sprintf("  IC50_DXd = %.2f µM\n\n", tdxd_pars$IC50_DXd_uM))
+cat(sprintf("  IC50_DXd = %.2f µM\n",    tdxd_pars$IC50_DXd_uM))
+cat(sprintf("  V_ic     = %.4f L  (ratio V_DXd/V_ic = %.0f → accum. ~%.0fx)\n",
+            tdxd_pars$V_ic,
+            tdxd_pars$V_DXd / tdxd_pars$V_ic,
+            tdxd_pars$V_DXd / tdxd_pars$V_ic))
+cat(sprintf("  k_dam    = %.4f h⁻¹  k_rep = %.4f h⁻¹\n\n",
+            tdxd_pars$k_dam, tdxd_pars$k_rep))

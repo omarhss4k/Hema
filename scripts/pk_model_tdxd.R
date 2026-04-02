@@ -1,23 +1,30 @@
 ############################################################
 # pk_model_tdxd.R
-# Modèle PK T-DXd — Chaîne : ADC sérum → Libération DXd
+# Modèle PK/Damage T-DXd — Chaîne complète :
+#   ADC sérum → Libération DXd → DXd intracell. → Dommage ADN
 #
-# États :
-#   C_ADC1  : ADC compartiment central       [mg/L]
-#   C_ADC2  : ADC compartiment périphérique  [mg/L]
-#   C_DXd   : DXd plasma (payload libre)     [mg/L]
+# États (5) :
+#   C_ADC1   : ADC compartiment central          [mg/L]
+#   C_ADC2   : ADC compartiment périphérique     [mg/L]
+#   C_DXd    : DXd plasma                        [mg/L]
+#   C_DXd_ic : DXd intracellulaire (moelle)      [mg/L]
+#   Damage   : Dommages ADN normalisés (γH2AX)   [sans unité]
 #
 # Équations :
-#   dC_ADC1 = rate_in/V1 - (CL_ADC/V1 + k_int)*C_ADC1
-#             - Q/V1*C_ADC1 + Q/V2*C_ADC2
-#   dC_ADC2 = Q/V1*C_ADC1 - Q/V2*C_ADC2
-#   dC_DXd  = mass_frac_DXd * k_int * C_ADC1 * V1/V_DXd
-#             - CL_DXd/V_DXd * C_DXd
+#   dC_ADC1   = rate_in/V1 - (CL_ADC/V1 + Q/V1 + k_int)*C_ADC1
+#               + Q/V2*C_ADC2
+#   dC_ADC2   = Q/V1*C_ADC1 - Q/V2*C_ADC2
+#   dC_DXd    = mass_frac_DXd*k_int*C_ADC1*V1/V_DXd
+#               - CL_DXd/V_DXd*C_DXd
+#               + k_effD*C_DXd_ic*(V_ic/V_DXd)
+#               - k_inD*C_DXd
+#   dC_DXd_ic = k_inD*C_DXd*(V_DXd/V_ic) - k_effD*C_DXd_ic
+#   dDamage   = k_dam * E_drug - k_rep * Damage
+#               où E_drug = Emax (C_DXd_ic_uM / (IC50 + C_DXd_ic_uM))
 #
-# Note sur les unités :
-#   mass_frac_DXd × k_int × C_ADC1 × V1  →  mg DXd/h
-#   divisé par V_DXd                      →  mg/L/h = (mg/L)/h
-#   C_DXd_uM = C_DXd [mg/L] × 1000 / MW_DXd [g/mol]
+# Connexion avec Fornari :
+#   Ce "Damage" remplace directement le "Damage" carboplatin dans
+#   pkpd_model_FORNARI.R (termes Slope_MPP/CMP/MEP × Damage).
 ############################################################
 library(deSolve)
 
@@ -25,10 +32,10 @@ library(deSolve)
 pk_tdxd_ode <- function(time, state, pars) {
   with(as.list(c(state, pars)), {
 
-    # Taux de perfusion externe
+    # Taux de perfusion externe [mg/h]
     rate_in <- if (!is.null(pars$rate_fun)) pars$rate_fun(time) else 0
 
-    # ADC — 2 compartiments avec fuite par internalisation
+    # ── ADC — 2 compartiments avec fuite par internalisation ──
     dC_ADC1 <- rate_in / V1_ADC +
                (Q_ADC / V2_ADC) * C_ADC2 -
                (CL_ADC / V1_ADC + Q_ADC / V1_ADC + k_int) * C_ADC1
@@ -36,13 +43,28 @@ pk_tdxd_ode <- function(time, state, pars) {
     dC_ADC2 <- (Q_ADC / V1_ADC) * C_ADC1 -
                (Q_ADC / V2_ADC) * C_ADC2
 
-    # DXd — libéré par l'internalisation de l'ADC
-    # Source : mass_frac_DXd × k_int × (C_ADC1 × V1_ADC) / V_DXd
-    release_DXd <- mass_frac_DXd * k_int * C_ADC1 * V1_ADC / V_DXd
+    # ── DXd plasma — alimenté par internalisation + efflux cellulaire ──
+    # Source ADC : mass_frac × k_int × (C_ADC1 × V1) / V_DXd
+    release_ADC <- mass_frac_DXd * k_int * C_ADC1 * V1_ADC / V_DXd
 
-    dC_DXd <- release_DXd - (CL_DXd / V_DXd) * C_DXd
+    # Échanges membranaires (Vasalou 2024)
+    flux_in_cell  <- k_inD  * C_DXd                    # plasma → cellule
+    flux_out_cell <- k_effD * C_DXd_ic * (V_ic / V_DXd) # cellule → plasma
 
-    list(c(dC_ADC1, dC_ADC2, dC_DXd))
+    dC_DXd <- release_ADC - (CL_DXd / V_DXd) * C_DXd -
+              flux_in_cell + flux_out_cell
+
+    # ── DXd intracellulaire (moelle osseuse) ──
+    # Conservation de masse : flux entrant rapporté au volume V_ic
+    dC_DXd_ic <- k_inD * C_DXd * (V_DXd / V_ic) - k_effD * C_DXd_ic
+
+    # ── Dommages ADN (γH2AX, modèle Emax) ──
+    C_DXd_ic_uM <- C_DXd_ic * mgL_to_uM_DXd             # [µM]
+    E_drug       <- C_DXd_ic_uM / (IC50_DXd_uM + C_DXd_ic_uM)  # Emax [0,1]
+
+    dDamage <- k_dam * E_drug - k_rep * Damage
+
+    list(c(dC_ADC1, dC_ADC2, dC_DXd, dC_DXd_ic, dDamage))
   })
 }
 
@@ -59,77 +81,99 @@ simulate_pk_tdxd <- function(times, pars, state0,
     maxsteps = 500000
   ))
 
-  # Colonnes dérivées
-  out$time_h  <- out$time
-  out$time_d  <- out$time / 24
-
-  # Conversion DXd → µM
-  out$C_DXd_uM <- out$C_DXd * pars$mgL_to_uM_DXd
-
-  # Rapport DXd_uM / IC50 (indice d'exposition pharmacologique)
-  out$DXd_over_IC50 <- out$C_DXd_uM / pars$IC50_DXd_uM
+  out$time_h       <- out$time
+  out$time_d       <- out$time / 24
+  out$C_DXd_uM     <- out$C_DXd    * pars$mgL_to_uM_DXd
+  out$C_DXd_ic_uM  <- out$C_DXd_ic * pars$mgL_to_uM_DXd
+  out$accum_ratio  <- ifelse(out$C_DXd > 0,
+                             out$C_DXd_ic / out$C_DXd, 0)
 
   # Diagnostics
-  Cmax_ADC  <- max(out$C_ADC1,     na.rm = TRUE)
-  Cmax_DXd  <- max(out$C_DXd_uM,  na.rm = TRUE)
-  Tmax_DXd  <- out$time_h[which.max(out$C_DXd_uM)]
-  AUC_ADC   <- tryCatch(
-    sum(diff(out$time_h) * (head(out$C_ADC1, -1) + tail(out$C_ADC1, -1)) / 2),
-    error = function(e) NA_real_
-  )
-  AUC_DXd   <- tryCatch(
-    sum(diff(out$time_h) * (head(out$C_DXd_uM, -1) + tail(out$C_DXd_uM, -1)) / 2),
-    error = function(e) NA_real_
-  )
+  Cmax_ADC     <- max(out$C_ADC1,       na.rm = TRUE)
+  Cmax_DXd_pl  <- max(out$C_DXd_uM,    na.rm = TRUE)
+  Cmax_DXd_ic  <- max(out$C_DXd_ic_uM, na.rm = TRUE)
+  Tmax_DXd_ic  <- out$time_h[which.max(out$C_DXd_ic_uM)]
+  Damage_max   <- max(out$Damage,       na.rm = TRUE)
 
-  cat(sprintf("  ✓ ADC  : Cmax=%.2f mg/L  AUC=%.1f mg·h/L\n",
-              Cmax_ADC, AUC_ADC))
-  cat(sprintf("  ✓ DXd  : Cmax=%.4f µM  Tmax=%.1f h  AUC=%.3f µM·h\n",
-              Cmax_DXd, Tmax_DXd, AUC_DXd))
-  cat(sprintf("  ✓ DXd/IC50 max = %.3f  (%s)\n",
-              Cmax_DXd / pars$IC50_DXd_uM,
-              ifelse(Cmax_DXd > pars$IC50_DXd_uM, "exposition > IC50", "exposition < IC50")))
-
+  cat(sprintf("  ✓ ADC        : Cmax = %.2f mg/L\n", Cmax_ADC))
+  cat(sprintf("  ✓ DXd plasma : Cmax = %.5f µM  (%.2f%% IC50)\n",
+              Cmax_DXd_pl, 100 * Cmax_DXd_pl / pars$IC50_DXd_uM))
+  cat(sprintf("  ✓ DXd intra  : Cmax = %.4f µM  Tmax = %.1f h  (%.1f%% IC50)\n",
+              Cmax_DXd_ic, Tmax_DXd_ic,
+              100 * Cmax_DXd_ic / pars$IC50_DXd_uM))
+  cat(sprintf("  ✓ Ratio ic/plasma (éq) = %.1fx\n",
+              pars$V_DXd / pars$V_ic))
+  cat(sprintf("  ✓ Damage max = %.4f  %s\n",
+              Damage_max,
+              ifelse(Damage_max * 2.05 > 1,
+                     "<<< Slope_MPP × Damage > 1 : nadir potentiellement profond",
+                     "OK (< 1/Slope)")))
   out
 }
 
-# ── Graphiques PK ────────────────────────────────────────
+# ── Graphiques PK/Damage ─────────────────────────────────
 plot_pk_tdxd <- function(sim, pars, titre = "T-DXd PK — Rat",
                          dose_times_h = 0, file = NULL) {
-  if (!is.null(file)) pdf(file, width = 10, height = 8)
+  if (!is.null(file)) pdf(file, width = 12, height = 9)
 
-  par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+  par(mfrow = c(2, 3), mar = c(4, 4.2, 3, 1))
 
-  # ADC central (linéaire)
-  plot(sim$time_h, sim$C_ADC1, type = "l", lwd = 2, col = "#2166ac",
-       xlab = "Temps (h)", ylab = "ADC [mg/L]",
-       main = "ADC — Compartiment central")
-  abline(v = dose_times_h, lty = 2, col = "grey60")
-
-  # ADC central (log)
-  idx <- sim$C_ADC1 > 0
-  plot(sim$time_h[idx], log10(sim$C_ADC1[idx]), type = "l", lwd = 2, col = "#2166ac",
+  # 1 — ADC central (log)
+  idx <- sim$C_ADC1 > 1e-8
+  plot(sim$time_h[idx], log10(sim$C_ADC1[idx]),
+       type = "l", lwd = 2, col = "#2166ac",
        xlab = "Temps (h)", ylab = "log10 ADC [mg/L]",
-       main = "ADC — Échelle log")
+       main = "ADC sérum — Échelle log")
   abline(v = dose_times_h, lty = 2, col = "grey60")
 
-  # DXd (µM)
-  plot(sim$time_h, sim$C_DXd_uM, type = "l", lwd = 2, col = "#d6604d",
-       xlab = "Temps (h)", ylab = "DXd [µM]",
-       main = "DXd payload — Plasma")
+  # 2 — DXd plasma (µM)
+  plot(sim$time_h, sim$C_DXd_uM,
+       type = "l", lwd = 2, col = "#4393c3",
+       xlab = "Temps (h)", ylab = "DXd plasma [µM]",
+       main = "DXd plasma")
+  abline(h = pars$IC50_DXd_uM, lty = 3, col = "grey40")
+  text(max(sim$time_h) * 0.55, pars$IC50_DXd_uM * 1.2,
+       sprintf("IC50 = %.2f µM", pars$IC50_DXd_uM), col = "grey40", cex = 0.8)
+  abline(v = dose_times_h, lty = 2, col = "grey60")
+
+  # 3 — DXd intracellulaire (µM)
+  plot(sim$time_h, sim$C_DXd_ic_uM,
+       type = "l", lwd = 2, col = "#d6604d",
+       xlab = "Temps (h)", ylab = "DXd intracell. [µM]",
+       main = "DXd intracellulaire (moelle)")
   abline(h = pars$IC50_DXd_uM, lty = 3, col = "#d6604d", lwd = 1.5)
-  text(max(sim$time_h) * 0.6, pars$IC50_DXd_uM * 1.15,
-       sprintf("IC50 = %.2f µM", pars$IC50_DXd_uM), col = "#d6604d", cex = 0.85)
+  text(max(sim$time_h) * 0.55, pars$IC50_DXd_uM * 1.15,
+       sprintf("IC50 = %.2f µM", pars$IC50_DXd_uM), col = "#d6604d", cex = 0.8)
   abline(v = dose_times_h, lty = 2, col = "grey60")
 
-  # DXd / IC50
-  plot(sim$time_h, sim$DXd_over_IC50, type = "l", lwd = 2, col = "#4dac26",
-       xlab = "Temps (h)", ylab = "DXd / IC50",
-       main = "Indice d'exposition DXd/IC50")
-  abline(h = 1, lty = 3, col = "grey40")
+  # 4 — Ratio ic/plasma
+  plot(sim$time_h, sim$accum_ratio,
+       type = "l", lwd = 2, col = "#762a83",
+       xlab = "Temps (h)", ylab = "C_ic / C_plasma",
+       main = "Ratio accumulation intra/plasma")
+  abline(h = pars$V_DXd / pars$V_ic, lty = 3, col = "grey50")
+  text(max(sim$time_h) * 0.55, pars$V_DXd / pars$V_ic * 1.05,
+       sprintf("Éq. = %.0fx", pars$V_DXd / pars$V_ic), col = "grey50", cex = 0.8)
   abline(v = dose_times_h, lty = 2, col = "grey60")
 
-  mtext(titre, outer = TRUE, line = -1.5, font = 2, cex = 1.1)
+  # 5 — Damage
+  plot(sim$time_h, sim$Damage,
+       type = "l", lwd = 2, col = "#1a9641",
+       xlab = "Temps (h)", ylab = "Damage (γH2AX norm.)",
+       main = "Dommages ADN")
+  abline(v = dose_times_h, lty = 2, col = "grey60")
+
+  # 6 — E_drug (Emax)
+  E_drug <- sim$C_DXd_ic_uM / (pars$IC50_DXd_uM + sim$C_DXd_ic_uM)
+  plot(sim$time_h, E_drug,
+       type = "l", lwd = 2, col = "#f4a582",
+       xlab = "Temps (h)", ylab = "E_drug = Cic / (IC50 + Cic)",
+       main = "Effet Emax (driver Damage)", ylim = c(0, max(E_drug) * 1.2))
+  abline(h = 0.5, lty = 3, col = "grey50")
+  text(max(sim$time_h) * 0.55, 0.52, "E = 0.5", col = "grey50", cex = 0.8)
+  abline(v = dose_times_h, lty = 2, col = "grey60")
+
+  mtext(titre, outer = TRUE, line = -1.2, font = 2, cex = 1.1)
 
   if (!is.null(file)) {
     dev.off()
