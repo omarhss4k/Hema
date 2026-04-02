@@ -584,7 +584,6 @@ def slide8(prs):
 def main():
     prs = new_prs()
     slide1(prs)
-    slide2(prs)
     slide3(prs)
     slide4(prs)
     slide5(prs)
