@@ -157,6 +157,7 @@ simulate_pkpd_tdxd <- function(times, pars, state0,
 
   out$time_h       <- out$time
   out$time_d       <- out$time / 24
+  out$days         <- out$time / 24   # requis par plots.R (save_all_cells)
   out$C_DXd_uM     <- out$C_DXd    * pars$mgL_to_uM_DXd
   out$C_DXd_ic_uM  <- out$C_DXd_ic * pars$mgL_to_uM_DXd
 
