@@ -34,7 +34,13 @@ pkpd_tdxd_fornari <- function(time, state, pars) {
 
     rate_in <- if (!is.null(pars$rate_fun)) pars$rate_fun(time) else 0
 
-    # ADC sérum — 2 compartiments + fuite par internalisation
+    # ── Krel temps-dépendant (Yin 2020) ──────────────────
+    # Krel(cycle) = k_rel_c1 × cycle^krel_power × (krel_factor si cycle > 1)
+    cycle_num <- max(1L, floor(time / interval_h) + 1L)
+    krel_t    <- k_rel_c1 * cycle_num^krel_power *
+                 ifelse(cycle_num > 1L, krel_factor, 1.0)
+
+    # ADC sérum — 2 compartiments + fuite par internalisation (k_int)
     dC_ADC1 <- rate_in / V1_ADC +
                (Q_ADC / V2_ADC) * C_ADC2 -
                (CL_ADC / V1_ADC + Q_ADC / V1_ADC + k_int) * C_ADC1
@@ -42,8 +48,8 @@ pkpd_tdxd_fornari <- function(time, state, pars) {
     dC_ADC2 <- (Q_ADC / V1_ADC) * C_ADC1 -
                (Q_ADC / V2_ADC) * C_ADC2
 
-    # DXd plasma — libéré par internalisation + efflux cellulaire
-    release_ADC   <- mass_frac_DXd * k_int * C_ADC1 * V1_ADC / V_DXd
+    # DXd plasma — libéré via Krel(t) (empirique, Yin 2020) + efflux cellulaire
+    release_ADC   <- mass_frac_DXd * krel_t * C_ADC1 * V1_ADC / V_DXd
     flux_in_cell  <- k_inD  * C_DXd
     flux_out_cell <- k_effD * C_DXd_ic * (V_ic / V_DXd)
 

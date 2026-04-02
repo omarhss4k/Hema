@@ -44,6 +44,10 @@ cat("═════════════════════════
 cat("  MODÈLE FUSIONNÉ : T-DXd PK + Fornari PD\n")
 cat(sprintf("  %d états  |  %d paramètres\n",
             length(state0_full), length(pars_full)))
+cat(sprintf("  Krel : %.4f (C1) → %.4f (C2) → %.4f h⁻¹ (C3)  [Yin 2020]\n",
+            pars_full$k_rel_c1,
+            pars_full$k_rel_c1 * 2^pars_full$krel_power * pars_full$krel_factor,
+            pars_full$k_rel_c1 * 3^pars_full$krel_power * pars_full$krel_factor))
 cat("═══════════════════════════════════════════════════════════\n\n")
 
 # ══════════════════════════════════════════════════════════

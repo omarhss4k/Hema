@@ -59,8 +59,13 @@ tdxd_pars$CL_DXd <- CL_DXd_human_Lh * scale_CL  # L/h, rat
 # Internalisation de l'ADC dans la cellule (t½ = 46h, Vasalou 2024)
 tdxd_pars$k_int  <- log(2) / 46     # h⁻¹ ≈ 0.01507
 
-# Libération du payload intracellulaire (Vasalou 2024)
-tdxd_pars$k_rel  <- 0.0159          # h⁻¹
+# Libération du payload — Krel TEMPS-DÉPENDANT (Yin 2020, Eq. finale)
+# Krel(cycle) = k_rel_c1 × cycle^(-0.137) × (0.830 si cycle > 1)
+# → −25% au cycle 2, −29% au cycle 3, −39% au cycle 10
+tdxd_pars$k_rel_c1    <- 0.0159     # h⁻¹  (valeur cycle 1, Yin 2020)
+tdxd_pars$krel_power  <- -0.137     # exposant puissance par cycle
+tdxd_pars$krel_factor <- 0.830      # réduction additionnelle cycles > 1
+tdxd_pars$interval_h  <- 21 * 24   # h    (Q3W = 504h — à ajuster si autre schéma)
 
 # Échanges membranaires DXd (Vasalou 2024)
 tdxd_pars$k_inD  <- 0.7             # h⁻¹  (entrée intracellulaire)
@@ -140,7 +145,12 @@ cat(sprintf("  V_DXd  = %.5f L    (human: %.1f L)\n\n",
 cat("── Constantes mécanistiques ──\n")
 cat(sprintf("  k_int  = %.5f h⁻¹  (t½ internalisation = %.1f h)\n",
             tdxd_pars$k_int, log(2)/tdxd_pars$k_int))
-cat(sprintf("  k_rel  = %.4f h⁻¹\n", tdxd_pars$k_rel))
+cat(sprintf("  Krel   = %.4f × Cycle^(%.3f) × (%.3f si Cycle>1)  [Yin 2020, temps-dep.]\n",
+            tdxd_pars$k_rel_c1, tdxd_pars$krel_power, tdxd_pars$krel_factor))
+cat(sprintf("         Cycle1=%.4f  Cycle2=%.4f  Cycle3=%.4f h⁻¹\n",
+            tdxd_pars$k_rel_c1,
+            tdxd_pars$k_rel_c1 * 2^tdxd_pars$krel_power * tdxd_pars$krel_factor,
+            tdxd_pars$k_rel_c1 * 3^tdxd_pars$krel_power * tdxd_pars$krel_factor))
 cat(sprintf("  k_inD  = k_effD = %.1f h⁻¹\n", tdxd_pars$k_inD))
 cat(sprintf("  DAR    = %d  |  mass_frac_DXd = %.5f\n",
             tdxd_pars$DAR, tdxd_pars$mass_frac_DXd))

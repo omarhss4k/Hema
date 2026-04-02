@@ -35,6 +35,11 @@ pk_tdxd_ode <- function(time, state, pars) {
     # Taux de perfusion externe [mg/h]
     rate_in <- if (!is.null(pars$rate_fun)) pars$rate_fun(time) else 0
 
+    # ── Krel temps-dépendant (Yin 2020) ──
+    cycle_num <- max(1L, floor(time / interval_h) + 1L)
+    krel_t    <- k_rel_c1 * cycle_num^krel_power *
+                 ifelse(cycle_num > 1L, krel_factor, 1.0)
+
     # ── ADC — 2 compartiments avec fuite par internalisation ──
     dC_ADC1 <- rate_in / V1_ADC +
                (Q_ADC / V2_ADC) * C_ADC2 -
@@ -43,9 +48,8 @@ pk_tdxd_ode <- function(time, state, pars) {
     dC_ADC2 <- (Q_ADC / V1_ADC) * C_ADC1 -
                (Q_ADC / V2_ADC) * C_ADC2
 
-    # ── DXd plasma — alimenté par internalisation + efflux cellulaire ──
-    # Source ADC : mass_frac × k_int × (C_ADC1 × V1) / V_DXd
-    release_ADC <- mass_frac_DXd * k_int * C_ADC1 * V1_ADC / V_DXd
+    # ── DXd plasma — libéré via Krel(t) (Yin 2020) + efflux cellulaire ──
+    release_ADC <- mass_frac_DXd * krel_t * C_ADC1 * V1_ADC / V_DXd
 
     # Échanges membranaires (Vasalou 2024)
     flux_in_cell  <- k_inD  * C_DXd                    # plasma → cellule
