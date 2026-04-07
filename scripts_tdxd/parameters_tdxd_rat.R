@@ -91,6 +91,42 @@ tdxd_pars$V_ic <- 0.003      # L  (volume intracell. moelle, rat)
 tdxd_pars$k_dam <- 0.017     # h⁻¹
 tdxd_pars$k_rep <- 0.017     # h⁻¹
 
+# ── Calibration directe FDA BLA 761139 (rat) ─────────────
+# DS-8201a ne lie PAS HER2 rat → pas de TMDD
+#   → CL_ADC réelle < prédiction allométrique (pas de clairance cible-médiée)
+#   → Krel_rat << Krel_humain (libération DXd = clivage passif linker seulement,
+#      sans endocytose récepteur-médiée)
+#
+# Source : Table 6, 6-Week Intermittent IV Toxicity Study of DS-8201a in Rats
+#   20 mg/kg Q3W×3 : C0_ADC = 439 µg/mL,  AUC0-21d = 1776 µg·d/mL,  DXd_C0 = 0.819 ng/mL
+#   60 mg/kg Q3W×3 : C0_ADC = 1400 µg/mL, AUC0-21d = 4903 µg·d/mL,  DXd_C0 = 2.49 ng/mL
+
+# Sauvegarde des valeurs Yin 2020 / Vasalou (humain) avant remplacement
+k_rel_c1_yin2020 <- tdxd_pars$k_rel_c1   # 0.0159 h⁻¹ — conservé pour tdxd_pars_human
+k_int_vasalou    <- tdxd_pars$k_int       # 0.01507 h⁻¹ — conservé pour tdxd_pars_human
+
+# CL_ADC rat calibrée [L/h] = dose_mg / (AUC_µg.d/mL × 24h/d × 0.001 L/mL)
+CL_ADC_fda_20  <- (20 * tdxd_pars$BW_rat * 1e3) / (1776 * 24) / 1e3
+CL_ADC_fda_60  <- (60 * tdxd_pars$BW_rat * 1e3) / (4903 * 24) / 1e3
+CL_ADC_fda_rat <- mean(c(CL_ADC_fda_20, CL_ADC_fda_60))
+# → 1.22e-4 L/h  (vs allom. 2.56e-4 : facteur 0.48 — TMDD absent chez le rat)
+
+# Krel rat calibrée [h⁻¹] — pseudo-équilibre DXd :
+#   C_DXd_ss = Krel × C_ADC × mass_frac × V1_ADC / CL_DXd
+#   → Krel = C_DXd[mg/L] × CL_DXd / (mass_frac × C_ADC[mg/L] × V1_ADC[L])
+krel_fda_20  <- (0.819e-3) * tdxd_pars$CL_DXd /
+                (tdxd_pars$mass_frac_DXd * 439 * tdxd_pars$V1_ADC)
+krel_fda_60  <- (2.49e-3)  * tdxd_pars$CL_DXd /
+                (tdxd_pars$mass_frac_DXd * 1400 * tdxd_pars$V1_ADC)
+krel_fda_rat <- mean(c(krel_fda_20, krel_fda_60))
+# → 0.001330 h⁻¹  (vs Yin2020 0.01590 : facteur 0.084 — clivage passif uniquement)
+
+# Application des paramètres calibrés (remplace allom. + Yin2020)
+tdxd_pars$CL_ADC   <- CL_ADC_fda_rat   # L/h  — calibré FDA rat
+tdxd_pars$k_rel_c1 <- krel_fda_rat      # h⁻¹  — calibré FDA rat
+tdxd_pars$k_int    <- 0                  # DS-8201a sans liaison HER2 rat →
+                                         # pas d'internalisation récepteur-médiée
+
 # ── Conversion de concentration ──────────────────────────
 # C_DXd [mg/L] → C_DXd [µM] : × 1000 / MW_DXd
 tdxd_pars$mgL_to_uM_DXd <- 1000 / tdxd_pars$MW_DXd  # µM per mg/L
@@ -105,8 +141,8 @@ tdxd_pars_human <- list(
   Q_ADC        = Q_ADC_human_Lday  / 24,  # 0.00725 L/h
   V_DXd        = V_DXd_human_L,            # 29.41 L
   CL_DXd       = CL_DXd_human_Lh,         # 19.2 L/h
-  k_int        = tdxd_pars$k_int,
-  k_rel_c1     = tdxd_pars$k_rel_c1,
+  k_int        = k_int_vasalou,         # Vasalou 2024, humain (0.01507 h⁻¹)
+  k_rel_c1     = k_rel_c1_yin2020,     # Yin 2020, humain (0.0159 h⁻¹, non modifié)
   krel_power   = tdxd_pars$krel_power,
   krel_factor  = tdxd_pars$krel_factor,
   interval_h   = tdxd_pars$interval_h,
@@ -141,12 +177,18 @@ tdxd_fda_targets <- list(
   Cmax_DXd_ngmL = 4.4,   # ng/mL  (DXd libre plasmatique)
   Cmax_DXd_mgL  = 4.4e-3, # ng/mL → mg/L
   Cmax_DXd_uM   = (4.4e-3) * (1000 / 718.8),  # ≈ 0.00612 µM
-  # ── Toxicologie rat (DS-8201a ne lie pas HER2 rat → effet DXd-dépendant) ─
-  # Étude 4 semaines, Q3W × 3 doses (FDA BLA sec. 4.5)
-  rat_NOAEL_mgkg        = 10,   # mg/kg (pas d'effet sur sang à 10 mg/kg)
-  rat_ret_threshold_mgkg = 20,  # ≥ 20 mg/kg → ↓ réticulocytes
-  rat_ery_threshold_mgkg = 60,  # ≥ 60 mg/kg → ↓ érythroblastes
-  rat_mye_threshold_mgkg = 197  # ≥ 197 mg/kg → ↓ myélocytes
+  # ── Toxicologie rat — données hématologiques (FDA BLA Table 6) ──────────
+  # DS-8201a ne lie pas HER2 rat → effets DXd-dépendants (clivage passif)
+  # Étude 6 semaines, Q3W × 3 doses
+  # ≥ 20 mg/kg : ↓ réticulocytes (sang)
+  # ≥ 60 mg/kg : ↓ érythroblastes (BM), ↓ leucocytes/lymphocytes/neutrophiles,
+  #              ↑ plaquettes (thrombocytose réactionnelle)
+  # 197 mg/kg  : ↓ myélocytes (BM), ↓ monocytes, + effets non-hémato
+  rat_NOAEL_mgkg         = 10,   # mg/kg (doses < 20 : pas d'effet hémato)
+  rat_ret_threshold_mgkg = 20,   # ≥ 20 mg/kg → ↓ Ret
+  rat_ery_threshold_mgkg = 60,   # ≥ 60 mg/kg → ↓ érythroblastes BM
+  rat_plt_reactif_mgkg   = 60,   # ≥ 60 mg/kg → ↑ Plt (thrombocytose réactionnelle)
+  rat_mye_threshold_mgkg = 197   # 197 mg/kg → ↓ myélocytes BM
 )
 
 # Tolérance de validation (±30% pour Cmax, ±40% pour AUC)
@@ -183,12 +225,17 @@ tdxd_state0 <- c(
 
 # ── Résumé des paramètres ────────────────────────────────
 cat("╔══════════════════════════════════════════════════════════╗\n")
-cat("║  PK T-DXd — RAT (allométrie depuis Yin 2020)            ║\n")
+cat("║  PK T-DXd — RAT (calibré FDA BLA 761139 + Yin 2020)    ║\n")
 cat("╚══════════════════════════════════════════════════════════╝\n\n")
-cat(sprintf("Allométrie : scale_CL=%.5f  scale_V=%.6f\n\n", scale_CL, scale_V))
+cat(sprintf("Allométrie : scale_CL=%.5f  scale_V=%.6f\n", scale_CL, scale_V))
+cat(sprintf("Calibration FDA rat : CL_ADC × %.2f  |  Krel × %.3f  (TMDD absent)\n\n",
+            CL_ADC_fda_rat / (CL_ADC_human_Lday/24 * scale_CL),
+            krel_fda_rat / k_rel_c1_yin2020))
 cat("── ADC (2-compartiments) ──\n")
-cat(sprintf("  CL_ADC = %.4e L/h  (human: %.5f L/h)\n",
-            tdxd_pars$CL_ADC, CL_ADC_human_Lday/24))
+cat(sprintf("  CL_ADC = %.4e L/h  [FDA rat]  (allom.=%.4e, human=%.5f L/h)\n",
+            tdxd_pars$CL_ADC,
+            CL_ADC_human_Lday/24 * scale_CL,
+            CL_ADC_human_Lday/24))
 cat(sprintf("  V1_ADC = %.5f L    (human: %.2f L)\n",
             tdxd_pars$V1_ADC, V1_ADC_human_L))
 cat(sprintf("  V2_ADC = %.5f L    (human: %.2f L)\n",
@@ -201,11 +248,13 @@ cat(sprintf("  CL_DXd = %.5f L/h  (human: %.1f L/h)\n",
 cat(sprintf("  V_DXd  = %.5f L    (human: %.1f L)\n\n",
             tdxd_pars$V_DXd, V_DXd_human_L))
 cat("── Constantes mécanistiques ──\n")
-cat(sprintf("  k_int  = %.5f h⁻¹  (t½ internalisation = %.1f h)\n",
-            tdxd_pars$k_int, log(2)/tdxd_pars$k_int))
-cat(sprintf("  Krel   = %.4f × Cycle^(%.3f) × (%.3f si Cycle>1)  [Yin 2020, temps-dep.]\n",
+cat(sprintf("  k_int  = %.5f h⁻¹  [RAT=0, pas de liaison HER2]  (Vasalou humain = %.5f)\n",
+            tdxd_pars$k_int, k_int_vasalou))
+cat(sprintf("  Krel   = %.6f × Cycle^(%.3f) × (%.3f si Cycle>1)  [FDA rat calibré]\n",
             tdxd_pars$k_rel_c1, tdxd_pars$krel_power, tdxd_pars$krel_factor))
-cat(sprintf("         Cycle1=%.4f  Cycle2=%.4f  Cycle3=%.4f h⁻¹\n",
+cat(sprintf("         (Yin2020 humain = %.4f h⁻¹ → facteur rat/humain = %.3f)\n",
+            k_rel_c1_yin2020, tdxd_pars$k_rel_c1 / k_rel_c1_yin2020))
+cat(sprintf("         Cycle1=%.6f  Cycle2=%.6f  Cycle3=%.6f h⁻¹\n",
             tdxd_pars$k_rel_c1,
             tdxd_pars$k_rel_c1 * 2^tdxd_pars$krel_power * tdxd_pars$krel_factor,
             tdxd_pars$k_rel_c1 * 3^tdxd_pars$krel_power * tdxd_pars$krel_factor))
