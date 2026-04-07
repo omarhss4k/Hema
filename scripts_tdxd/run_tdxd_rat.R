@@ -80,6 +80,61 @@ plot_pk_tdxd(
 )
 
 # ──────────────────────────────────────────────────────────
+# 4. Validation PK humaine — FDA BLA 761139
+# Simule 5.4 mg/kg Q3W chez humain (70 kg, params non scalés)
+# Vérifie Cmax ADC et Cmax DXd vs cibles FDA
+# ──────────────────────────────────────────────────────────
+cat("\n=== Validation PK humaine (FDA BLA 761139) ===\n")
+cat("    Dose: 5.4 mg/kg × 70 kg = 378 mg, perfusion 1.5h, Q3W × 1 cycle\n")
+
+pars_hu          <- tdxd_pars_human
+pars_hu$rate_fun <- make_tdxd_infusion(
+  dose_mgkg = tdxd_fda_targets$dose_mgkg,
+  BW_kg     = tdxd_fda_targets$BW_kg,
+  Tinfu_h   = tdxd_fda_targets$Tinfu_h,
+  n_cycles  = 1
+)
+
+times_hu  <- seq(0, 21 * 24, by = 0.25)   # 21 jours, pas 15 min
+
+sim_hu <- simulate_pk_tdxd(times_hu, pars_hu, tdxd_state0)
+
+# Extraction des métriques
+Cmax_ADC_sim   <- max(sim_hu$C_ADC1,   na.rm = TRUE)   # mg/L
+Cmax_DXd_sim   <- max(sim_hu$C_DXd,    na.rm = TRUE)   # mg/L
+Cmax_DXd_sim_ng <- Cmax_DXd_sim * 1000                 # ng/mL
+AUC_ADC_trap   <- sum(diff(sim_hu$time_h) *
+                       (head(sim_hu$C_ADC1, -1) + tail(sim_hu$C_ADC1, -1)) / 2)
+
+cat(sprintf("\n  Résultats simulation (humain, 5.4 mg/kg Q3W) :\n"))
+cat(sprintf("  ADC  Cmax  simulé  = %6.1f mg/L    |  cible FDA = %6.1f  |  écart = %+.1f%%\n",
+            Cmax_ADC_sim,
+            tdxd_fda_targets$Cmax_ADC_mgL,
+            100 * (Cmax_ADC_sim - tdxd_fda_targets$Cmax_ADC_mgL) /
+              tdxd_fda_targets$Cmax_ADC_mgL))
+cat(sprintf("  DXd  Cmax  simulé  = %6.4f ng/mL   |  cible FDA = %6.1f  |  écart = %+.1f%%\n",
+            Cmax_DXd_sim_ng,
+            tdxd_fda_targets$Cmax_DXd_ngmL,
+            100 * (Cmax_DXd_sim_ng - tdxd_fda_targets$Cmax_DXd_ngmL) /
+              tdxd_fda_targets$Cmax_DXd_ngmL))
+cat(sprintf("  ADC  AUC0-21d sim. = %6.0f mg·h/L  |  cible ~20000 (Dose/CL)\n",
+            AUC_ADC_trap))
+
+# Verdict
+pass_Cmax_ADC <- abs(Cmax_ADC_sim - tdxd_fda_targets$Cmax_ADC_mgL) /
+                 tdxd_fda_targets$Cmax_ADC_mgL <= tdxd_fda_targets$tol_Cmax
+pass_Cmax_DXd <- abs(Cmax_DXd_sim_ng - tdxd_fda_targets$Cmax_DXd_ngmL) /
+                 tdxd_fda_targets$Cmax_DXd_ngmL <= tdxd_fda_targets$tol_Cmax
+
+cat(sprintf("\n  [%s] Cmax ADC  dans ±%.0f%% de la cible FDA\n",
+            ifelse(pass_Cmax_ADC, "OK", "!!"), tdxd_fda_targets$tol_Cmax * 100))
+cat(sprintf("  [%s] Cmax DXd  dans ±%.0f%% de la cible FDA\n",
+            ifelse(pass_Cmax_DXd, "OK", "!!"), tdxd_fda_targets$tol_Cmax * 100))
+
+if (!pass_Cmax_ADC || !pass_Cmax_DXd)
+  cat("  >>> Vérifier paramètres PK humains (CL_ADC, V1_ADC, Krel)\n")
+
+# ──────────────────────────────────────────────────────────
 # Tableau récapitulatif
 # ──────────────────────────────────────────────────────────
 cat("\n═══════════════════════════════════════════════════════════\n")
@@ -103,4 +158,7 @@ cat("  Fichiers : results_TDXD/\n")
 cat("    -> PK_5mgkg_single.pdf   (6 panels : ADC + DXd + DXd_ic + Ratio + Damage + Emax)\n")
 cat("    -> PK_10mgkg_single.pdf\n")
 cat("    -> PK_5mgkg_Q3Wx3.pdf\n")
+cat("  Validation FDA BLA 761139 :\n")
+cat("    -> Cmax ADC et DXd simulés vs cibles GeomMean FDA (5.4 mg/kg Q3W humain)\n")
+cat("    -> Cibles : ADC Cmax=122 mg/L | DXd Cmax=4.4 ng/mL\n")
 cat("═══════════════════════════════════════════════════════════\n")

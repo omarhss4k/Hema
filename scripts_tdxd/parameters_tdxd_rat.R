@@ -95,6 +95,63 @@ tdxd_pars$k_rep <- 0.017     # h⁻¹
 # C_DXd [mg/L] → C_DXd [µM] : × 1000 / MW_DXd
 tdxd_pars$mgL_to_uM_DXd <- 1000 / tdxd_pars$MW_DXd  # µM per mg/L
 
+# ── Paramètres PK humains (non scalés) ──────────────────
+# Utilisés pour validation vs données FDA BLA 761139
+# Source : Yin et al. 2020, PopPK DS-8201a ; FDA BLA 761139
+tdxd_pars_human <- list(
+  CL_ADC       = CL_ADC_human_Lday / 24,  # 0.01754 L/h
+  V1_ADC       = V1_ADC_human_L,           # 2.77 L
+  V2_ADC       = V2_ADC_human_L,           # 5.16 L
+  Q_ADC        = Q_ADC_human_Lday  / 24,  # 0.00725 L/h
+  V_DXd        = V_DXd_human_L,            # 29.41 L
+  CL_DXd       = CL_DXd_human_Lh,         # 19.2 L/h
+  k_int        = tdxd_pars$k_int,
+  k_rel_c1     = tdxd_pars$k_rel_c1,
+  krel_power   = tdxd_pars$krel_power,
+  krel_factor  = tdxd_pars$krel_factor,
+  interval_h   = tdxd_pars$interval_h,
+  k_inD        = tdxd_pars$k_inD,
+  k_effD       = tdxd_pars$k_effD,
+  V_ic         = tdxd_pars$V_ic,   # NOTE : V_ic reste valeur rat (moelle cible)
+  mass_frac_DXd = tdxd_pars$mass_frac_DXd,
+  DAR          = tdxd_pars$DAR,
+  MW_ADC       = tdxd_pars$MW_ADC,
+  MW_DXd       = tdxd_pars$MW_DXd,
+  mgL_to_uM_DXd = tdxd_pars$mgL_to_uM_DXd,
+  IC50_DXd_uM  = tdxd_pars$IC50_DXd_uM,
+  k_dam        = tdxd_pars$k_dam,
+  k_rep        = tdxd_pars$k_rep
+)
+
+# ── Cibles de validation — FDA BLA 761139 (ENHERTU, 2019) ─
+# Expositions géométriques moyennes à 5.4 mg/kg Q3W, régime approuvé
+# Source : Clinical Pharmacology Review, BLA 761139 ; Yin et al. 2020
+# ADC  : µg/mL = mg/L
+# DXd  : ng/mL (plasma, DXd libre)
+tdxd_fda_targets <- list(
+  # ── Dose ────────────────────────────────────────────────
+  dose_mgkg    = 5.4,
+  BW_kg        = 70,
+  Tinfu_h      = 1.5,     # perfusion 90 min (protocole clinique)
+  # ── ADC sérum ───────────────────────────────────────────
+  Cmax_ADC_mgL = 122,     # µg/mL ≈ mg/L  (géométrique, cycle 1, SS~cycle 3)
+  AUCtau_ADC_mgLh = 20000, # µg·h/mL approx.  (Dose/CL = 378/0.01754 ≈ 21550 h·mg/L)
+  # ── DXd plasma ──────────────────────────────────────────
+  Cmax_DXd_ngmL = 4.4,   # ng/mL  (DXd libre plasmatique)
+  Cmax_DXd_mgL  = 4.4e-3, # ng/mL → mg/L
+  Cmax_DXd_uM   = (4.4e-3) * (1000 / 718.8),  # ≈ 0.00612 µM
+  # ── Toxicologie rat (DS-8201a ne lie pas HER2 rat → effet DXd-dépendant) ─
+  # Étude 4 semaines, Q3W × 3 doses (FDA BLA sec. 4.5)
+  rat_NOAEL_mgkg        = 10,   # mg/kg (pas d'effet sur sang à 10 mg/kg)
+  rat_ret_threshold_mgkg = 20,  # ≥ 20 mg/kg → ↓ réticulocytes
+  rat_ery_threshold_mgkg = 60,  # ≥ 60 mg/kg → ↓ érythroblastes
+  rat_mye_threshold_mgkg = 197  # ≥ 197 mg/kg → ↓ myélocytes
+)
+
+# Tolérance de validation (±30% pour Cmax, ±40% pour AUC)
+tdxd_fda_targets$tol_Cmax <- 0.30
+tdxd_fda_targets$tol_AUC  <- 0.40
+
 # ── Fonction d'administration IV (perfusion courte) ──────
 make_tdxd_infusion <- function(dose_mgkg, BW_kg = 0.25,
                                Tinfu_h = 0.5, interval_h = NULL,

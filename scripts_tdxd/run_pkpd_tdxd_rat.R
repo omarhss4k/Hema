@@ -134,23 +134,41 @@ save_all_cells(
 cat("\n═══════════════════════════════════════════════════════════\n")
 cat("  COMPARAISON NADIRS\n")
 cat("─────────────────────────────────────────────────────────\n")
-cat(sprintf("  %-10s  %-12s  %-12s  %-12s\n",
-            "Dose", "Neut nadir", "Plt nadir", "Damage max"))
-cat(sprintf("  %-10s  %-12s  %-12s  %-12s\n",
+cat(sprintf("  %-10s  %-12s  %-12s  %-12s  %-12s\n",
+            "Dose", "Neut nadir", "Plt nadir", "Ret nadir", "Damage max"))
+cat(sprintf("  %-10s  %-12s  %-12s  %-12s  %-12s\n",
             "baseline",
-            sprintf("%.2f", pars_full$Neut0),
-            sprintf("%.0f", pars_full$Plt0), "—"))
-cat(sprintf("  %-10s  %-12s  %-12s  %-12s\n",
+            sprintf("%.2f",  pars_full$Neut0),
+            sprintf("%.0f",  pars_full$Plt0),
+            sprintf("%.0f",  pars_full$Ret0), "—"))
+cat(sprintf("  %-10s  %-12s  %-12s  %-12s  %-12s\n",
             "5 mg/kg",
             sprintf("%.4f", min(sim_s1$Neut)),
             sprintf("%.1f",  min(sim_s1$Plt)),
+            sprintf("%.1f",  min(sim_s1$Ret)),
             sprintf("%.4f",  max(sim_s1$Damage))))
-cat(sprintf("  %-10s  %-12s  %-12s  %-12s\n",
+cat(sprintf("  %-10s  %-12s  %-12s  %-12s  %-12s\n",
             "10 mg/kg",
             sprintf("%.4f", min(sim_s2$Neut)),
             sprintf("%.1f",  min(sim_s2$Plt)),
+            sprintf("%.1f",  min(sim_s2$Ret)),
             sprintf("%.4f",  max(sim_s2$Damage))))
 cat("═══════════════════════════════════════════════════════════\n")
+
+# ── Repères FDA BLA 761139 — toxicologie rat Q3W × 3 ─────
+# DS-8201a ne lie pas HER2 rat → effets purement DXd-dépendants
+cat("\n  Repères toxicologie rat (FDA BLA 761139, Q3W × 3) :\n")
+cat("  ├ NOAEL hémato  : ~10 mg/kg     (pas d'effet à 10 mg/kg)\n")
+cat("  ├ Réticulocytes ↓ à ≥ 20 mg/kg\n")
+cat("  ├ Érythroblastes ↓ à ≥ 60 mg/kg\n")
+cat("  └ Myélocytes    ↓ à ≥ 197 mg/kg\n")
+cat("  -> Ret nadir 5mg/kg =", sprintf("%.1f", min(sim_s1$Ret)),
+    "/ baseline", sprintf("%.0f", pars_full$Ret0), "\n")
+cat("  -> Ret nadir 10mg/kg =", sprintf("%.1f", min(sim_s2$Ret)),
+    "/ baseline", sprintf("%.0f", pars_full$Ret0), "\n")
+cat("  (Attendre ↓Ret à 20 mg/kg → simuler ce scénario si calibration requise)\n")
+
+cat("\n═══════════════════════════════════════════════════════════\n")
 cat("  Fichiers générés dans results_PKPD/ :\n")
 cat("    -> PKPD_5mgkg_Q3Wx3_cells.pdf\n")
 cat("    -> PKPD_5mgkg_Q3Wx3_pk.pdf\n")
