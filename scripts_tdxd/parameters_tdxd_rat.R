@@ -112,7 +112,8 @@ tdxd_pars_human <- list(
   interval_h   = tdxd_pars$interval_h,
   k_inD        = tdxd_pars$k_inD,
   k_effD       = tdxd_pars$k_effD,
-  V_ic         = tdxd_pars$V_ic,   # NOTE : V_ic reste valeur rat (moelle cible)
+  V_ic         = tdxd_pars$V_ic * (70 / 0.25),  # V_ic scalé humain : 0.003 × 280 = 0.84 L
+                                                 # moelle ~ 1.5% × 70 kg × 70% intracell.
   mass_frac_DXd = tdxd_pars$mass_frac_DXd,
   DAR          = tdxd_pars$DAR,
   MW_ADC       = tdxd_pars$MW_ADC,

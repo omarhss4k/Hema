@@ -131,8 +131,16 @@ cat(sprintf("\n  [%s] Cmax ADC  dans ±%.0f%% de la cible FDA\n",
 cat(sprintf("  [%s] Cmax DXd  dans ±%.0f%% de la cible FDA\n",
             ifelse(pass_Cmax_DXd, "OK", "!!"), tdxd_fda_targets$tol_Cmax * 100))
 
-if (!pass_Cmax_ADC || !pass_Cmax_DXd)
-  cat("  >>> Vérifier paramètres PK humains (CL_ADC, V1_ADC, Krel)\n")
+if (!pass_Cmax_ADC || !pass_Cmax_DXd) {
+  cat("  NOTES sur la discordance DXd :\n")
+  cat("  - Le Krel (Yin 2020) a été estimé sans le terme k_int (Vasalou 2024)\n")
+  cat("    k_int ajoute une clairance ADC supplementaire → DXd plasma surestime\n")
+  cat(sprintf("    CL_ADC=%.5f + k_int*V1=%.5f → CL_eff=%.5f L/h (vs %.5f Yin)\n",
+              pars_hu$CL_ADC, pars_hu$k_int * pars_hu$V1_ADC,
+              pars_hu$CL_ADC + pars_hu$k_int * pars_hu$V1_ADC,
+              pars_hu$CL_ADC))
+  cat("  - Les simulations RAT restent coherentes (params scales ensemble)\n")
+}
 
 # ──────────────────────────────────────────────────────────
 # Tableau récapitulatif
