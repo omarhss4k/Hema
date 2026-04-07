@@ -105,27 +105,58 @@ tdxd_pars$k_rep <- 0.017     # h⁻¹
 k_rel_c1_yin2020 <- tdxd_pars$k_rel_c1   # 0.0159 h⁻¹ — conservé pour tdxd_pars_human
 k_int_vasalou    <- tdxd_pars$k_int       # 0.01507 h⁻¹ — conservé pour tdxd_pars_human
 
-# CL_ADC rat calibrée [L/h] = dose_mg / (AUC_µg.d/mL × 24h/d × 0.001 L/mL)
-CL_ADC_fda_20  <- (20 * tdxd_pars$BW_rat * 1e3) / (1776 * 24) / 1e3
-CL_ADC_fda_60  <- (60 * tdxd_pars$BW_rat * 1e3) / (4903 * 24) / 1e3
-CL_ADC_fda_rat <- mean(c(CL_ADC_fda_20, CL_ADC_fda_60))
-# → 1.22e-4 L/h  (vs allom. 2.56e-4 : facteur 0.48 — TMDD absent chez le rat)
+# ── Données FDA Table 6 (males, Day 1) ───────────────────
+# C0 [µg/mL = mg/L], AUC0-21d [µg.d/mL = mg.d/L], T½ [jours]
+fda_tk_rat <- list(
+  list(dose_mgkg = 20, C0 = 439,  AUC21d = 1776, t_half_d = 8.07),
+  list(dose_mgkg = 60, C0 = 1400, AUC21d = 4903, t_half_d = 8.52)
+)
+
+V1_v <- CL_v <- V2_v <- c()
+
+for (d in fda_tk_rat) {
+  dose_mg <- d$dose_mgkg * tdxd_pars$BW_rat
+
+  # V1 [L] = dose [mg] / C0 [mg/L]
+  V1 <- dose_mg / d$C0
+
+  # Correction AUC0-21d → AUC0-inf : fraction éliminée = 1 - exp(-β × 504h)
+  beta    <- log(2) / (d$t_half_d * 24)    # h⁻¹
+  frac    <- 1 - exp(-beta * 504)
+  AUC_inf <- d$AUC21d / frac               # mg.d/L
+
+  # CL [L/h] = dose [mg] / (AUC [mg.d/L] × 24 h/d)
+  CL  <- dose_mg / (AUC_inf * 24)
+
+  # V_ss [L] = CL / β ; V2 = V_ss - V1
+  Vss <- CL / beta
+  V2  <- Vss - V1
+
+  V1_v <- c(V1_v, V1); CL_v <- c(CL_v, CL); V2_v <- c(V2_v, V2)
+}
+
+V1_ADC_fda_rat  <- mean(V1_v)   # 0.01105 L  (vs allom. 0.00989)
+CL_ADC_fda_rat  <- mean(CL_v)   # 1.01e-4 L/h (vs allom. 2.56e-4)
+V2_ADC_fda_rat  <- mean(V2_v)   # 0.01803 L  (vs allom. 0.01843 — quasi-identique)
+
+# Application V1, V2, CL avant le calcul de Krel (Krel dépend de V1)
+tdxd_pars$V1_ADC <- V1_ADC_fda_rat
+tdxd_pars$V2_ADC <- V2_ADC_fda_rat
+tdxd_pars$CL_ADC <- CL_ADC_fda_rat
+tdxd_pars$k_int  <- 0   # pas d'internalisation récepteur-médiée sans HER2 rat
 
 # Krel rat calibrée [h⁻¹] — pseudo-équilibre DXd :
 #   C_DXd_ss = Krel × C_ADC × mass_frac × V1_ADC / CL_DXd
-#   → Krel = C_DXd[mg/L] × CL_DXd / (mass_frac × C_ADC[mg/L] × V1_ADC[L])
+#   → Krel = C_DXd [mg/L] × CL_DXd / (mass_frac × C_ADC [mg/L] × V1_ADC [L])
+# NOTE : utilise tdxd_pars$V1_ADC déjà mis à jour ci-dessus
 krel_fda_20  <- (0.819e-3) * tdxd_pars$CL_DXd /
-                (tdxd_pars$mass_frac_DXd * 439 * tdxd_pars$V1_ADC)
+                (tdxd_pars$mass_frac_DXd * 439  * tdxd_pars$V1_ADC)
 krel_fda_60  <- (2.49e-3)  * tdxd_pars$CL_DXd /
                 (tdxd_pars$mass_frac_DXd * 1400 * tdxd_pars$V1_ADC)
 krel_fda_rat <- mean(c(krel_fda_20, krel_fda_60))
-# → 0.001330 h⁻¹  (vs Yin2020 0.01590 : facteur 0.084 — clivage passif uniquement)
+# → ~0.00119 h⁻¹  (vs Yin2020 0.01590 : facteur ~0.075)
 
-# Application des paramètres calibrés (remplace allom. + Yin2020)
-tdxd_pars$CL_ADC   <- CL_ADC_fda_rat   # L/h  — calibré FDA rat
-tdxd_pars$k_rel_c1 <- krel_fda_rat      # h⁻¹  — calibré FDA rat
-tdxd_pars$k_int    <- 0                  # DS-8201a sans liaison HER2 rat →
-                                         # pas d'internalisation récepteur-médiée
+tdxd_pars$k_rel_c1 <- krel_fda_rat   # h⁻¹ — calibré FDA rat
 
 # ── Conversion de concentration ──────────────────────────
 # C_DXd [mg/L] → C_DXd [µM] : × 1000 / MW_DXd
@@ -228,19 +259,18 @@ cat("╔════════════════════════
 cat("║  PK T-DXd — RAT (calibré FDA BLA 761139 + Yin 2020)    ║\n")
 cat("╚══════════════════════════════════════════════════════════╝\n\n")
 cat(sprintf("Allométrie : scale_CL=%.5f  scale_V=%.6f\n", scale_CL, scale_V))
-cat(sprintf("Calibration FDA rat : CL_ADC × %.2f  |  Krel × %.3f  (TMDD absent)\n\n",
+cat(sprintf("Calibration FDA rat (Table 6) : V1×%.2f  CL×%.3f  Krel×%.3f  k_int=0\n\n",
+            V1_ADC_fda_rat / (V1_ADC_human_L * scale_V),
             CL_ADC_fda_rat / (CL_ADC_human_Lday/24 * scale_CL),
             krel_fda_rat / k_rel_c1_yin2020))
 cat("── ADC (2-compartiments) ──\n")
-cat(sprintf("  CL_ADC = %.4e L/h  [FDA rat]  (allom.=%.4e, human=%.5f L/h)\n",
-            tdxd_pars$CL_ADC,
-            CL_ADC_human_Lday/24 * scale_CL,
-            CL_ADC_human_Lday/24))
-cat(sprintf("  V1_ADC = %.5f L    (human: %.2f L)\n",
-            tdxd_pars$V1_ADC, V1_ADC_human_L))
-cat(sprintf("  V2_ADC = %.5f L    (human: %.2f L)\n",
-            tdxd_pars$V2_ADC, V2_ADC_human_L))
-cat(sprintf("  Q_ADC  = %.4e L/h  (human: %.5f L/h)\n\n",
+cat(sprintf("  CL_ADC = %.4e L/h  [FDA]  (allom.=%.4e)\n",
+            tdxd_pars$CL_ADC, CL_ADC_human_Lday/24 * scale_CL))
+cat(sprintf("  V1_ADC = %.5f L    [FDA]  (allom.=%.5f)\n",
+            tdxd_pars$V1_ADC, V1_ADC_human_L * scale_V))
+cat(sprintf("  V2_ADC = %.5f L    [FDA]  (allom.=%.5f)\n",
+            tdxd_pars$V2_ADC, V2_ADC_human_L * scale_V))
+cat(sprintf("  Q_ADC  = %.4e L/h  (allom., human: %.5f L/h)\n\n",
             tdxd_pars$Q_ADC, Q_ADC_human_Lday/24))
 cat("── DXd payload (1-compartiment) ──\n")
 cat(sprintf("  CL_DXd = %.5f L/h  (human: %.1f L/h)\n",
