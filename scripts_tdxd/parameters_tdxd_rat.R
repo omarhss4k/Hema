@@ -226,6 +226,15 @@ tdxd_fda_targets <- list(
 tdxd_fda_targets$tol_Cmax <- 0.30
 tdxd_fda_targets$tol_AUC  <- 0.40
 
+# ── Calibration PD — Slope_MEP T-DXd rat ────────────────
+# Slope_MEP carboplatin (parameters_rat.R) = 2.19
+# Pour T-DXd : Damage_max plus élevé (accumulation intracell DXd)
+# → Slope_MEP = 1.00 calibré pour satisfaire les seuils FDA BLA :
+#   MEP@20 mg/kg = -9.8%  < 10% (sous seuil histopathologique, n=4)
+#   MEP@60 mg/kg = -23.7% > 20% (détectable, FDA : érythroblastes↓ à ≥60 mg/kg)
+#   (scan calibrate_slope_mep.R : 2.19→1.80→1.40→1.00)
+Slope_MEP_tdxd_rat <- 1.00
+
 # ── Fonction d'administration IV (perfusion courte) ──────
 make_tdxd_infusion <- function(dose_mgkg, BW_kg = 0.25,
                                Tinfu_h = 0.5, interval_h = NULL,
