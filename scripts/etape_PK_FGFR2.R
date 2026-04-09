@@ -170,13 +170,24 @@ objective_pk_log <- function(logpar) {
   objective_pk(par)
 }
 
-# 5 points de départ avec des asymétries V1/V2 variées
+# CL estimé depuis la pente terminale observée (3 derniers points, dose 10mg/kg)
+# beta_obs = -slope = ln(C_last2/C_last1) / dt → CL_obs = beta_obs * Vss_approx
+n_term     <- min(3, nrow(d10))
+term_pts   <- tail(d10, n_term)
+beta_obs   <- abs(coef(lm(log(c) ~ t, data = term_pts))[2])
+Vss_approx <- 3 * V1_init      # estimation grossière Vss
+CL_obs     <- beta_obs * Vss_approx
+cat("  CL depuis pente terminale :", round(CL_obs, 7), "\n")
+
+# 6 points de départ : 5 asymétriques + 1 basé sur la pente terminale observée
 start_pts <- list(
-  c(CL=CL_init,     V1=V1_init,    V2=2*V1_init,   Q=20*CL_init),
-  c(CL=CL_init,     V1=V1_init,    V2=5*V1_init,   Q=50*CL_init),
-  c(CL=CL_init,     V1=V1_init,    V2=0.5*V1_init, Q=30*CL_init),
-  c(CL=CL_init*3,   V1=V1_init,    V2=3*V1_init,   Q=10*CL_init),
-  c(CL=CL_init,     V1=V1_init,    V2=V1_init,     Q=CL_init)
+  c(CL=CL_init,   V1=V1_init, V2=2*V1_init,   Q=20*CL_init),
+  c(CL=CL_init,   V1=V1_init, V2=5*V1_init,   Q=50*CL_init),
+  c(CL=CL_init,   V1=V1_init, V2=0.5*V1_init, Q=30*CL_init),
+  c(CL=CL_init*3, V1=V1_init, V2=3*V1_init,   Q=10*CL_init),
+  c(CL=CL_init,   V1=V1_init, V2=V1_init,     Q=CL_init),
+  # Départ basé sur la pente terminale observée → force CL plus grand
+  c(CL=CL_obs,    V1=V1_init, V2=2*V1_init,   Q=10*CL_obs)
 )
 
 best_obj <- Inf
