@@ -85,20 +85,21 @@ simulate_pk <- function(times, params) {
     C2_1  = 0
   )
 
-  out <- tryCatch(
-    lsoda(y=state0, times=times,
-          func=pk_model, parms=params,
-          rtol=1e-6, atol=1e-8),
-    error   = function(e) NULL,
-    warning = function(w) {
-      # lsoda peut émettre un warning et retourner un résultat partiel
-      suppressWarnings(
+  # capture.output supprime les messages Fortran de lsoda (DLSODA stdout)
+  # Tolérances relâchées : suffisant pour l'estimation PK sur données bruitées
+  out <- tryCatch({
+    res <- NULL
+    capture.output(
+      res <- suppressWarnings(
         lsoda(y=state0, times=times,
               func=pk_model, parms=params,
-              rtol=1e-6, atol=1e-8)
-      )
-    }
-  )
+              rtol=1e-3, atol=1e-1)
+      ),
+      type = "output"
+    )
+    res
+  }, error = function(e) NULL)
+
   if (is.null(out)) return(NULL)
   as.data.frame(out)
 }
