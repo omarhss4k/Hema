@@ -157,8 +157,8 @@ cat("  V2 =", round(V2_init,  5), "(= 2 × V1)\n")
 cat("  Q  =", round(Q_init,   6), "(= 20 × CL)\n")
 
 # =============================================================================
-# 6. OPTIMISATION — nlminb sur paramètres log-transformés (multi-départ)
-# Travailler en log-espace : pas de bornes, gère tous les ordres de grandeur
+# 6. OPTIMISATION — DEoptim en log-espace → nlminb (affinage local)
+# Log-espace : gère tous les ordres de grandeur sans bornes artificielles
 # =============================================================================
 
 objective_pk_log <- function(logpar) {
@@ -167,53 +167,59 @@ objective_pk_log <- function(logpar) {
   objective_pk(par)
 }
 
-# 5 points de départ avec des asymétries V1/V2 différentes
-start_pts <- list(
-  # 1. Typique anticorps : V2>V1, Q>>CL
-  c(CL=CL_init,        V1=V1_init,     V2=2*V1_init,   Q=20*CL_init),
-  # 2. V2 encore plus grand
-  c(CL=CL_init,        V1=V1_init,     V2=5*V1_init,   Q=50*CL_init),
-  # 3. V2 petit, Q grand (distribution rapide)
-  c(CL=CL_init,        V1=V1_init,     V2=0.5*V1_init, Q=30*CL_init),
-  # 4. CL plus grand, V2 moyen
-  c(CL=CL_init*3,      V1=V1_init,     V2=3*V1_init,   Q=10*CL_init),
-  # 5. Départ "1-comp" comme avant — gardé pour comparaison
-  c(CL=CL_init,        V1=V1_init,     V2=V1_init,     Q=CL_init)
+# Bornes DEoptim en log-espace (couvrent 6 ordres de grandeur)
+log_lower <- c(CL=log(1e-6), V1=log(0.001), V2=log(0.001), Q=log(1e-5))
+log_upper <- c(CL=log(0.5),  V1=log(10),    V2=log(20),    Q=log(20))
+
+cat("\n--- DEoptim (log-espace) ---\n")
+set.seed(42)
+res_de <- DEoptim(
+  fn      = objective_pk_log,
+  lower   = log_lower,
+  upper   = log_upper,
+  control = DEoptim.control(
+    NP           = 80,
+    itermax      = 500,
+    F            = 0.8,
+    CR           = 0.9,
+    trace        = 100,
+    parallelType = 0
+  )
 )
 
-best_obj <- Inf
-best_fit <- NULL
-for (i in seq_along(start_pts)) {
-  s <- pmax(start_pts[[i]], 1e-12)   # éviter log(0)
-  cat("  Départ", i, "...\n")
-  fit_try <- tryCatch(
-    nlminb(log(s), objective_pk_log,
-           control = list(eval.max=3000, iter.max=1500,
-                          rel.tol=1e-12, x.tol=1e-12)),
-    error = function(e) NULL
-  )
-  if (!is.null(fit_try) && is.finite(fit_try$objective) &&
-      fit_try$objective < best_obj) {
-    best_obj <- fit_try$objective
-    best_fit <- fit_try
-  }
-}
+best_de_log <- res_de$optim$bestmem
+best_de     <- exp(best_de_log)
+names(best_de) <- c("CL", "V1", "V2", "Q")
+cat("CL =", round(best_de["CL"], 7), "\n")
+cat("V1 =", round(best_de["V1"], 5), "\n")
+cat("V2 =", round(best_de["V2"], 5), "\n")
+cat("Q  =", round(best_de["Q"],  5), "\n")
 
-if (is.null(best_fit)) stop("Aucun point de départ n'a convergé.")
+# --- Affinage local depuis la solution DEoptim ---
+cat("\n--- nlminb (affiné depuis DEoptim) ---\n")
+fit <- nlminb(
+  start     = best_de_log,
+  objective = objective_pk_log,
+  lower     = log_lower,
+  upper     = log_upper,
+  control   = list(eval.max=3000, iter.max=1500,
+                   rel.tol=1e-12, x.tol=1e-12)
+)
 
-best_params_pk        <- exp(best_fit$par)
+best_params_pk        <- exp(fit$par)
 names(best_params_pk) <- c("CL", "V1", "V2", "Q")
 
-cat("\n--- nlminb (multi-départ, log-espace) ---\n")
-cat("CL =", round(best_params_pk["CL"], 8), "\n")
+cat("CL =", round(best_params_pk["CL"], 7), "\n")
 cat("V1 =", round(best_params_pk["V1"], 5), "\n")
 cat("V2 =", round(best_params_pk["V2"], 5), "\n")
 cat("Q  =", round(best_params_pk["Q"],  5), "\n")
-cat("Objectif final :", best_fit$objective, "\n")
+cat("Objectif final :", fit$objective, "\n")
 
 # Demi-vie terminale approximative
-t_half <- log(2) * best_params_pk["V1"] / best_params_pk["CL"]
-cat("\nDemi-vie approx. :", round(t_half, 1), "h  =",
+Vss    <- best_params_pk["V1"] + best_params_pk["V2"]
+t_half <- log(2) * Vss / best_params_pk["CL"]
+cat("\nVss    :", round(Vss, 4), "\n")
+cat("Demi-vie terminale approx. :", round(t_half, 1), "h  =",
     round(t_half/24, 2), "jours\n")
 
 # =============================================================================
