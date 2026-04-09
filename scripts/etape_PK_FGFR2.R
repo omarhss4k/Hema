@@ -74,12 +74,13 @@ pk_model <- function(time, state, params) {
 # =============================================================================
 
 simulate_pk <- function(times, params) {
+  V1_val <- as.numeric(params["V1"])   # strip name to éviter "C1_10.V1"
   state0 <- c(
-    C1_10 = dose10 / params["V1"],
+    C1_10 = dose10 / V1_val,
     C2_10 = 0,
-    C1_5  = dose5  / params["V1"],
+    C1_5  = dose5  / V1_val,
     C2_5  = 0,
-    C1_1  = dose1  / params["V1"],
+    C1_1  = dose1  / V1_val,
     C2_1  = 0
   )
 
