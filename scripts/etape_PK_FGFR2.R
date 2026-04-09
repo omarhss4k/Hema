@@ -111,12 +111,6 @@ simulate_pk <- function(times, params) {
 objective_pk <- function(par) {
   params <- c(CL=par[1], V1=par[2], V2=par[3], Q=par[4])
 
-  # Contrainte biologique : t_half terminal > 50h
-  # (le médicament est encore présent à t=648h dans les données)
-  Vss_est    <- par[2] + par[3]
-  t_half_est <- log(2) * Vss_est / par[1]
-  if (t_half_est < 50) return(1e10)
-
   all_times <- sort(unique(c(0, d10$t, d5$t, d1$t)))
   sim <- tryCatch(simulate_pk(all_times, params), error = function(e) NULL)
   if (is.null(sim) || nrow(sim) < 2) return(1e10)
@@ -126,8 +120,8 @@ objective_pk <- function(par) {
   p5  <- approx(sim$time, sim$C1_5,  xout = d5$t)$y
   p1  <- approx(sim$time, sim$C1_1,  xout = d1$t)$y
 
-  # Rejeter si valeurs prédites trop petites (< 1% du minimum observé)
-  min_obs <- min(c(d10$c, d5$c, d1$c)) * 0.01
+  # Rejeter si valeurs prédites trop petites (< 0.1% du minimum observé)
+  min_obs <- min(c(d10$c, d5$c, d1$c), na.rm = TRUE) * 0.001
   if (any(is.na(p10) | p10 < min_obs)) return(1e10)
   if (any(is.na(p5)  | p5  < min_obs)) return(1e10)
   if (any(is.na(p1)  | p1  < min_obs)) return(1e10)
@@ -165,8 +159,9 @@ cat("  V2 =", round(V2_init,  5), "(= 2 × V1)\n")
 cat("  Q  =", round(Q_init,   6), "(= 20 × CL)\n")
 
 # =============================================================================
-# 6. OPTIMISATION — DEoptim en log-espace → nlminb (affinage local)
-# Log-espace : gère tous les ordres de grandeur sans bornes artificielles
+# 6. OPTIMISATION — multi-start nlminb en log-espace
+# DEoptim a été testé mais converge systématiquement vers des solutions
+# dégénérées (CL→0 ou t½→0). Le multi-start nlminb donne de meilleurs résultats.
 # =============================================================================
 
 objective_pk_log <- function(logpar) {
@@ -175,47 +170,37 @@ objective_pk_log <- function(logpar) {
   objective_pk(par)
 }
 
-# Bornes DEoptim en log-espace — resserrées d'après les données :
-# - Le médicament est présent à t=648h → t_half > 100h
-# - V1 ≈ dose/C0 ≈ 0.05–0.15 → [0.01, 2]
-# - CL = k_beta * Vss, k_beta ≈ 0.001–0.005/h → [1e-6, 5e-3]
-log_lower <- c(CL=log(1e-6),  V1=log(0.01), V2=log(0.01), Q=log(1e-4))
-log_upper <- c(CL=log(5e-3),  V1=log(2),    V2=log(10),   Q=log(5))
+# 5 points de départ avec des asymétries V1/V2 variées
+start_pts <- list(
+  c(CL=CL_init,     V1=V1_init,    V2=2*V1_init,   Q=20*CL_init),
+  c(CL=CL_init,     V1=V1_init,    V2=5*V1_init,   Q=50*CL_init),
+  c(CL=CL_init,     V1=V1_init,    V2=0.5*V1_init, Q=30*CL_init),
+  c(CL=CL_init*3,   V1=V1_init,    V2=3*V1_init,   Q=10*CL_init),
+  c(CL=CL_init,     V1=V1_init,    V2=V1_init,     Q=CL_init)
+)
 
-cat("\n--- DEoptim (log-espace) ---\n")
-set.seed(42)
-res_de <- DEoptim(
-  fn      = objective_pk_log,
-  lower   = log_lower,
-  upper   = log_upper,
-  control = DEoptim.control(
-    NP           = 80,
-    itermax      = 500,
-    F            = 0.8,
-    CR           = 0.9,
-    trace        = 100,
-    parallelType = 0
+best_obj <- Inf
+best_fit <- NULL
+for (i in seq_along(start_pts)) {
+  s <- pmax(start_pts[[i]], 1e-12)
+  cat("  Départ", i, "...\n")
+  fit_try <- tryCatch(
+    nlminb(log(s), objective_pk_log,
+           control = list(eval.max=3000, iter.max=1500,
+                          rel.tol=1e-12, x.tol=1e-12)),
+    error = function(e) NULL
   )
-)
+  if (!is.null(fit_try) && is.finite(fit_try$objective) &&
+      fit_try$objective < best_obj) {
+    best_obj <- fit_try$objective
+    best_fit <- fit_try
+  }
+}
 
-best_de_log <- res_de$optim$bestmem
-best_de     <- exp(best_de_log)
-names(best_de) <- c("CL", "V1", "V2", "Q")
-cat("CL =", round(best_de["CL"], 7), "\n")
-cat("V1 =", round(best_de["V1"], 5), "\n")
-cat("V2 =", round(best_de["V2"], 5), "\n")
-cat("Q  =", round(best_de["Q"],  5), "\n")
+if (is.null(best_fit)) stop("Aucun point de départ n'a convergé.")
 
-# --- Affinage local depuis la solution DEoptim ---
-cat("\n--- nlminb (affiné depuis DEoptim) ---\n")
-fit <- nlminb(
-  start     = best_de_log,
-  objective = objective_pk_log,
-  lower     = log_lower,
-  upper     = log_upper,
-  control   = list(eval.max=3000, iter.max=1500,
-                   rel.tol=1e-12, x.tol=1e-12)
-)
+cat("\n--- nlminb (meilleur départ) ---\n")
+fit <- best_fit
 
 best_params_pk        <- exp(fit$par)
 names(best_params_pk) <- c("CL", "V1", "V2", "Q")
