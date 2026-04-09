@@ -39,10 +39,11 @@ cat("Groupe 10 mg/kg :", nrow(d10), "points\n")
 cat("Groupe  5 mg/kg :", nrow(d5),  "points\n")
 cat("Groupe  1 mg/kg :", nrow(d1),  "points\n")
 
-# Doses (mg/kg)
-dose10 <- 10
-dose5  <-  5
-dose1  <-  1
+# Doses converties en µg/kg pour cohérence avec les concentrations observées
+# (ng/mL ou unité équivalente) → V1 se retrouve dans une plage raisonnable (~0.1-10)
+dose10 <- 10 * 1000   # µg/kg
+dose5  <-  5 * 1000
+dose1  <-  1 * 1000
 
 # =============================================================================
 # 2. MODÈLE ODE — 2 compartiments, 3 groupes (6 équations)
@@ -132,58 +133,77 @@ objective_pk <- function(par) {
 }
 
 # =============================================================================
-# 5. OPTIMISATION GLOBALE — DEoptim
+# 5. VALEURS INITIALES ESTIMÉES DEPUIS LES DONNÉES
 # =============================================================================
 
-set.seed(42)
-res_de <- DEoptim(
-  fn    = objective_pk,
-  lower = c(CL=0.001, V1=0.001, V2=0.001, Q=0.001),
-  upper = c(CL=100,  V1=50,   V2=50,   Q=50),
-  control = DEoptim.control(
-    NP        = 80,
-    itermax   = 500,
-    F         = 0.8,
-    CR        = 0.9,
-    trace     = 100,
-    parallelType = 0
+# V1 : dose / concentration au premier point (t=4h ≈ t=0 pour t_half long)
+V1_init <- dose10 / d10$c[1]
+
+# k_elim : pente terminale log-linéaire sur les 3 derniers points de la dose max
+n_last  <- min(3, nrow(d10))
+lm_term <- lm(log(c) ~ t, data = tail(d10, n_last))
+k_elim  <- abs(coef(lm_term)[2])   # /h
+CL_init <- k_elim * V1_init
+
+V2_init <- V1_init          # départ symétrique
+Q_init  <- CL_init
+
+cat("Valeurs initiales estimées depuis les données :\n")
+cat("  V1 =", round(V1_init, 5), "\n")
+cat("  CL =", round(CL_init, 8), "\n")
+
+# =============================================================================
+# 6. OPTIMISATION — nlminb sur paramètres log-transformés (multi-départ)
+# Travailler en log-espace : pas de bornes, gère tous les ordres de grandeur
+# =============================================================================
+
+objective_pk_log <- function(logpar) {
+  par <- exp(logpar)
+  names(par) <- c("CL", "V1", "V2", "Q")
+  objective_pk(par)
+}
+
+# 3 points de départ : nominal, ×5, ÷5
+start_pts <- list(
+  c(CL=CL_init,    V1=V1_init,    V2=V2_init,    Q=Q_init),
+  c(CL=CL_init*5,  V1=V1_init/2,  V2=V2_init*3,  Q=Q_init*3),
+  c(CL=CL_init/5,  V1=V1_init*2,  V2=V2_init/3,  Q=Q_init/3)
+)
+
+best_obj <- Inf
+best_fit <- NULL
+for (i in seq_along(start_pts)) {
+  s <- pmax(start_pts[[i]], 1e-12)   # éviter log(0)
+  cat("  Départ", i, "...\n")
+  fit_try <- tryCatch(
+    nlminb(log(s), objective_pk_log,
+           control = list(eval.max=3000, iter.max=1500,
+                          rel.tol=1e-12, x.tol=1e-12)),
+    error = function(e) NULL
   )
-)
+  if (!is.null(fit_try) && is.finite(fit_try$objective) &&
+      fit_try$objective < best_obj) {
+    best_obj <- fit_try$objective
+    best_fit <- fit_try
+  }
+}
 
-best_de <- res_de$optim$bestmem
-cat("\n--- DEoptim ---\n")
-cat("CL =", round(best_de["CL"], 5), "(mg/kg)/(conc·h)\n")
-cat("V1 =", round(best_de["V1"], 5), "(mg/kg)/conc\n")
-cat("V2 =", round(best_de["V2"], 5), "(mg/kg)/conc\n")
-cat("Q  =", round(best_de["Q"],  5), "(mg/kg)/(conc·h)\n")
+if (is.null(best_fit)) stop("Aucun point de départ n'a convergé.")
 
-# =============================================================================
-# 6. AFFINAGE LOCAL — nlminb
-# =============================================================================
+best_params_pk        <- exp(best_fit$par)
+names(best_params_pk) <- c("CL", "V1", "V2", "Q")
 
-fit <- nlminb(
-  start     = best_de,
-  objective = objective_pk,
-  lower     = c(0.001, 0.001, 0.001, 0.001),
-  upper     = c(100,   50,   50,    50),
-  control   = list(eval.max=2000, iter.max=1000,
-                   rel.tol=1e-12, x.tol=1e-12)
-)
+cat("\n--- nlminb (multi-départ, log-espace) ---\n")
+cat("CL =", round(best_params_pk["CL"], 8), "\n")
+cat("V1 =", round(best_params_pk["V1"], 5), "\n")
+cat("V2 =", round(best_params_pk["V2"], 5), "\n")
+cat("Q  =", round(best_params_pk["Q"],  5), "\n")
+cat("Objectif final :", best_fit$objective, "\n")
 
-cat("\n--- nlminb (affiné) ---\n")
-cat("CL =", round(fit$par["CL"], 5), "\n")
-cat("V1 =", round(fit$par["V1"], 5), "\n")
-cat("V2 =", round(fit$par["V2"], 5), "\n")
-cat("Q  =", round(fit$par["Q"],  5), "\n")
-cat("Objectif final :", fit$objective, "\n")
-
-# Demi-vie terminale approximative (heures)
-pk_params <- fit$par
-t_half <- log(2) * pk_params["V1"] / pk_params["CL"]
+# Demi-vie terminale approximative
+t_half <- log(2) * best_params_pk["V1"] / best_params_pk["CL"]
 cat("\nDemi-vie approx. :", round(t_half, 1), "h  =",
     round(t_half/24, 2), "jours\n")
-
-best_params_pk <- fit$par
 
 # =============================================================================
 # 7. SIMULATION FINALE ET GRAPHIQUE
