@@ -41,18 +41,56 @@ cat("Points totaux :", nrow(df), "\n")
 
 fit <- lm(log(C / dose) ~ t, data = df)
 
-k_elim <- -coef(fit)[["t"]]              # /h
-V1     <-  exp(-coef(fit)[["(Intercept)"]])
-CL     <-  k_elim * V1                   # même unités/h
-t_half <-  log(2) / k_elim               # heures
+# Valeurs initiales depuis la régression
+k_init  <- -coef(fit)[["t"]]
+V1_init <-  exp(-coef(fit)[["(Intercept)"]])
 
-cat("\n=== PK 1-compartiment ===\n")
+cat("\n--- Régression log-linéaire (départ) ---\n")
+cat("V1 =", round(V1_init, 5), "  k =", round(k_init, 6), "/h\n")
+cat("R² =", round(summary(fit)$r.squared, 4), "\n")
+
+# =============================================================================
+# OPTIMISATION — nlminb sur paramètres log-transformés
+# Objectif : résidus log pondérés équitablement par groupe
+# =============================================================================
+
+d10 <- df[df$Dose == "10 mg/kg", ]
+d5  <- df[df$Dose == "5 mg/kg",  ]
+d1  <- df[df$Dose == "1 mg/kg",  ]
+
+objective_1comp <- function(logpar) {
+  k  <- exp(logpar[1])
+  V1 <- exp(logpar[2])
+
+  pred <- function(dose, t) (dose / V1) * exp(-k * t)
+
+  r10 <- log(d10$C) - log(pred(dose10, d10$t))
+  r5  <- log(d5$C)  - log(pred(dose5,  d5$t))
+  r1  <- log(d1$C)  - log(pred(dose1,  d1$t))
+
+  # Poids égaux par groupe (indépendant du nombre de points par groupe)
+  mean(r10^2) + mean(r5^2) + mean(r1^2)
+}
+
+fit_opt <- nlminb(
+  start   = log(c(k_init, V1_init)),
+  objective = objective_1comp,
+  control = list(eval.max = 2000, iter.max = 1000,
+                 rel.tol = 1e-12, x.tol = 1e-12)
+)
+
+k_elim <- exp(fit_opt$par[1])
+V1     <- exp(fit_opt$par[2])
+CL     <- k_elim * V1
+t_half <- log(2) / k_elim
+
+cat("\n=== nlminb (affiné, poids égaux par groupe) ===\n")
 cat("V1     =", round(V1,     5), "\n")
 cat("k_elim =", round(k_elim, 6), "/h\n")
 cat("CL     =", round(CL,     7), "\n")
 cat("t½     =", round(t_half, 1), "h  =", round(t_half/24, 2), "jours\n")
 cat("CL (L/j/kg) =", round(CL * 24, 5), "\n")
-cat("R²     =", round(summary(fit)$r.squared, 4), "\n")
+cat("Objectif    =", round(fit_opt$objective, 6), "\n")
 
 # =============================================================================
 # GRAPHIQUE
@@ -64,7 +102,7 @@ df_sim <- do.call(rbind, lapply(
   list(c(dose10,"10 mg/kg"), c(dose5,"5 mg/kg"), c(dose1,"1 mg/kg")),
   function(x) data.frame(
     t    = times_full,
-    C    = as.numeric(x[1]) * exp(coef(fit)[1]) * exp(-k_elim * times_full),
+    C    = (as.numeric(x[1]) / V1) * exp(-k_elim * times_full),
     Dose = x[2]
   )
 ))
