@@ -34,18 +34,23 @@ df$Dose <- factor(df$Dose, levels=c("10 mg/kg","5 mg/kg","1 mg/kg"))
 
 cat("Points totaux :", nrow(df), "\n")
 
+# Seuil : on ne garde que la phase terminale (après la distribution)
+t_terminal <- 168   # heures — premier point hors phase de distribution
+df_term <- df[df$t >= t_terminal, ]
+cat("Points phase terminale (t ≥", t_terminal, "h) :", nrow(df_term), "\n")
+
 # =============================================================================
-# ESTIMATION — une seule régression linéaire sur log(C/dose) ~ t
-# Hypothèse : PK linéaire (mêmes V1 et k pour les 3 doses)
+# ESTIMATION — régression sur la phase terminale uniquement
+# Hypothèse : PK linéaire, 1-comp, phase de distribution terminée à t≥168h
 # =============================================================================
 
-fit <- lm(log(C / dose) ~ t, data = df)
+fit <- lm(log(C / dose) ~ t, data = df_term)
 
 # Valeurs initiales depuis la régression
 k_init  <- -coef(fit)[["t"]]
 V1_init <-  exp(-coef(fit)[["(Intercept)"]])
 
-cat("\n--- Régression log-linéaire (départ) ---\n")
+cat("\n--- Régression log-linéaire phase terminale (départ) ---\n")
 cat("V1 =", round(V1_init, 5), "  k =", round(k_init, 6), "/h\n")
 cat("R² =", round(summary(fit)$r.squared, 4), "\n")
 
@@ -54,9 +59,9 @@ cat("R² =", round(summary(fit)$r.squared, 4), "\n")
 # Objectif : résidus log pondérés équitablement par groupe
 # =============================================================================
 
-d10 <- df[df$Dose == "10 mg/kg", ]
-d5  <- df[df$Dose == "5 mg/kg",  ]
-d1  <- df[df$Dose == "1 mg/kg",  ]
+d10 <- df_term[df_term$Dose == "10 mg/kg", ]
+d5  <- df_term[df_term$Dose == "5 mg/kg",  ]
+d1  <- df_term[df_term$Dose == "1 mg/kg",  ]
 
 objective_1comp <- function(logpar) {
   k  <- exp(logpar[1])
@@ -110,13 +115,23 @@ df_sim$Dose <- factor(df_sim$Dose, levels=c("10 mg/kg","5 mg/kg","1 mg/kg"))
 
 ggplot() +
   geom_line(data=df_sim, aes(x=t, y=C, color=Dose), linewidth=1) +
-  geom_point(data=df,    aes(x=t, y=C, color=Dose), size=2.5) +
+  # Tous les points observés (phase distribution en transparent)
+  geom_point(data=df[df$t < t_terminal, ],
+             aes(x=t, y=C, color=Dose), size=2.5, alpha=0.3, shape=1) +
+  # Points phase terminale (pleins)
+  geom_point(data=df[df$t >= t_terminal, ],
+             aes(x=t, y=C, color=Dose), size=2.5) +
+  geom_vline(xintercept=t_terminal, linetype="dashed", color="grey50") +
+  annotate("text", x=t_terminal+10, y=max(df$C)*0.7,
+           label=paste0("t = ", t_terminal, "h\n(phase terminale)"),
+           hjust=0, size=3, color="grey40") +
   scale_y_log10() +
   labs(
-    title    = "PK 1-comp — Fc-silent B/C huBPA-LP1 (FGFR2)",
+    title    = "PK 1-comp phase terminale — Fc-silent B/C huBPA-LP1 (FGFR2)",
     subtitle = paste0("V1=", round(V1,4),
                       "  CL=", round(CL,6),
-                      "  t½=", round(t_half,1), "h"),
+                      "  t½=", round(t_half,1), "h  (ajusté sur t≥",
+                      t_terminal, "h)"),
     x = "Temps (heures)",
     y = "Concentration (échelle log)"
   ) +
