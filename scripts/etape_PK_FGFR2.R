@@ -84,9 +84,21 @@ simulate_pk <- function(times, params) {
     C2_1  = 0
   )
 
-  out <- lsoda(y=state0, times=times,
-               func=pk_model, parms=params,
-               rtol=1e-8, atol=1e-10)
+  out <- tryCatch(
+    lsoda(y=state0, times=times,
+          func=pk_model, parms=params,
+          rtol=1e-6, atol=1e-8),
+    error   = function(e) NULL,
+    warning = function(w) {
+      # lsoda peut émettre un warning et retourner un résultat partiel
+      suppressWarnings(
+        lsoda(y=state0, times=times,
+              func=pk_model, parms=params,
+              rtol=1e-6, atol=1e-8)
+      )
+    }
+  )
+  if (is.null(out)) return(NULL)
   as.data.frame(out)
 }
 
@@ -100,6 +112,8 @@ objective_pk <- function(par) {
   all_times <- sort(unique(c(0, d10$t, d5$t, d1$t)))
   sim <- tryCatch(simulate_pk(all_times, params), error = function(e) NULL)
   if (is.null(sim) || nrow(sim) < 2) return(1e10)
+  # Vérifier que tous les temps demandés sont dans la sortie
+  if (max(sim$time) < max(all_times) * 0.99) return(1e10)
 
   p10 <- approx(sim$time, sim$C1_10, xout = d10$t)$y
   p5  <- approx(sim$time, sim$C1_5,  xout = d5$t)$y
@@ -124,7 +138,7 @@ objective_pk <- function(par) {
 set.seed(42)
 res_de <- DEoptim(
   fn    = objective_pk,
-  lower = c(CL=1e-4, V1=1e-4, V2=1e-4, Q=1e-5),
+  lower = c(CL=0.001, V1=0.001, V2=0.001, Q=0.001),
   upper = c(CL=100,  V1=50,   V2=50,   Q=50),
   control = DEoptim.control(
     NP        = 80,
@@ -150,8 +164,8 @@ cat("Q  =", round(best_de["Q"],  5), "(mg/kg)/(conc·h)\n")
 fit <- nlminb(
   start     = best_de,
   objective = objective_pk,
-  lower     = c(1e-4, 1e-4, 1e-4, 1e-5),
-  upper     = c(100,  50,   50,   50),
+  lower     = c(0.001, 0.001, 0.001, 0.001),
+  upper     = c(100,   50,   50,    50),
   control   = list(eval.max=2000, iter.max=1000,
                    rel.tol=1e-12, x.tol=1e-12)
 )
