@@ -145,12 +145,16 @@ lm_term <- lm(log(c) ~ t, data = tail(d10, n_last))
 k_elim  <- abs(coef(lm_term)[2])   # /h
 CL_init <- k_elim * V1_init
 
-V2_init <- V1_init          # départ symétrique
-Q_init  <- CL_init
+# V2, Q : plusieurs hypothèses pour briser la symétrie V1=V2
+# Pour un anticorps : V2 > V1 (distribution tissulaire), Q >> CL (échange rapide)
+V2_init <- 2 * V1_init
+Q_init  <- 20 * CL_init
 
 cat("Valeurs initiales estimées depuis les données :\n")
-cat("  V1 =", round(V1_init, 5), "\n")
-cat("  CL =", round(CL_init, 8), "\n")
+cat("  V1 =", round(V1_init,  5), "\n")
+cat("  CL =", round(CL_init,  8), "\n")
+cat("  V2 =", round(V2_init,  5), "(= 2 × V1)\n")
+cat("  Q  =", round(Q_init,   6), "(= 20 × CL)\n")
 
 # =============================================================================
 # 6. OPTIMISATION — nlminb sur paramètres log-transformés (multi-départ)
@@ -163,11 +167,18 @@ objective_pk_log <- function(logpar) {
   objective_pk(par)
 }
 
-# 3 points de départ : nominal, ×5, ÷5
+# 5 points de départ avec des asymétries V1/V2 différentes
 start_pts <- list(
-  c(CL=CL_init,    V1=V1_init,    V2=V2_init,    Q=Q_init),
-  c(CL=CL_init*5,  V1=V1_init/2,  V2=V2_init*3,  Q=Q_init*3),
-  c(CL=CL_init/5,  V1=V1_init*2,  V2=V2_init/3,  Q=Q_init/3)
+  # 1. Typique anticorps : V2>V1, Q>>CL
+  c(CL=CL_init,        V1=V1_init,     V2=2*V1_init,   Q=20*CL_init),
+  # 2. V2 encore plus grand
+  c(CL=CL_init,        V1=V1_init,     V2=5*V1_init,   Q=50*CL_init),
+  # 3. V2 petit, Q grand (distribution rapide)
+  c(CL=CL_init,        V1=V1_init,     V2=0.5*V1_init, Q=30*CL_init),
+  # 4. CL plus grand, V2 moyen
+  c(CL=CL_init*3,      V1=V1_init,     V2=3*V1_init,   Q=10*CL_init),
+  # 5. Départ "1-comp" comme avant — gardé pour comparaison
+  c(CL=CL_init,        V1=V1_init,     V2=V1_init,     Q=CL_init)
 )
 
 best_obj <- Inf
