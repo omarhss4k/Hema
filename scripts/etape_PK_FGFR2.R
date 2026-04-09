@@ -110,19 +110,26 @@ simulate_pk <- function(times, params) {
 objective_pk <- function(par) {
   params <- c(CL=par[1], V1=par[2], V2=par[3], Q=par[4])
 
+  # Contrainte biologique : t_half terminal > 50h
+  # (le médicament est encore présent à t=648h dans les données)
+  Vss_est    <- par[2] + par[3]
+  t_half_est <- log(2) * Vss_est / par[1]
+  if (t_half_est < 50) return(1e10)
+
   all_times <- sort(unique(c(0, d10$t, d5$t, d1$t)))
   sim <- tryCatch(simulate_pk(all_times, params), error = function(e) NULL)
   if (is.null(sim) || nrow(sim) < 2) return(1e10)
-  # Vérifier que tous les temps demandés sont dans la sortie
   if (max(sim$time) < max(all_times) * 0.99) return(1e10)
 
   p10 <- approx(sim$time, sim$C1_10, xout = d10$t)$y
   p5  <- approx(sim$time, sim$C1_5,  xout = d5$t)$y
   p1  <- approx(sim$time, sim$C1_1,  xout = d1$t)$y
 
-  if (any(is.na(p10) | p10 <= 0)) return(1e10)
-  if (any(is.na(p5)  | p5  <= 0)) return(1e10)
-  if (any(is.na(p1)  | p1  <= 0)) return(1e10)
+  # Rejeter si valeurs prédites trop petites (< 1% du minimum observé)
+  min_obs <- min(c(d10$c, d5$c, d1$c)) * 0.01
+  if (any(is.na(p10) | p10 < min_obs)) return(1e10)
+  if (any(is.na(p5)  | p5  < min_obs)) return(1e10)
+  if (any(is.na(p1)  | p1  < min_obs)) return(1e10)
 
   val <- sum((log(d10$c) - log(p10))^2) +
          sum((log(d5$c)  - log(p5))^2)  +
@@ -167,9 +174,12 @@ objective_pk_log <- function(logpar) {
   objective_pk(par)
 }
 
-# Bornes DEoptim en log-espace (couvrent 6 ordres de grandeur)
-log_lower <- c(CL=log(1e-6), V1=log(0.001), V2=log(0.001), Q=log(1e-5))
-log_upper <- c(CL=log(0.5),  V1=log(10),    V2=log(20),    Q=log(20))
+# Bornes DEoptim en log-espace — resserrées d'après les données :
+# - Le médicament est présent à t=648h → t_half > 100h
+# - V1 ≈ dose/C0 ≈ 0.05–0.15 → [0.01, 2]
+# - CL = k_beta * Vss, k_beta ≈ 0.001–0.005/h → [1e-6, 5e-3]
+log_lower <- c(CL=log(1e-6),  V1=log(0.01), V2=log(0.01), Q=log(1e-4))
+log_upper <- c(CL=log(5e-3),  V1=log(2),    V2=log(10),   Q=log(5))
 
 cat("\n--- DEoptim (log-espace) ---\n")
 set.seed(42)
