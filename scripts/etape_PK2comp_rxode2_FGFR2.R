@@ -83,10 +83,10 @@ init_params <- c(
 )
 
 cat("=== Valeurs initiales (méthode des résidus) ===\n")
-cat("CL =", round(init_params["CL"], 6), "\n")
-cat("V1 =", round(init_params["V1"], 5), "\n")
-cat("V2 =", round(init_params["V2"], 5), "\n")
-cat("Q  =", round(init_params["Q"],  6), "\n")
+cat("CL =", round(init_params["CL"], 6), "L/h/kg\n")
+cat("V1 =", round(init_params["V1"], 5), "L/kg\n")
+cat("V2 =", round(init_params["V2"], 5), "L/kg\n")
+cat("Q  =", round(init_params["Q"],  6), "L/h/kg\n")
 
 # =============================================================================
 # 4. FONCTION OBJECTIVE — résidus log, poids égaux par groupe
@@ -144,19 +144,26 @@ t_half_alpha <- log(2) / alpha
 t_half_beta  <- log(2) / beta
 
 cat("\n=== Paramètres PK 2-compartiments (rxode2 + nlminb) ===\n")
-cat("CL  =", round(best_par["CL"], 6), "L/h/kg  →",
-             round(best_par["CL"] * 24, 4), "L/j/kg\n")
-cat("V1  =", round(best_par["V1"], 5), "L/kg\n")
-cat("V2  =", round(best_par["V2"], 5), "L/kg\n")
-cat("Q   =", round(best_par["Q"],  6), "L/h/kg\n")
-cat("Vss =", round(Vss, 5), "L/kg\n")
-cat("k10 =", round(k10, 6), "/h\n")
-cat("k12 =", round(k12, 6), "/h\n")
-cat("k21 =", round(k21, 6), "/h\n")
-cat("t½α =", round(t_half_alpha, 2), "h\n")
-cat("t½β =", round(t_half_beta,  1), "h  =",
-             round(t_half_beta / 24, 2), "jours\n")
-cat("Objectif final :", round(fit$objective, 6), "\n")
+cat("--- Paramètres macro ---\n")
+cat("CL  =", round(best_par["CL"],        6), "L/h/kg",
+    "  =", round(best_par["CL"] * 24,    4), "L/j/kg\n")
+cat("V1  =", round(best_par["V1"],        5), "L/kg   (compartiment central)\n")
+cat("V2  =", round(best_par["V2"],        5), "L/kg   (compartiment périphérique)\n")
+cat("Vss =", round(Vss,                   5), "L/kg   (volume de distribution à l'état stationnaire)\n")
+cat("Q   =", round(best_par["Q"],         6), "L/h/kg",
+    "  =", round(best_par["Q"]  * 24,    4), "L/j/kg (clairance inter-compartimentale)\n")
+cat("--- Constantes de vitesse ---\n")
+cat("k10 =", round(k10, 6), "/h  (élimination : CL/V1)\n")
+cat("k12 =", round(k12, 6), "/h  (transfert C1→C2 : Q/V1)\n")
+cat("k21 =", round(k21, 6), "/h  (transfert C2→C1 : Q/V2)\n")
+cat("--- Demi-vies ---\n")
+cat("α   =", round(alpha, 6), "/h\n")
+cat("β   =", round(beta,  7), "/h\n")
+cat("t½α =", round(t_half_alpha, 2), "h   (phase de distribution)\n")
+cat("t½β =", round(t_half_beta,  1), "h",
+    "  =", round(t_half_beta / 24, 2), "jours  (phase d'élimination)\n")
+cat("--- Ajustement ---\n")
+cat("Objectif final :", round(fit$objective, 6), "(somme résidus² log)\n")
 
 # =============================================================================
 # 7. SIMULATION FINALE ET GRAPHIQUE
