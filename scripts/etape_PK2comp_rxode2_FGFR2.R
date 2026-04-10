@@ -190,11 +190,11 @@ ggplot() +
   labs(
     title    = "PK 2-compartiments (rxode2) — Fc-silent B/C huBPA-LP1 (FGFR2)",
     subtitle = paste0(
-      "V1 = ", round(best_par["V1"], 4),
-      "  V2 = ", round(best_par["V2"], 4),
-      "  CL = ", round(best_par["CL"], 6),
-      "  t½α = ", round(t_half_alpha, 1), "h",
-      "  t½β = ", round(t_half_beta,  1), "h"
+      "V1 = ", round(best_par["V1"], 4), " L/kg",
+      "   V2 = ", round(best_par["V2"], 4), " L/kg",
+      "   CL = ", round(best_par["CL"] * 24, 4), " L/j/kg",
+      "   t½α = ", round(t_half_alpha, 1), " h",
+      "   t½β = ", round(t_half_beta / 24, 1), " j"
     ),
     x = "Temps (heures)",
     y = "Concentration (échelle log)"
