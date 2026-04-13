@@ -37,6 +37,9 @@ pars_pd_hu[["k_dam"]] <- NULL
 pars_pd_hu[["k_rep"]] <- NULL
 pars_typ   <- c(pars_pd_hu, tdxd_pars_hu)
 
+# ── Override Slope_CMP calibré T-DXd (DESTINY-Breast01) ──
+pars_typ$Slope_CMP <- Slope_CMP_tdxd_human
+
 state_pd_hu <- init_state[!names(init_state) %in% c("C1", "C2", "Damage")]
 state0_hu   <- c(tdxd_hu_state0, state_pd_hu)
 

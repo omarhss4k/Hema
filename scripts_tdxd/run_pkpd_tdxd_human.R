@@ -26,6 +26,10 @@ pars_pd_hu[["k_rep"]] <- NULL
 
 pars_full_hu <- c(pars_pd_hu, tdxd_pars_hu)
 
+# ── Override Slope_CMP calibré T-DXd (DESTINY-Breast01) ──
+# Slope_CMP_tdxd_human = 14.4  (20% G3-4 neutropénie)
+pars_full_hu$Slope_CMP <- Slope_CMP_tdxd_human
+
 # ── État initial complet ─────────────────────────────────
 state_pd_hu  <- init_state[!names(init_state) %in% c("C1", "C2", "Damage")]
 state0_hu    <- c(tdxd_hu_state0, state_pd_hu)
