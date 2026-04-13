@@ -59,10 +59,17 @@ pkpd_tdxd_fornari <- function(time, state, pars) {
     # DXd intracellulaire (moelle osseuse)
     dC_DXd_ic <- k_inD * C_DXd * (V_DXd / V_ic) - k_effD * C_DXd_ic
 
-    # Dommages ADN — Emax via DXd intracellulaire
-    C_DXd_ic_uM <- C_DXd_ic * mgL_to_uM_DXd
-    E_drug       <- C_DXd_ic_uM / (IC50_DXd_uM + C_DXd_ic_uM)
-    dDamage      <- k_dam * E_drug - k_rep * Damage
+    # Dommages ADN — Emax
+    # Mode 1 (défaut) : driver = C_DXd_ic [µM]  (Yin 2020, DXd intracell.)
+    # Mode 2 (use_ADC_driver=TRUE) : driver = C_ADC1 [µg/mL]  (PFB-10 HPC assay)
+    use_adc <- if (!is.null(pars$use_ADC_driver)) pars$use_ADC_driver else FALSE
+    if (use_adc) {
+      E_drug <- C_ADC1 / (IC50_ADC_ugmL + C_ADC1)
+    } else {
+      C_DXd_ic_uM <- C_DXd_ic * mgL_to_uM_DXd
+      E_drug       <- C_DXd_ic_uM / (IC50_DXd_uM + C_DXd_ic_uM)
+    }
+    dDamage <- k_dam * E_drug - k_rep * Damage
 
     # ════════════════════════════════════════════════════
     # BLOC 2 — PD Fornari (Equations 1–9 + feedbacks 11–13)
