@@ -65,11 +65,13 @@ tdxd_pars_hu <- list(
   k_rep         = 0.017,        # h⁻¹  (Fornari)
 
   # ── IC50 DXd — spécifique HPC (hématopoïétique) ─────────
-  # Valeurs in vitro sur progéniteurs humains (CFU-assay) :
-  IC50_DXd_ery_nM  = 27.3,     # nM — progéniteurs érythroïdes (MEP/Ret)
-  IC50_DXd_neut_nM = 28.1,     # nM — progéniteurs myéloïdes (CMP/Neut)
-  # Moyenne géométrique utilisée pour la variable Damage partagée :
-  IC50_DXd_uM   = sqrt(27.3 * 28.1) / 1000   # 0.02770 µM
+  # Valeurs in vitro sur progéniteurs humains (µg/mL → µM, MW=718.8) :
+  IC50_DXd_ery_ugmL  = 27.3,                      # µg/mL — érythroïdes
+  IC50_DXd_neut_ugmL = 28.1,                      # µg/mL — myéloïdes
+  IC50_DXd_ery_uM    = 27.3  * 1000 / 718.8,     # 37.98 µM
+  IC50_DXd_neut_uM   = 28.1  * 1000 / 718.8,     # 39.10 µM
+  # Moyenne géométrique pour la variable Damage partagée :
+  IC50_DXd_uM   = sqrt(27.3 * 28.1) * 1000 / 718.8   # 38.53 µM
 )
 
 tdxd_pars_hu$mgL_to_uM_DXd <- 1000 / tdxd_pars_hu$MW_DXd
@@ -125,7 +127,9 @@ cat(sprintf("  Neut0=%.1f  Ret0=%.0f  MEP0=%.1f  Plt0=%.0f  [×10⁹/L]\n",
             init_pars$MEP0,  init_pars$Plt0))
 cat(sprintf("  Slope_MEP=%.2f  Slope_CMP=%.2f  Slope_MPP=%.2f\n",
             init_pars$Slope_MEP, init_pars$Slope_CMP, init_pars$Slope_MPP))
-cat(sprintf("  IC50_DXd (HPC) : ery=%.1f nM  neut=%.1f nM  → IC50_shared=%.4f µM\n\n",
-            tdxd_pars_hu$IC50_DXd_ery_nM,
-            tdxd_pars_hu$IC50_DXd_neut_nM,
-            tdxd_pars_hu$IC50_DXd_uM))
+cat(sprintf("  IC50_DXd (HPC) : ery=%.1f µg/mL (%.1f µM)  neut=%.1f µg/mL (%.1f µM)\n",
+            tdxd_pars_hu$IC50_DXd_ery_ugmL,  tdxd_pars_hu$IC50_DXd_ery_uM,
+            tdxd_pars_hu$IC50_DXd_neut_ugmL, tdxd_pars_hu$IC50_DXd_neut_uM))
+cat(sprintf("  IC50_shared = %.2f µM  (DXd_ic_Cmax = 0.187 µM → E_drug_max = %.4f)\n\n",
+            tdxd_pars_hu$IC50_DXd_uM,
+            0.187 / (tdxd_pars_hu$IC50_DXd_uM + 0.187)))
