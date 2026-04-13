@@ -64,8 +64,12 @@ tdxd_pars_hu <- list(
   k_dam         = 0.017,        # h⁻¹  (Fornari)
   k_rep         = 0.017,        # h⁻¹  (Fornari)
 
-  # ── IC50 DXd topoisomérase I ────────────────────────────
-  IC50_DXd_uM   = 0.31          # µM   (Ogitani 2016, cellules HER2+)
+  # ── IC50 DXd — spécifique HPC (hématopoïétique) ─────────
+  # Valeurs in vitro sur progéniteurs humains (CFU-assay) :
+  IC50_DXd_ery_nM  = 27.3,     # nM — progéniteurs érythroïdes (MEP/Ret)
+  IC50_DXd_neut_nM = 28.1,     # nM — progéniteurs myéloïdes (CMP/Neut)
+  # Moyenne géométrique utilisée pour la variable Damage partagée :
+  IC50_DXd_uM   = sqrt(27.3 * 28.1) / 1000   # 0.02770 µM
 )
 
 tdxd_pars_hu$mgL_to_uM_DXd <- 1000 / tdxd_pars_hu$MW_DXd
@@ -121,5 +125,7 @@ cat(sprintf("  Neut0=%.1f  Ret0=%.0f  MEP0=%.1f  Plt0=%.0f  [×10⁹/L]\n",
             init_pars$MEP0,  init_pars$Plt0))
 cat(sprintf("  Slope_MEP=%.2f  Slope_CMP=%.2f  Slope_MPP=%.2f\n",
             init_pars$Slope_MEP, init_pars$Slope_CMP, init_pars$Slope_MPP))
-cat(sprintf("  IC50_DXd = %.2f µM  (topoisomérase I)\n\n",
+cat(sprintf("  IC50_DXd (HPC) : ery=%.1f nM  neut=%.1f nM  → IC50_shared=%.4f µM\n\n",
+            tdxd_pars_hu$IC50_DXd_ery_nM,
+            tdxd_pars_hu$IC50_DXd_neut_nM,
             tdxd_pars_hu$IC50_DXd_uM))
