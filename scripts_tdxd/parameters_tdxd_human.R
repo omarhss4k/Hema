@@ -91,27 +91,25 @@ tdxd_pars_hu$mgL_to_uM_DXd <- 1000 / tdxd_pars_hu$MW_DXd
 
 # ── Slope_CMP calibré pour T-DXd humain ──────────────────
 # Calibration depuis DESTINY-Breast01 (FDA BLA 761139, n=184) :
-#   Cible : G3-4 neutropénie ~20% → Slope_CMP_tdxd_human = 12.0
-#   Méthode : scan N=100 patients, IIV CL_ADC/V1_ADC/Slope_CMP
-#   Résultats (N=300 patients) :
-#     Slope=12 → G3-4 = 15.7%  ✓ (fourchette FDA 16-20%)
-#     G3-4 anémie = 6.0%        ✓ (FDA ~9%)
-#     ADC Cmax = 121 µg/mL      ✓ (FDA = 122)
-#   Limitation : modèle prédit 100% tout grade (FDA = 29%)
-#     → le signal Damage C_ADC1-dépendant est trop persistant
-#       entre cycles (T½_ADC ≈ 23j > intervalle Q3W = 21j)
-#     → acceptable pour calibration G3-4 ; distribution complète non reproduite
+#   Cible : G3-4 neutropénie ~20%
+#   Méthode : scan N=50 patients (n_hill=2), interpolation linéaire
+#     Slope=30 → G3-4 = 12%  (trop bas)
+#     Slope=40 → G3-4 = 26%  (trop haut)
+#     → interpolation : Slope_CMP ≈ 36
 #   Rappel : Slope_CMP carboplatin (Fornari 2019) = 0.57
-Slope_CMP_tdxd_human <- 12.0
+#            Slope_CMP T-DXd n_hill=1 = 12.0
+Slope_CMP_tdxd_human <- 36.0
 
 # ── Slope_MEP calibré pour T-DXd humain ──────────────────
 # Calibration depuis DESTINY-Breast01 (FDA BLA 761139, n=184) :
 #   Cible : G3-4 anémie ~9%
-#   À calibrer par scan de population (analogue à Slope_CMP ci-dessus)
-#   Valeur initiale : Slope_MEP carboplatin humain (init_pars$Slope_MEP)
-#   TODO : lancer calibrate_slope_mep_human.R pour estimer la valeur optimale
-#   Rappel : Slope_MEP carboplatin rat = 2.19 → recalibré T-DXd rat = 1.00
-Slope_MEP_tdxd_human <- NA   # à calibrer — placeholder explicite
+#   Méthode : scan N=30 patients (n_hill=2, pas 24h), interpolation
+#     Slope=1.5 → G3-4 = 0%   (trop bas)
+#     Slope=2.0 → G3-4 = 27%  (trop haut)
+#     → interpolation : Slope_MEP ≈ 1.67
+#   Rappel : Slope_MEP carboplatin humain (Fornari 2019) = 0.66
+#            Slope_MEP T-DXd rat = 1.00
+Slope_MEP_tdxd_human <- 1.67
 
 # ── Cibles de validation clinique FDA BLA 761139 ─────────
 # 5.4 mg/kg Q3W, géométrique moyen cycle 1
