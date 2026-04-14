@@ -152,8 +152,12 @@ cat(sprintf("  CL_ADC  = %.4e L/h\n", tdxd_pars$CL_ADC))
 cat(sprintf("  V1_ADC  = %.5f L\n",   tdxd_pars$V1_ADC))
 cat(sprintf("  V2_ADC  = %.5f L\n",   tdxd_pars$V2_ADC))
 cat(sprintf("  Q_ADC   = %.4e L/h\n", tdxd_pars$Q_ADC))
-cat(sprintf("  k_int   = %.5f h⁻¹ (t½=%.1fh)\n",
-            tdxd_pars$k_int, log(2)/tdxd_pars$k_int))
+if (tdxd_pars$k_int > 0) {
+  cat(sprintf("  k_int   = %.5f h⁻¹ (t½=%.1fh)\n",
+              tdxd_pars$k_int, log(2) / tdxd_pars$k_int))
+} else {
+  cat("  k_int   = 0  [pas d'internalisation récepteur-médiée — rat sans HER2]\n")
+}
 cat(sprintf("  CL_DXd  = %.5f L/h\n", tdxd_pars$CL_DXd))
 cat(sprintf("  V_DXd   = %.5f L\n",   tdxd_pars$V_DXd))
 cat(sprintf("  IC50    = %.2f µM\n",  tdxd_pars$IC50_DXd_uM))

@@ -11,7 +11,8 @@
 ############################################################
 library(deSolve)
 
-setwd("/home/user/Hema/scripts_tdxd")
+# setwd() supprimé — utiliser Rscript depuis scripts_tdxd/
+# ou lancer via : source("scripts_tdxd/run_pkpd_tdxd_human.R")
 
 source("parameters_tdxd_rat.R")     # pour make_tdxd_infusion
 source("parameters_tdxd_human.R")   # PK humain + baselines Fornari humain
@@ -26,9 +27,17 @@ pars_pd_hu[["k_rep"]] <- NULL
 
 pars_full_hu <- c(pars_pd_hu, tdxd_pars_hu)
 
-# ── Override Slope_CMP calibré T-DXd (DESTINY-Breast01) ──
-# Slope_CMP_tdxd_human = 14.4  (20% G3-4 neutropénie)
+# ── Override Slopes calibrés T-DXd (DESTINY-Breast01) ────
+# Slope_CMP : calibré à 12.0 pour G3-4 neutropénie ~20%
 pars_full_hu$Slope_CMP <- Slope_CMP_tdxd_human
+# Slope_MEP : à calibrer pour G3-4 anémie ~9%
+#   Tant que Slope_MEP_tdxd_human n'est pas calibré, on conserve
+#   la valeur carboplatin humain de init_pars (comportement précédent)
+if (!is.na(Slope_MEP_tdxd_human)) {
+  pars_full_hu$Slope_MEP <- Slope_MEP_tdxd_human
+} else {
+  warning("Slope_MEP_tdxd_human non calibré — valeur carboplatin utilisée")
+}
 
 # ── État initial complet ─────────────────────────────────
 state_pd_hu  <- init_state[!names(init_state) %in% c("C1", "C2", "Damage")]

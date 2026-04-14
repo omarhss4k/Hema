@@ -15,7 +15,8 @@
 ############################################################
 library(deSolve)
 
-setwd("/home/user/Hema/scripts_tdxd")
+# setwd() supprimé — utiliser Rscript depuis scripts_tdxd/
+# ou lancer via : source("scripts_tdxd/run_pkpd_tdxd_human_population.R")
 source("parameters_tdxd_rat.R")
 source("parameters_tdxd_human.R")
 source("pkpd_tdxd_rat.R")
@@ -37,8 +38,13 @@ pars_pd_hu[["k_dam"]] <- NULL
 pars_pd_hu[["k_rep"]] <- NULL
 pars_typ   <- c(pars_pd_hu, tdxd_pars_hu)
 
-# ── Override Slope_CMP calibré T-DXd (DESTINY-Breast01) ──
+# ── Override Slopes calibrés T-DXd (DESTINY-Breast01) ────
 pars_typ$Slope_CMP <- Slope_CMP_tdxd_human
+if (!is.na(Slope_MEP_tdxd_human)) {
+  pars_typ$Slope_MEP <- Slope_MEP_tdxd_human
+} else {
+  warning("Slope_MEP_tdxd_human non calibré — valeur carboplatin utilisée")
+}
 
 state_pd_hu <- init_state[!names(init_state) %in% c("C1", "C2", "Damage")]
 state0_hu   <- c(tdxd_hu_state0, state_pd_hu)

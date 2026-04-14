@@ -74,7 +74,17 @@ tdxd_pars_hu <- list(
   IC50_ADC_ugmL      = sqrt(27.3 * 28.1),   # 27.70 µg/mL
   # Flag : utiliser C_ADC1 comme driver (pas C_DXd_ic)
   use_ADC_driver     = TRUE,
-  IC50_DXd_uM        = 0.31    # conservé mais inactif si use_ADC_driver=TRUE
+  IC50_DXd_uM        = 0.31,   # conservé mais inactif si use_ADC_driver=TRUE
+
+  # ── Coefficient de Hill (Emax sigmoïde) ─────────────────
+  # n_hill = 1 : Emax standard (défaut, rat)
+  # n_hill = 2 : sigmoïde plus marquée pour humain
+  #   → atténue le signal Damage résiduel inter-cycles
+  #     (C_ADC1 trough ≈ 50% Cmax car T½_ADC > Q3W)
+  #   → permet de reproduire tout-grade neutropénie ~30%
+  #     (au lieu de ~100% avec n_hill=1)
+  #   → à valider vs données γH2AX cliniques si disponibles
+  n_hill             = 2
 )
 
 tdxd_pars_hu$mgL_to_uM_DXd <- 1000 / tdxd_pars_hu$MW_DXd
@@ -93,6 +103,15 @@ tdxd_pars_hu$mgL_to_uM_DXd <- 1000 / tdxd_pars_hu$MW_DXd
 #     → acceptable pour calibration G3-4 ; distribution complète non reproduite
 #   Rappel : Slope_CMP carboplatin (Fornari 2019) = 0.57
 Slope_CMP_tdxd_human <- 12.0
+
+# ── Slope_MEP calibré pour T-DXd humain ──────────────────
+# Calibration depuis DESTINY-Breast01 (FDA BLA 761139, n=184) :
+#   Cible : G3-4 anémie ~9%
+#   À calibrer par scan de population (analogue à Slope_CMP ci-dessus)
+#   Valeur initiale : Slope_MEP carboplatin humain (init_pars$Slope_MEP)
+#   TODO : lancer calibrate_slope_mep_human.R pour estimer la valeur optimale
+#   Rappel : Slope_MEP carboplatin rat = 2.19 → recalibré T-DXd rat = 1.00
+Slope_MEP_tdxd_human <- NA   # à calibrer — placeholder explicite
 
 # ── Cibles de validation clinique FDA BLA 761139 ─────────
 # 5.4 mg/kg Q3W, géométrique moyen cycle 1
