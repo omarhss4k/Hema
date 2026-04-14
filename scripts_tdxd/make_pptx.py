@@ -302,47 +302,51 @@ def slide_cause(prs):
     bg(sl)
 
     box(sl, 0.4, 0.2, 12.5, 0.6,
-        "Cause Racine : Pourquoi 100% Tout Grade ?",
+        "Cause Racine : Limitation du Modele Fornari",
         font_size=22, bold=True, color=BLUE_DARK)
     hline(sl, 0.4, 0.85, 12.5)
 
     box(sl, 0.5, 1.0, 12.0, 0.5,
-        "Probleme fondamental : T½ ADC ≈ 23 jours  >  Intervalle Q3W = 21 jours",
+        "Limite structurelle : le modele Fornari predit un effet pour tout Damage > 0",
         font_size=15, bold=True, color=RED, align=PP_ALIGN.CENTER)
 
-    # Schema PK
-    rect(sl, 0.5, 1.65, 12.0, 2.2, RGBColor(0xf0,0xf4,0xf8), line_color=BLUE_MED)
-    box(sl, 0.7, 1.7, 8.0, 0.4, "Profil C_ADC1 sur 6 cycles Q3W :", font_size=12, bold=True, color=BLUE_DARK)
-    box(sl, 0.7, 2.1, 11.5, 1.5,
-        "  Cycle 1       Cycle 2       Cycle 3       Cycle 4       Cycle 5       Cycle 6\n"
-        "   Cmax=127     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
-        "   --------    Trough ≈ 60 ug/mL (E_drug ≈ 68% IC50)    -> jamais nulle",
+    # Schema explication
+    rect(sl, 0.5, 1.65, 12.0, 2.3, RGBColor(0xf0,0xf4,0xf8), line_color=BLUE_MED)
+    box(sl, 0.7, 1.7, 11.0, 0.4,
+        "Terme kill dans Fornari :  dCMP/dt  =  ...  -  Slope_CMP x Damage x CMP",
+        font_size=12, bold=True, color=BLUE_DARK)
+    box(sl, 0.7, 2.15, 11.3, 1.6,
+        "  -> Kill_CMP = Slope_CMP x Damage   (terme LINEAIRE, pas de seuil)\n"
+        "  -> Si Damage > 0, meme tres faible, il y a toujours une suppression de CMP\n"
+        "  -> Avec T½ ADC = 23j > Q3W = 21j : C_ADC1 trough ≈ 60 ug/mL entre cycles\n"
+        "  -> Damage residuel ≠ 0  =>  Kill ≠ 0  =>  tous les patients ont Neut < baseline",
         font_size=11, color=GREY_TEXT)
 
-    box(sl, 0.5, 4.0, 12.0, 0.45,
-        "=> E_drug ne redescend jamais a 0 entre cycles => Damage residuel => tous les patients affectes",
-        font_size=13, italic=True, color=RED, align=PP_ALIGN.CENTER)
+    box(sl, 0.5, 4.1, 12.0, 0.45,
+        "Le modele Fornari a ete concu pour le carboplatin (T½ court) : drug efface entre cycles -> Damage = 0",
+        font_size=12, italic=True, color=ORANGE, align=PP_ALIGN.CENTER)
 
-    rect(sl, 0.5, 4.55, 5.7, 2.5, RGBColor(0xeb,0xf7,0xed), line_color=GREEN)
-    box(sl, 0.7, 4.6, 5.3, 0.45, "Solutions explorees :", font_size=13, bold=True, color=GREEN)
-    sols = [
-        "n_hill=2 (Hill sigmoide) : attenue\n  E_drug sous IC50",
-        "Revenir a n_hill=1 + accepter la\n  limitation sur tout grade",
-        "Reviser DXd PK (T½ court) pour\n  driver DXd_ic coherent",
+    rect(sl, 0.5, 4.65, 5.7, 2.5, RGBColor(0xfe, 0xf0, 0xeb), line_color=RED)
+    box(sl, 0.7, 4.7, 5.3, 0.45, "Pourquoi Fornari ne suffit pas ici :", font_size=13, bold=True, color=RED)
+    pbs = [
+        "Terme kill lineaire : pas de seuil en dessous\n  duquel l'effet est nul",
+        "Feedback (proliferation compensatrice) ne\n  compense pas un kill permanent",
+        "Concu pour agents a courte demi-vie,\n  pas pour ADC a longue T½",
     ]
-    for i, s in enumerate(sols):
-        box(sl, 0.9, 5.1+i*0.6, 5.1, 0.55, s, font_size=11, color=GREY_TEXT)
-        box(sl, 0.65, 5.1+i*0.6, 0.3, 0.4, "-", font_size=14, bold=True, color=GREEN)
+    for i, s in enumerate(pbs):
+        box(sl, 0.9, 5.2+i*0.6, 5.1, 0.55, s, font_size=11, color=GREY_TEXT)
+        box(sl, 0.65, 5.2+i*0.6, 0.3, 0.4, "x", font_size=12, bold=True, color=RED)
 
-    rect(sl, 6.7, 4.55, 5.9, 2.5, RGBColor(0xfe, 0xf9, 0xec), line_color=ORANGE)
-    box(sl, 6.9, 4.6, 5.5, 0.45, "Choix actuel :", font_size=13, bold=True, color=ORANGE)
-    box(sl, 6.9, 5.05, 5.5, 1.9,
-        "n_hill=1 + use_ADC_driver=TRUE\n\n"
-        "Priorite : reproduire G3-4 correctement\n"
-        "Tout grade non reproduit = limitation\n"
-        "documentee (acceptable pour calibration\n"
-        "dose-finding)",
-        font_size=11, color=GREY_TEXT)
+    rect(sl, 6.7, 4.65, 5.9, 2.5, RGBColor(0xfe, 0xf9, 0xec), line_color=ORANGE)
+    box(sl, 6.9, 4.7, 5.5, 0.45, "Ce qu'il faudrait :", font_size=13, bold=True, color=ORANGE)
+    fixes = [
+        "Modifier Fornari : ajouter un seuil\n  minimal de Damage effectif",
+        "Ou adapter le kill term pour ADC\n  (dependance non-lineaire du Damage)",
+        "Ou utiliser un modele PD different\n  pour les ADC a longue T½",
+    ]
+    for i, s in enumerate(fixes):
+        box(sl, 6.9, 5.2+i*0.6, 5.5, 0.55, s, font_size=11, color=GREY_TEXT)
+        box(sl, 6.7, 5.2+i*0.6, 0.25, 0.4, "->", font_size=11, bold=True, color=ORANGE)
 
 # ══════════════════════════════════════════════════════════════
 # SLIDE 6 — PROCHAINES ETAPES
@@ -375,12 +379,12 @@ def slide_next(prs):
             ]
         ),
         (
-            "3. Reproduire tout grade (Priorite moyenne)",
+            "3. Adapter le modele Fornari pour les ADC a longue T½ (Priorite moyenne)",
             ORANGE,
             [
-                "Tester n_hill=2 avec DXd_ic driver (une fois PK corrigee)",
-                "n_hill=2 reduit E_drug sub-IC50 -> attenue nadir entre cycles",
-                "Cible : tout grade ~29% (FDA DESTINY-Breast01)",
+                "Fornari concu pour carboplatin (T½ court) : kill terme lineaire sans seuil",
+                "Modifier le terme kill pour rendre l'effet nul en dessous d'un Damage seuil",
+                "Objectif : tout grade ~29% (FDA) au lieu de 100% predit actuellement",
             ]
         ),
         (
@@ -437,7 +441,7 @@ def slide_resume(prs):
             align=PP_ALIGN.CENTER)
 
     box(sl, 0.5, 4.55, 12.3, 0.5,
-        "Modele fonctionnel pour G3-4. Priorite : corriger T½ DXd pour driver mecanistique aligne FDA.",
+        "Modele fonctionnel pour G3-4. Priorite : corriger DXd PK + adapter Fornari pour ADC longue T½.",
         font_size=14, bold=True, color=RGBColor(0xff,0xdd,0x77),
         align=PP_ALIGN.CENTER)
 
