@@ -1,6 +1,6 @@
 ############################################################
 # calibrate_slope_cmp_human.R
-# Calibration Slope_CMP — T-DXd HUMAIN
+# Re-calibration Slope_CMP — T-DXd HUMAIN avec n_hill=2
 #
 # Cible : Grade 3-4 neutropénie ~20% (DESTINY-Breast01, n=184)
 #   Grade 3 : Neut < 1.0 × 10⁹/L
@@ -9,10 +9,13 @@
 # Méthode : scan N=50 patients par valeur de Slope_CMP
 #   IIV : CL_ADC (ω=0.35), V1_ADC (ω=0.20), Slope_CMP (ω=0.33)
 #   Pas de temps = 12h (rapidité)
+#
+# Note : avec n_hill=2 (inclus dans tdxd_pars_hu), Slope_CMP=12
+#   donne 0% G3-4 → plage élargie à 30–150
 ############################################################
 library(deSolve)
 
-setwd("/home/user/Hema/scripts_tdxd")
+# setwd() supprimé — lancer depuis scripts_tdxd/
 source("parameters_tdxd_rat.R")
 source("parameters_tdxd_human.R")
 source("pkpd_tdxd_rat.R")
@@ -71,12 +74,12 @@ pct_g34 <- function(slope_cmp_typ) {
        med_nadir = median(neut_min_vec, na.rm=TRUE))
 }
 
-# ── Scan (plage élargie d'après test patient typique) ─────
-# Patient typique → G3 à Slope≈20; IIV ω=0.33 décale vers ~8-15
-slope_vals <- c(5, 8, 12, 16, 20, 25, 30)
+# ── Scan (plage adaptée n_hill=2) ────────────────────────
+# Avec n_hill=2, Slope_CMP=12 → 0% G3-4 → plage élargie
+slope_vals <- c(30, 40, 50, 60, 70, 80, 100, 120, 150)
 
 cat("═══════════════════════════════════════════════════════════\n")
-cat("  SCAN Slope_CMP — Calibration T-DXd Humain (N=50/valeur)\n")
+cat("  SCAN Slope_CMP — Re-calibration T-DXd Humain (n_hill=2)\n")
 cat("  Cible : G3-4 neutropénie ~20%  (DESTINY-Breast01)\n")
 cat("─────────────────────────────────────────────────────────\n")
 cat(sprintf("  %-10s  %-10s  %-12s  %-12s  %s\n",
