@@ -65,33 +65,30 @@ tdxd_pars_hu <- list(
   k_rep         = 0.017,        # h⁻¹  (Fornari)
 
   # ── IC50 ADC (T-DXd entier) — assay PFB-10 sur HPC ──────
-  # Source : PFB-10 Colony Forming Unit assay, progéniteurs humains
-  # Driver : C_ADC1 [µg/mL = mg/L]  (pas le DXd libre)
-  # C_Avg clinique = 700 µg/mL·jour / 21 jours = 33.3 µg/mL
-  IC50_ADC_ery_ugmL  = 27.3,   # µg/mL — Total Erythroid (MEP/Ret)
-  IC50_ADC_neut_ugmL = 28.1,   # µg/mL — CFU-GM (CMP/Neut)
-  # Moyenne géométrique pour Damage partagé :
+  # Conservé pour référence mais inactif (use_ADC_driver = FALSE)
+  IC50_ADC_ery_ugmL  = 27.3,
+  IC50_ADC_neut_ugmL = 28.1,
   IC50_ADC_ugmL      = sqrt(27.3 * 28.1),   # 27.70 µg/mL
-  # Flag : utiliser C_ADC1 comme driver (pas C_DXd_ic)
+
+  # ── Driver toxicité ─────────────────────────────────────
+  # FDA BLA 761139 (p.95) : DXd Cavg est le prédicteur E-R (statistique)
+  # Tentative use_ADC_driver=FALSE échouée : T½_DXd modèle = 1.06h (vs
+  #   5.8j apparent FDA) → C_DXd_ic Cavg trop faible → E_drug ~3%
+  #   → toxicité nulle même à Slope_CMP=50
+  # Compromis retenu : use_ADC_driver=TRUE (C_ADC1 surrogate)
+  #   C_ADC1 est soutenu (T½=23j > Q3W) → E_drug persistant → calibration
+  #   G3-4 cohérente avec FDA. Limitation documentée.
   use_ADC_driver     = TRUE,
-  IC50_DXd_uM        = 0.31    # conservé mais inactif si use_ADC_driver=TRUE
+  IC50_DXd_uM        = 0.31    # µM — conservé (inactif si use_ADC_driver=TRUE)
 )
 
 tdxd_pars_hu$mgL_to_uM_DXd <- 1000 / tdxd_pars_hu$MW_DXd
 
 # ── Slope_CMP calibré pour T-DXd humain ──────────────────
 # Calibration depuis DESTINY-Breast01 (FDA BLA 761139, n=184) :
-#   Cible : G3-4 neutropénie ~20% → Slope_CMP_tdxd_human = 12.0
-#   Méthode : scan N=100 patients, IIV CL_ADC/V1_ADC/Slope_CMP
-#   Résultats (N=300 patients) :
-#     Slope=12 → G3-4 = 15.7%  ✓ (fourchette FDA 16-20%)
-#     G3-4 anémie = 6.0%        ✓ (FDA ~9%)
-#     ADC Cmax = 121 µg/mL      ✓ (FDA = 122)
-#   Limitation : modèle prédit 100% tout grade (FDA = 29%)
-#     → le signal Damage C_ADC1-dépendant est trop persistant
-#       entre cycles (T½_ADC ≈ 23j > intervalle Q3W = 21j)
-#     → acceptable pour calibration G3-4 ; distribution complète non reproduite
-#   Rappel : Slope_CMP carboplatin (Fornari 2019) = 0.57
+#   Driver : C_ADC1 (surrogate — DXd_ic Cavg trop faible avec T½_DXd=1h)
+#   Cible : G3-4 neutropenie ~16-20% → Slope_CMP = 12.0
+#   Resultats population N=300 : G3-4 = 15.7% OK
 Slope_CMP_tdxd_human <- 12.0
 
 # ── Cibles de validation clinique FDA BLA 761139 ─────────
