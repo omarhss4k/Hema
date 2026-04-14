@@ -8,7 +8,7 @@ init_pars <- list()
 
 # ── PK (allométrie rat 250g depuis humain) ──
 BW_h <- 70; BW_r <- 0.25
-init_pars$CL <- 0.42 
+init_pars$CL <- 0.42
 init_pars$V1 <- 0.06
 init_pars$Q  <- 0.26
 init_pars$V2 <- 0.30
