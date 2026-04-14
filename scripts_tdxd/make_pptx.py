@@ -360,54 +360,35 @@ def slide_next(prs):
     hline(sl, 0.4, 0.85, 12.5)
 
     steps = [
-        (
-            "1. Corriger le DXd PK (Priorite haute)",
-            RED,
-            [
-                "T½ DXd modele = 1.06h   vs   FDA apparent = 5.8j",
-                "Ajouter un 2e compartiment DXd (lié/libre) ou ralentir k_effD",
-                "Objectif : DXd_ic Cavg suffisant pour driver toxicite",
-                "-> Permettra d'utiliser C_DXd_ic comme driver (aligne FDA p.95)",
-            ]
-        ),
-        (
-            "2. Recalibrer Slope_CMP apres correction PK (Priorite haute)",
-            RED,
-            [
-                "Quand DXd_ic Cavg sera realiste -> re-scanner Slope_CMP",
-                "Cible inchangee : G3-4 neutropenie = 16-20%",
-            ]
-        ),
-        (
-            "3. Adapter le modele Fornari pour les ADC a longue T½ (Priorite moyenne)",
-            ORANGE,
-            [
-                "Fornari concu pour carboplatin (T½ court) : kill terme lineaire sans seuil",
-                "Modifier le terme kill pour rendre l'effet nul en dessous d'un Damage seuil",
-                "Objectif : tout grade ~29% (FDA) au lieu de 100% predit actuellement",
-            ]
-        ),
-        (
-            "4. Valider PD rat (Priorite basse)",
-            BLUE_MED,
-            [
-                "Aucune donnee experimentale rat utilisee pour PD (nadir Neut/Plt)",
-                "Ajouter comparaison avec donnees precliniques T-DXd si disponibles",
-            ]
-        ),
+        ("1", "Corriger le PK du DXd",
+         "T½ modele = 1h vs FDA = 5.8j  ->  ajouter compartiment DXd lie/libre",
+         RED),
+        ("2", "Recalibrer Slope_CMP",
+         "Apres correction PK, re-scanner pour maintenir G3-4 neutropenie = 16-20%",
+         RED),
+        ("3", "Adapter le modele Fornari",
+         "Terme kill lineaire inadapte aux ADC longue T½  ->  ajouter seuil Damage",
+         ORANGE),
+        ("4", "Valider PD rat",
+         "Comparer nadirs Neut/Plt simules avec donnees precliniques T-DXd",
+         BLUE_MED),
     ]
 
-    y = 1.05
-    for title, col, bullets in steps:
-        rect(sl, 0.4, y, 12.5, 0.45, col)
-        box(sl, 0.55, y+0.03, 12.0, 0.4, title,
-            font_size=13, bold=True, color=RGBColor(0xff,0xff,0xff))
-        y += 0.48
-        for b in bullets:
-            box(sl, 0.8, y, 12.0, 0.38, "   " + b, font_size=11, color=GREY_TEXT)
-            box(sl, 0.55, y, 0.3, 0.35, "->", font_size=11, color=col)
-            y += 0.37
-        y += 0.1
+    for i, (num, title, desc, col) in enumerate(steps):
+        y = 1.15 + i * 1.45
+
+        # Cercle numero
+        rect(sl, 0.4, y, 0.75, 0.75, col)
+        box(sl, 0.4, y+0.08, 0.75, 0.6, num,
+            font_size=22, bold=True, color=RGBColor(0xff,0xff,0xff),
+            align=PP_ALIGN.CENTER)
+
+        # Titre + description
+        box(sl, 1.35, y, 11.0, 0.42, title,
+            font_size=15, bold=True, color=col)
+        box(sl, 1.35, y+0.45, 11.0, 0.45, desc,
+            font_size=12, color=GREY_TEXT)
+
 
 # ══════════════════════════════════════════════════════════════
 # SLIDE 7 — RESUME EXECUTIF
