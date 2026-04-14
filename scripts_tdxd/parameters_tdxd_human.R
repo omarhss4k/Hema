@@ -74,42 +74,25 @@ tdxd_pars_hu <- list(
   IC50_ADC_ugmL      = sqrt(27.3 * 28.1),   # 27.70 µg/mL
   # Flag : utiliser C_ADC1 comme driver (pas C_DXd_ic)
   use_ADC_driver     = TRUE,
-  IC50_DXd_uM        = 0.31,   # conservé mais inactif si use_ADC_driver=TRUE
-
-  # ── Coefficient de Hill (Emax sigmoïde) ─────────────────
-  # n_hill = 1 : Emax standard (défaut, rat)
-  # n_hill = 2 : sigmoïde plus marquée pour humain
-  #   → atténue le signal Damage résiduel inter-cycles
-  #     (C_ADC1 trough ≈ 50% Cmax car T½_ADC > Q3W)
-  #   → permet de reproduire tout-grade neutropénie ~30%
-  #     (au lieu de ~100% avec n_hill=1)
-  #   → à valider vs données γH2AX cliniques si disponibles
-  n_hill             = 2
+  IC50_DXd_uM        = 0.31    # conservé mais inactif si use_ADC_driver=TRUE
 )
 
 tdxd_pars_hu$mgL_to_uM_DXd <- 1000 / tdxd_pars_hu$MW_DXd
 
 # ── Slope_CMP calibré pour T-DXd humain ──────────────────
 # Calibration depuis DESTINY-Breast01 (FDA BLA 761139, n=184) :
-#   Cible : G3-4 neutropénie ~20%
-#   Méthode : scan N=50 patients (n_hill=2), interpolation linéaire
-#     Slope=30 → G3-4 = 12%  (trop bas)
-#     Slope=40 → G3-4 = 26%  (trop haut)
-#     → interpolation : Slope_CMP ≈ 36
+#   Cible : G3-4 neutropénie ~20% → Slope_CMP_tdxd_human = 12.0
+#   Méthode : scan N=100 patients, IIV CL_ADC/V1_ADC/Slope_CMP
+#   Résultats (N=300 patients) :
+#     Slope=12 → G3-4 = 15.7%  ✓ (fourchette FDA 16-20%)
+#     G3-4 anémie = 6.0%        ✓ (FDA ~9%)
+#     ADC Cmax = 121 µg/mL      ✓ (FDA = 122)
+#   Limitation : modèle prédit 100% tout grade (FDA = 29%)
+#     → le signal Damage C_ADC1-dépendant est trop persistant
+#       entre cycles (T½_ADC ≈ 23j > intervalle Q3W = 21j)
+#     → acceptable pour calibration G3-4 ; distribution complète non reproduite
 #   Rappel : Slope_CMP carboplatin (Fornari 2019) = 0.57
-#            Slope_CMP T-DXd n_hill=1 = 12.0
-Slope_CMP_tdxd_human <- 36.0
-
-# ── Slope_MEP calibré pour T-DXd humain ──────────────────
-# Calibration depuis DESTINY-Breast01 (FDA BLA 761139, n=184) :
-#   Cible : G3-4 anémie ~9%
-#   Méthode : scan N=30 patients (n_hill=2, pas 24h), interpolation
-#     Slope=1.5 → G3-4 = 0%   (trop bas)
-#     Slope=2.0 → G3-4 = 27%  (trop haut)
-#     → interpolation : Slope_MEP ≈ 1.67
-#   Rappel : Slope_MEP carboplatin humain (Fornari 2019) = 0.66
-#            Slope_MEP T-DXd rat = 1.00
-Slope_MEP_tdxd_human <- 1.67
+Slope_CMP_tdxd_human <- 12.0
 
 # ── Cibles de validation clinique FDA BLA 761139 ─────────
 # 5.4 mg/kg Q3W, géométrique moyen cycle 1

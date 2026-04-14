@@ -62,13 +62,9 @@ pk_tdxd_ode <- function(time, state, pars) {
     # Conservation de masse : flux entrant rapporté au volume V_ic
     dC_DXd_ic <- k_inD * C_DXd * (V_DXd / V_ic) - k_effD * C_DXd_ic
 
-    # ── Dommages ADN (γH2AX, modèle Emax avec Hill optionnel) ──
-    # n_hill > 1 : sigmoïde plus marquée, atténue l'effet résiduel inter-cycles
-    n_hill      <- if (!is.null(pars$n_hill)) pars$n_hill else 1
+    # ── Dommages ADN (γH2AX, modèle Emax) ──
     C_DXd_ic_uM <- C_DXd_ic * mgL_to_uM_DXd             # [µM]
-    C_n          <- C_DXd_ic_uM^n_hill
-    IC50_n       <- IC50_DXd_uM^n_hill
-    E_drug       <- C_n / (IC50_n + C_n)                 # Emax Hill [0,1]
+    E_drug       <- C_DXd_ic_uM / (IC50_DXd_uM + C_DXd_ic_uM)  # Emax [0,1]
 
     dDamage <- k_dam * E_drug - k_rep * Damage
 

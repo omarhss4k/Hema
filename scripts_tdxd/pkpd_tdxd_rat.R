@@ -62,25 +62,12 @@ pkpd_tdxd_fornari <- function(time, state, pars) {
     # Dommages ADN — Emax
     # Mode 1 (défaut) : driver = C_DXd_ic [µM]  (Yin 2020, DXd intracell.)
     # Mode 2 (use_ADC_driver=TRUE) : driver = C_ADC1 [µg/mL]  (PFB-10 HPC assay)
-    #
-    # n_hill : coefficient de Hill (défaut=1, Emax standard)
-    #   n_hill > 1 → sigmoïde plus marquée → atténue l'effet aux
-    #   concentrations résiduelles inter-cycles (T½_ADC > Q3W).
-    #   Justification : coopérativité d'accès des cellules progénitrices
-    #   à l'ADC circulant (cf. Bender 2023, PK/PD cooperativity ADC).
-    #   Valeur suggérée : n_hill = 2 pour humain (à calibrer).
-    n_hill  <- if (!is.null(pars$n_hill)) pars$n_hill else 1
-
     use_adc <- if (!is.null(pars$use_ADC_driver)) pars$use_ADC_driver else FALSE
     if (use_adc) {
-      C_n    <- C_ADC1^n_hill
-      IC50_n <- IC50_ADC_ugmL^n_hill
-      E_drug <- C_n / (IC50_n + C_n)
+      E_drug <- C_ADC1 / (IC50_ADC_ugmL + C_ADC1)
     } else {
       C_DXd_ic_uM <- C_DXd_ic * mgL_to_uM_DXd
-      C_n    <- C_DXd_ic_uM^n_hill
-      IC50_n <- IC50_DXd_uM^n_hill
-      E_drug <- C_n / (IC50_n + C_n)
+      E_drug       <- C_DXd_ic_uM / (IC50_DXd_uM + C_DXd_ic_uM)
     }
     dDamage <- k_dam * E_drug - k_rep * Damage
 
