@@ -71,6 +71,14 @@ pkpd_tdxd_fornari <- function(time, state, pars) {
     }
     dDamage <- k_dam * E_drug - k_rep * Damage
 
+    # Damage effectif pour le kill (seuil D0 = réparation cellulaire)
+    # D_kill = max(0, Damage - D0) :
+    #   - si Damage < D0 (trough) → Kill = 0 → CMP récupère entre cycles
+    #   - si Damage > D0 (pic)    → Kill proportionnel à l'excès
+    # D0 = 0 (défaut, rat DXd-driver) ou D0 = Damage_threshold (humain ADC-driver)
+    D0     <- if (!is.null(pars$Damage_threshold)) pars$Damage_threshold else 0
+    D_kill <- pmax(0, Damage - D0)
+
     # ════════════════════════════════════════════════════
     # BLOC 2 — PD Fornari (Equations 1–9 + feedbacks 11–13)
     # Identique à pkpd_model_FORNARI.R — seul "Damage" change
@@ -93,17 +101,17 @@ pkpd_tdxd_fornari <- function(time, state, pars) {
     r_pPlt     <- Plt0 / max(Plt, eps)
     f_prol_Plt <- pmin(pmax(r_pPlt, 0.2), 10)^gamma_prolTrans
 
-    # Progéniteurs (Eq. 1, 4)
+    # Progéniteurs (Eq. 1, 4) — kill via D_kill (avec seuil D0)
     dMPP <- k_stem * f_stem +
-            k_prol_MPP * (1 - Slope_MPP * Damage) * MPP -
+            k_prol_MPP * (1 - Slope_MPP * D_kill) * MPP -
             k_tr_CMP   * f_mat_CMP * MPP -
             k_tr_MEP   * f_mat_MEP * MPP
 
-    dCMP <- k_prol_CMP * (1 - Slope_CMP * Damage) * CMP +
+    dCMP <- k_prol_CMP * (1 - Slope_CMP * D_kill) * CMP +
             k_tr_CMP   * f_mat_CMP * MPP -
             (k_tr_Neut + k_tr_Mono) * CMP
 
-    dMEP <- k_prol_MEP * (1 - Slope_MEP * Damage) * MEP +
+    dMEP <- k_prol_MEP * (1 - Slope_MEP * D_kill) * MEP +
             k_tr_MEP   * f_mat_MEP * MPP -
             (k_tr_Ret + k_tr_Plt) * MEP
 

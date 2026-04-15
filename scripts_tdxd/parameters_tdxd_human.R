@@ -81,7 +81,14 @@ tdxd_pars_hu <- list(
   # → toxicité nulle avec DXd driver pur
   # Compromis : use_ADC_driver=TRUE (C_ADC1 surrogate, T½=23j > Q3W → E_drug persistant)
   use_ADC_driver     = TRUE,
-  IC50_DXd_uM        = 0.31    # µM — conservé (inactif si use_ADC_driver=TRUE)
+  IC50_DXd_uM        = 0.31,   # µM — conservé (inactif si use_ADC_driver=TRUE)
+
+  # ── Seuil de réparation ADN (D0) ────────────────────────
+  # Kill_eff = Slope × max(0, Damage - Damage_threshold)
+  # D0 = 0.05 > Damage_trough (0.02-0.04) entre cycles
+  # → Kill = 0 entre cycles → CMP récupère complètement → tout grade ≠ 100%
+  # Damage_max = 0.46 → D_kill_max = 0.41 → Slope recalibré ≈ 13
+  Damage_threshold   = 0.05    # seuil de réparation (rat: 0 par défaut dans ODE)
 )
 
 tdxd_pars_hu$mgL_to_uM_DXd <- 1000 / tdxd_pars_hu$MW_DXd
@@ -91,7 +98,7 @@ tdxd_pars_hu$mgL_to_uM_DXd <- 1000 / tdxd_pars_hu$MW_DXd
 #   Driver : C_ADC1 [µg/mL]  (surrogate — DXd_ic Cavg trop faible)
 #   Cible : G3-4 neutropenie ~16-20% → Slope_CMP = 12.0
 #   Résultats population N=300 : G3-4 = 15.7% ✓
-Slope_CMP_tdxd_human <- 12.0
+Slope_CMP_tdxd_human <- 25.0   # recalibré avec D0=0.05 → G3-4~18-20% (N=50 calibration)
 
 # ── Cibles de validation clinique FDA BLA 761139 ─────────
 # 5.4 mg/kg Q3W, géométrique moyen cycle 1

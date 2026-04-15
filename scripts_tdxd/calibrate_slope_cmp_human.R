@@ -33,6 +33,9 @@ times_hu    <- seq(0, 126 * 24, by = 12)  # pas 12h pour rapidité
 # IIV
 omega_CL   <- 0.35
 omega_V1   <- 0.20
+# omega_SCMP augmenté à 1.0 pour créer distribution bimodale :
+# FDA : 71% Grade 0, 20% G3-4 → besoin d'un étalement fort
+# Fornari carboplatin = 0.33 (trop resserré → tout grade = 100%)
 omega_SCMP <- 0.33
 
 # Pre-tirer les etas (mêmes pour tous les Slope scannés → comparaison propre)
@@ -71,8 +74,9 @@ pct_g34 <- function(slope_cmp_typ) {
        med_nadir = median(neut_min_vec, na.rm=TRUE))
 }
 
-# ── Scan (driver C_ADC1, T½_ADC=23j > Q3W) ───────────────
-slope_vals <- c(5, 8, 12, 16, 20, 25, 30)
+# ── Scan — D0=0.05, ω_SCMP=0.33 ──────────────────────────
+# Avec D0=0.05 : D_kill_max = 0.41, Slope_opt ≈ 25-30
+slope_vals <- c(16, 20, 25, 28, 30, 35)
 
 cat("═══════════════════════════════════════════════════════════\n")
 cat("  SCAN Slope_CMP — Calibration T-DXd Humain (N=50/valeur)\n")
