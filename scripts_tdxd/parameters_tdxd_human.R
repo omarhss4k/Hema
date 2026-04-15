@@ -84,36 +84,20 @@ tdxd_pars_hu <- list(
   IC50_DXd_uM        = 0.31,   # µM — conservé (inactif si use_ADC_driver=TRUE)
 
   # ── Seuil de réparation ADN (D0) ────────────────────────
-  # D_kill = max(0, Damage - D0) : Kill=0 entre cycles (trough < D0)
+  # D_kill = max(0, Damage - D0) : Kill=0 entre cycles (trough ≈ 0 << D0)
   # → CMP récupère entre cycles → grade 0 possible
-  Damage_threshold   = 0.05,   # D0 seuil (rat: 0 par défaut dans ODE)
-
-  # ── Kill Emax — remplace Slope linéaire (Fornari) ──────
-  # kill_X = Emax_X × D_kill / (ED50_kill + D_kill) ∈ [0, Emax_X] ≤ 1
-  # → kill ne dépasse jamais 1 → résout le problème "prolifération négative"
-  # → IIV sur Emax_CMP_kill crée dist. de sensibilité → bimodal FDA possible
-  #
-  # D_kill_max ≈ 0.41 (Damage_max=0.46, D0=0.05)
-  # ED50=0.15 → E(D_kill_max) = 0.41/0.56 = 0.73 (73% de l'effet max)
-  #
-  # Ratios inter-lignées (Fornari Table 2 carboplatin humain) :
-  #   Slope_MPP=0.79, Slope_CMP=0.57, Slope_MEP=0.66
-  #   → Emax_MPP ≈ 0.55×Emax_CMP, Emax_MEP ≈ 0.85×Emax_CMP
-  ED50_kill      = 0.05,        # D_kill au 50% de l'effet max
-  Emax_CMP_kill  = 0.85,        # max kill CMP — calibré (calibrate_slope_cmp_human.R)
-  Emax_MPP_kill  = 0.45,        # max kill MPP (ratio 0.55 × Emax_CMP)
-  Emax_MEP_kill  = 0.72         # max kill MEP (ratio 0.85 × Emax_CMP)
+  Damage_threshold   = 0.05    # D0 seuil (rat: 0 par défaut dans ODE)
 )
 
 tdxd_pars_hu$mgL_to_uM_DXd <- 1000 / tdxd_pars_hu$MW_DXd
 
-# ── Emax_CMP calibré pour T-DXd humain ───────────────────
-# Calibration depuis DESTINY-Breast01 (FDA BLA 761139, n=184) :
-#   Driver : C_ADC1 [µg/mL]  (surrogate — DXd_ic Cavg trop faible)
-#   Cible : G3-4 neutropénie ~16-20%
-#   Kill Emax : kill_CMP = Emax_CMP × D_kill / (ED50 + D_kill) ≤ 1
-#   → grade 0 biologiquement possible (Emax variable par patient via IIV)
-Emax_CMP_tdxd_human <- 0.85   # valeur initiale (à recalibrer)
+# ── Slope_CMP calibré pour T-DXd humain (kill linéaire + pmin(1)) ─────────
+# ODE : kill_CMP = pmin(1, Slope_CMP × D_kill) ∈ [0, 1]
+# → kill borné à 1 (arrêt complet de prolifération) — prolifération jamais négative
+# → CMP_ss = MPP_input / k_out ≈ 9.3 (44% baseline) → Neut nadir ≈ 2.0
+# → Recalibration : Slope_CMP doit rester dans plage où kill=1 pour assez longtemps
+#   D_kill_threshold = 1/Slope → Slope=25 → seuil D_kill=0.04 → kill=1 très tôt
+Slope_CMP_tdxd_human <- 25.0   # recalibré (D0=0.05, pmin(1) fix)
 
 # ── Cibles de validation clinique FDA BLA 761139 ─────────
 # 5.4 mg/kg Q3W, géométrique moyen cycle 1

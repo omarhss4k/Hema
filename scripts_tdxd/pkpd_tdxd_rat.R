@@ -93,8 +93,12 @@ pkpd_tdxd_fornari <- function(time, state, pars) {
       kill_CMP <- pmin(1, Emx_CMP * D_kill / (ED50k + D_kill))
       kill_MEP <- pmin(1, Emx_MEP * D_kill / (ED50k + D_kill))
     } else {
-      kill_MPP <- Slope_MPP * D_kill
-      kill_CMP <- Slope_CMP * D_kill
+      # Linéaire Fornari + pmin(1) : kill ∈ [0, 1] → prolifération jamais négative
+      # → fix mathématique du bug "Slope × D_kill >> 1"
+      # NOTE : pmin(1) borne à arrêt complet de prolifération (biologique max)
+      kill_MPP <- pmin(1, Slope_MPP * D_kill)
+      kill_CMP <- pmin(1, Slope_CMP * D_kill)
+      kill_MEP <- pmin(1, Slope_MEP * D_kill)
       kill_MEP <- Slope_MEP * D_kill
     }
 
