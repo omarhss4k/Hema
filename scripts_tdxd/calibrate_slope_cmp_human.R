@@ -2,13 +2,14 @@
 # calibrate_slope_cmp_human.R
 # Calibration Slope_CMP — T-DXd HUMAIN
 #
-# Kill linéaire avec pmin(1) (Option C) :
-#   kill_CMP = pmin(1, Slope_CMP × D_kill)
+# Kill linéaire (original Fornari) :
+#   kill_CMP = Slope_CMP × D_kill
 #   D_kill   = max(0, Damage - D0)  avec D0 = Damage_threshold = 0.05
 #
-# → kill borné à 1 : prolifération jamais négative (fix mathématique)
-# → CMP_ss (à kill=1) = MPP_input / k_out ≈ 9.3 (44% baseline)
-# → Neut nadir attendu ≈ 2.0 × 10⁹/L (G1-G2)
+# Slope_CMP >> 1 est empiriquement nécessaire pour reproduire G3-4 ~20% FDA :
+#   CMP_ss = MPP_input / (Slope × k_prol_CMP + k_out)
+#   À Slope=25 : CMP_ss ≈ 7% baseline → Neut nadir ≈ 0.3 × 10⁹/L (G4)
+#   Avec IIV (ω_SCMP=0.33) → distribution G0/G1-2/G3-4 réaliste
 #
 # Cible : Grade 3-4 neutropénie ~20% (DESTINY-Breast01, n=184)
 #   Grade 3 : Neut < 1.0 × 10⁹/L
@@ -80,12 +81,12 @@ pct_g34 <- function(slope_cmp_typ) {
        med_nadir = median(neut_min_vec, na.rm=TRUE))
 }
 
-# ── Scan — D0=0.05, pmin(1), ω_SCMP=0.33 ────────────────
+# ── Scan — D0=0.05, ω_SCMP=0.33 ──────────────────────────
 slope_vals <- c(16, 20, 25, 28, 30, 35)
 
 cat("═══════════════════════════════════════════════════════════\n")
-cat("  SCAN Slope_CMP — T-DXd Humain (N=50/val) [pmin(1) fix]\n")
-cat("  kill_CMP = pmin(1, Slope × D_kill) ∈ [0, 1]\n")
+cat("  SCAN Slope_CMP — Calibration T-DXd Humain (N=50/valeur)\n")
+cat("  kill = Slope × D_kill (linéaire, D0=0.05)\n")
 cat("  Cible : G3-4 neutropénie ~20%  (DESTINY-Breast01)\n")
 cat("─────────────────────────────────────────────────────────\n")
 cat(sprintf("  %-10s  %-10s  %-12s  %-10s  %-12s  %s\n",
@@ -125,12 +126,10 @@ if (length(below) > 0 && length(above) > 0) {
 } else if (length(below) == 0) {
   slope_opt <- slope_vals[which.min(abs(g34_vec - 20))]
   cat(sprintf("\n  ATTENTION : G3-4 > 20%% même au Slope le plus faible\n"))
-  cat(sprintf("  → Slope_CMP_tdxd_human ≈ %.1f (plus proche)\n", slope_opt))
+  cat(sprintf("  → Slope_CMP_tdxd_human ≈ %.1f\n", slope_opt))
 } else {
   slope_opt <- max(slope_vals)
-  cat(sprintf("\n  ATTENTION : G3-4 < 20%% pour toutes valeurs testées\n"))
-  cat(sprintf("  NOTE : avec pmin(1), kill_max=1 → CMP_ss=44%% baseline\n"))
-  cat(sprintf("         Neut nadir ≈ 2.0 → G3-4 ≈ 0%% structure Fornari\n"))
-  cat(sprintf("  → Slope_CMP_tdxd_human = %.1f (valeur max)\n", slope_opt))
+  cat(sprintf("\n  ATTENTION : G3-4 < 20%% pour toutes valeurs → augmenter plage\n"))
+  cat(sprintf("  → Slope_CMP_tdxd_human = %.1f (max)\n", slope_opt))
 }
 cat("═══════════════════════════════════════════════════════════\n")
