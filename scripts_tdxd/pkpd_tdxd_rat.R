@@ -79,6 +79,25 @@ pkpd_tdxd_fornari <- function(time, state, pars) {
     D0     <- if (!is.null(pars$Damage_threshold)) pars$Damage_threshold else 0
     D_kill <- pmax(0, Damage - D0)
 
+    # ── Kill term : Emax saturant (si ED50_kill défini) ou linéaire (Fornari) ──
+    # Emax : kill_X = Emax_X × D_kill / (ED50_kill + D_kill)  ∈ [0, Emax_X] ≤ 1
+    # → kill ne peut jamais dépasser 1 → pas de prolifération négative
+    # → IIV sur Emax_CMP crée distribution de sensibilité → grade 0 possible
+    # Linéaire (défaut rat) : kill_X = Slope_X × D_kill  (backward compat.)
+    if (!is.null(pars$ED50_kill)) {
+      ED50k    <- pars$ED50_kill
+      Emx_MPP  <- if (!is.null(pars$Emax_MPP_kill)) pars$Emax_MPP_kill else min(1, Slope_MPP * ED50k)
+      Emx_CMP  <- if (!is.null(pars$Emax_CMP_kill)) pars$Emax_CMP_kill else min(1, Slope_CMP * ED50k)
+      Emx_MEP  <- if (!is.null(pars$Emax_MEP_kill)) pars$Emax_MEP_kill else min(1, Slope_MEP * ED50k)
+      kill_MPP <- pmin(1, Emx_MPP * D_kill / (ED50k + D_kill))
+      kill_CMP <- pmin(1, Emx_CMP * D_kill / (ED50k + D_kill))
+      kill_MEP <- pmin(1, Emx_MEP * D_kill / (ED50k + D_kill))
+    } else {
+      kill_MPP <- Slope_MPP * D_kill
+      kill_CMP <- Slope_CMP * D_kill
+      kill_MEP <- Slope_MEP * D_kill
+    }
+
     # ════════════════════════════════════════════════════
     # BLOC 2 — PD Fornari (Equations 1–9 + feedbacks 11–13)
     # Identique à pkpd_model_FORNARI.R — seul "Damage" change
@@ -101,17 +120,17 @@ pkpd_tdxd_fornari <- function(time, state, pars) {
     r_pPlt     <- Plt0 / max(Plt, eps)
     f_prol_Plt <- pmin(pmax(r_pPlt, 0.2), 10)^gamma_prolTrans
 
-    # Progéniteurs (Eq. 1, 4) — kill via D_kill (avec seuil D0)
+    # Progéniteurs (Eq. 1, 4) — kill via kill_MPP/CMP/MEP (Emax ou linéaire)
     dMPP <- k_stem * f_stem +
-            k_prol_MPP * (1 - Slope_MPP * D_kill) * MPP -
+            k_prol_MPP * (1 - kill_MPP) * MPP -
             k_tr_CMP   * f_mat_CMP * MPP -
             k_tr_MEP   * f_mat_MEP * MPP
 
-    dCMP <- k_prol_CMP * (1 - Slope_CMP * D_kill) * CMP +
+    dCMP <- k_prol_CMP * (1 - kill_CMP) * CMP +
             k_tr_CMP   * f_mat_CMP * MPP -
             (k_tr_Neut + k_tr_Mono) * CMP
 
-    dMEP <- k_prol_MEP * (1 - Slope_MEP * D_kill) * MEP +
+    dMEP <- k_prol_MEP * (1 - kill_MEP) * MEP +
             k_tr_MEP   * f_mat_MEP * MPP -
             (k_tr_Ret + k_tr_Plt) * MEP
 
