@@ -91,13 +91,18 @@ tdxd_pars_hu <- list(
 
 tdxd_pars_hu$mgL_to_uM_DXd <- 1000 / tdxd_pars_hu$MW_DXd
 
-# ── Slope_CMP calibré pour T-DXd humain (kill linéaire + pmin(1)) ─────────
-# ODE : kill_CMP = pmin(1, Slope_CMP × D_kill) ∈ [0, 1]
-# → kill borné à 1 (arrêt complet de prolifération) — prolifération jamais négative
-# → CMP_ss = MPP_input / k_out ≈ 9.3 (44% baseline) → Neut nadir ≈ 2.0
-# → Recalibration : Slope_CMP doit rester dans plage où kill=1 pour assez longtemps
-#   D_kill_threshold = 1/Slope → Slope=25 → seuil D_kill=0.04 → kill=1 très tôt
-Slope_CMP_tdxd_human <- 25.0   # recalibré (D0=0.05, pmin(1) fix)
+# ── Modèle de mélange bimodal (DESTINY-Breast01) ────────────────────────────
+# FDA BLA 761139 (n=184) : 71% G0 neutropénie, 29% tout grade neutropénie
+# → distribution bimodale : 71% "résistants" (faible Slope_CMP) + 29% "sensibles"
+# Résistants : Slope_CMP_resist très faible → kill < 10% → Neut reste ≥ 2.0 (G0)
+# Sensibles  : Slope_CMP_sensitive élevé → kill >> 1 → G3-4 chez ~69% (= 20%/29%)
+
+p_sensitive_tdxd     <- 0.29   # fraction patients sensibles (FDA tout grade = 29%)
+Slope_resist_tdxd    <- 0.10   # Slope résistants : kill_max ≈ 7% → G0 garanti
+Slope_sensitive_tdxd <- 59.1   # calibré : entre 50 (G3-4_s=58%) et 70 (G3-4_s=82%)
+
+# Compatibilité backward : Slope_CMP_tdxd_human = typical = NA (non utilisé en mixture)
+Slope_CMP_tdxd_human <- Slope_sensitive_tdxd   # pour calibrate_slope script
 
 # ── Cibles de validation clinique FDA BLA 761139 ─────────
 # 5.4 mg/kg Q3W, géométrique moyen cycle 1

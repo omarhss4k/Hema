@@ -7,6 +7,10 @@
 #   Neutropénie G3-4 : ~20%    Anémie G3-4 : ~9%
 #   Neutropénie tout grade : ~29%  Anémie tout grade : ~70%
 #
+# MODÈLE DE MÉLANGE BIMODAL (mixture) :
+#   71% résistants  : Slope_CMP = Slope_resist_tdxd   × exp(η)  → G0 garanti
+#   29% sensibles   : Slope_CMP = Slope_sensitive_tdxd × exp(η)  → G3-4 possible
+#
 # IIV (log-normal) :
 #   CL_ADC     : ω = 0.35 (Yin 2020 PopPK)
 #   V1_ADC     : ω = 0.20 (Yin 2020 PopPK)
@@ -37,8 +41,8 @@ pars_pd_hu[["k_dam"]] <- NULL
 pars_pd_hu[["k_rep"]] <- NULL
 pars_typ   <- c(pars_pd_hu, tdxd_pars_hu)
 
-# ── Override Slope_CMP calibré T-DXd (DESTINY-Breast01) ──
-pars_typ$Slope_CMP <- Slope_CMP_tdxd_human
+# Note : Slope_CMP est géré par la mixture (Slope_resist / Slope_sensitive)
+# Slope_CMP_tdxd_human = Slope_sensitive_tdxd (compat. backward, non utilisé ici)
 
 state_pd_hu <- init_state[!names(init_state) %in% c("C1", "C2", "Damage")]
 state0_hu   <- c(tdxd_hu_state0, state_pd_hu)
@@ -77,20 +81,21 @@ cat(sprintf("Simulation population : N=%d patients, 5.4 mg/kg Q3W × 6 cycles\n"
 cat("(patience ~3-5 min)\n\n")
 
 results <- data.frame(
-  id          = 1:N_patients,
-  CL_ADC      = NA_real_,
-  V1_ADC      = NA_real_,
-  Slope_CMP   = NA_real_,
-  Slope_MEP   = NA_real_,
-  Cmax_ADC    = NA_real_,
-  Cmax_DXd_ng = NA_real_,
-  Damage_max  = NA_real_,
-  Neut_nadir  = NA_real_,
-  Ret_nadir   = NA_real_,
-  RBC_nadir   = NA_real_,
-  Plt_nadir   = NA_real_,
-  Grade_Neut  = NA_character_,
-  Grade_Anemia= NA_character_
+  id           = 1:N_patients,
+  is_sensitive = NA,
+  CL_ADC       = NA_real_,
+  V1_ADC       = NA_real_,
+  Slope_CMP    = NA_real_,
+  Slope_MEP    = NA_real_,
+  Cmax_ADC     = NA_real_,
+  Cmax_DXd_ng  = NA_real_,
+  Damage_max   = NA_real_,
+  Neut_nadir   = NA_real_,
+  Ret_nadir    = NA_real_,
+  RBC_nadir    = NA_real_,
+  Plt_nadir    = NA_real_,
+  Grade_Neut   = NA_character_,
+  Grade_Anemia = NA_character_
 )
 
 pb_step <- floor(N_patients / 10)
@@ -103,10 +108,17 @@ for (i in 1:N_patients) {
   eta_SCMP <- rnorm(1, 0, omega_Slope_CMP)
   eta_SMEP <- rnorm(1, 0, omega_Slope_MEP)
 
+  # Mixture bimodale : 29% sensibles (Slope élevé) / 71% résistants (Slope faible)
+  is_sens  <- runif(1) < p_sensitive_tdxd
+
   pars_i <- pars_typ
-  pars_i$CL_ADC    <- pars_typ$CL_ADC  * exp(eta_CL)
-  pars_i$V1_ADC    <- pars_typ$V1_ADC  * exp(eta_V1)
-  pars_i$Slope_CMP <- pars_typ$Slope_CMP * exp(eta_SCMP)
+  pars_i$CL_ADC  <- pars_typ$CL_ADC * exp(eta_CL)
+  pars_i$V1_ADC  <- pars_typ$V1_ADC * exp(eta_V1)
+  pars_i$Slope_CMP <- if (is_sens) {
+    Slope_sensitive_tdxd * exp(eta_SCMP)
+  } else {
+    Slope_resist_tdxd * exp(eta_SCMP)
+  }
   pars_i$Slope_MEP <- pars_typ$Slope_MEP * exp(eta_SMEP)
 
   pars_i$rate_fun  <- make_tdxd_infusion(
@@ -128,10 +140,11 @@ for (i in 1:N_patients) {
   )
 
   if (!is.null(out) && nrow(out) > 10) {
-    results$CL_ADC[i]      <- pars_i$CL_ADC
-    results$V1_ADC[i]      <- pars_i$V1_ADC
-    results$Slope_CMP[i]   <- pars_i$Slope_CMP
-    results$Slope_MEP[i]   <- pars_i$Slope_MEP
+    results$is_sensitive[i] <- is_sens
+    results$CL_ADC[i]       <- pars_i$CL_ADC
+    results$V1_ADC[i]       <- pars_i$V1_ADC
+    results$Slope_CMP[i]    <- pars_i$Slope_CMP
+    results$Slope_MEP[i]    <- pars_i$Slope_MEP
     results$Cmax_ADC[i]    <- max(out$C_ADC1,  na.rm=TRUE)
     results$Cmax_DXd_ng[i] <- max(out$C_DXd,   na.rm=TRUE) * 1000
     results$Damage_max[i]  <- max(out$Damage,  na.rm=TRUE)
@@ -183,6 +196,28 @@ for (g in grade_order) {
 }
 cat(sprintf("    TOTAL G3-4 : %.1f%%  (FDA : ~9%%)\n",
             pct_a["G3"] + pct_a["G4"]))
+
+cat("\n─────────────────────────────────────────────────────────\n")
+# ── Breakdown par sous-groupe ──
+res_sens  <- results[results$is_sensitive == TRUE,  ]
+res_resist<- results[results$is_sensitive == FALSE, ]
+n_s  <- nrow(res_sens)
+n_r  <- nrow(res_resist)
+tab_s <- table(factor(res_sens$Grade_Neut,   levels = grade_order))
+tab_r <- table(factor(res_resist$Grade_Neut, levels = grade_order))
+cat(sprintf("  Sous-groupes (mixture) : %d sensibles (%.0f%%) | %d résistants (%.0f%%)\n",
+            n_s, 100*n_s/n_ok, n_r, 100*n_r/n_ok))
+cat(sprintf("  G3-4 sensibles : %.1f%%  (cible ~69%%)\n",
+            if (n_s > 0) 100 * sum(res_sens$Neut_nadir < 1.0) / n_s else 0))
+cat(sprintf("  G3-4 résistants: %.1f%%  (cible ~0%%)\n",
+            if (n_r > 0) 100 * sum(res_resist$Neut_nadir < 1.0) / n_r else 0))
+cat(sprintf("  Nadir sensibles: %.2f [%.2f-%.2f]  résistants: %.2f [%.2f-%.2f] × 10⁹/L\n",
+            median(res_sens$Neut_nadir,  na.rm=TRUE),
+            quantile(res_sens$Neut_nadir, 0.1, na.rm=TRUE),
+            quantile(res_sens$Neut_nadir, 0.9, na.rm=TRUE),
+            median(res_resist$Neut_nadir, na.rm=TRUE),
+            quantile(res_resist$Neut_nadir, 0.1, na.rm=TRUE),
+            quantile(res_resist$Neut_nadir, 0.9, na.rm=TRUE)))
 
 cat("\n─────────────────────────────────────────────────────────\n")
 cat("  Statistiques exposition (médiane [P10-P90]) :\n")
