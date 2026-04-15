@@ -71,8 +71,7 @@ pct_g34 <- function(slope_cmp_typ) {
        med_nadir = median(neut_min_vec, na.rm=TRUE))
 }
 
-# ── Scan (plage élargie d'après test patient typique) ─────
-# Patient typique → G3 à Slope≈20; IIV ω=0.33 décale vers ~8-15
+# ── Scan (driver C_ADC1, T½_ADC=23j > Q3W) ───────────────
 slope_vals <- c(5, 8, 12, 16, 20, 25, 30)
 
 cat("═══════════════════════════════════════════════════════════\n")
