@@ -101,8 +101,19 @@ p_sensitive_tdxd     <- 0.29   # fraction patients sensibles (FDA tout grade = 2
 Slope_resist_tdxd    <- 0.10   # Slope résistants : kill_max ≈ 7% → G0 garanti
 Slope_sensitive_tdxd <- 59.1   # calibré : entre 50 (G3-4_s=58%) et 70 (G3-4_s=82%)
 
-# Compatibilité backward : Slope_CMP_tdxd_human = typical = NA (non utilisé en mixture)
-Slope_CMP_tdxd_human <- Slope_sensitive_tdxd   # pour calibrate_slope script
+# Compatibilité backward
+Slope_CMP_tdxd_human <- Slope_sensitive_tdxd
+
+# ── Mixture bimodale MEP — Anémie (DESTINY-Breast01) ────────────────────────
+# FDA BLA 761139 (n=184) : 30% G0 anémie, 37% G1, 24% G2, 9% G3-4
+# → distribution bimodale : 30% "résistants MEP" (G0) + 70% "sensibles MEP"
+# Tirages INDÉPENDANTS de la mixture CMP (neutropénie)
+# IIV sensibles : ω_SMEP_sensitive = 0.50 (plus large → spread G1/G2/G3)
+
+p_sensitive_mep_tdxd     <- 0.70   # fraction sensibles anémie (FDA tout grade = 70%)
+Slope_MEP_resist_tdxd    <- 0.0    # Slope résistants MEP = 0 : drug_ret=0, kill_MEP=0 → G0 strict
+Slope_MEP_sensitive_tdxd <- 0.80   # recalibré N=300 : 0.66→6.3%, 1.24→20.7% → cible 9%
+omega_Slope_MEP_sensitive <- 0.50  # IIV élargi pour spread G1/G2/G3
 
 # ── Cibles de validation clinique FDA BLA 761139 ─────────
 # 5.4 mg/kg Q3W, géométrique moyen cycle 1

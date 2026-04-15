@@ -81,8 +81,9 @@ cat(sprintf("Simulation population : N=%d patients, 5.4 mg/kg Q3W × 6 cycles\n"
 cat("(patience ~3-5 min)\n\n")
 
 results <- data.frame(
-  id           = 1:N_patients,
-  is_sensitive = NA,
+  id               = 1:N_patients,
+  is_sensitive     = NA,
+  is_sensitive_mep = NA,
   CL_ADC       = NA_real_,
   V1_ADC       = NA_real_,
   Slope_CMP    = NA_real_,
@@ -108,18 +109,27 @@ for (i in 1:N_patients) {
   eta_SCMP <- rnorm(1, 0, omega_Slope_CMP)
   eta_SMEP <- rnorm(1, 0, omega_Slope_MEP)
 
-  # Mixture bimodale : 29% sensibles (Slope élevé) / 71% résistants (Slope faible)
-  is_sens  <- runif(1) < p_sensitive_tdxd
+  # Mixture bimodale CMP (neutropénie) : tirage indépendant
+  is_sens_cmp <- runif(1) < p_sensitive_tdxd
+  # Mixture bimodale MEP (anémie) : tirage indépendant
+  is_sens_mep <- runif(1) < p_sensitive_mep_tdxd
+
+  # IIV MEP sensibles : ω élargi à 0.50 pour spread G1/G2/G3
+  eta_SMEP_mep <- rnorm(1, 0, omega_Slope_MEP_sensitive)
 
   pars_i <- pars_typ
   pars_i$CL_ADC  <- pars_typ$CL_ADC * exp(eta_CL)
   pars_i$V1_ADC  <- pars_typ$V1_ADC * exp(eta_V1)
-  pars_i$Slope_CMP <- if (is_sens) {
+  pars_i$Slope_CMP <- if (is_sens_cmp) {
     Slope_sensitive_tdxd * exp(eta_SCMP)
   } else {
     Slope_resist_tdxd * exp(eta_SCMP)
   }
-  pars_i$Slope_MEP <- pars_typ$Slope_MEP * exp(eta_SMEP)
+  pars_i$Slope_MEP <- if (is_sens_mep) {
+    Slope_MEP_sensitive_tdxd * exp(eta_SMEP_mep)
+  } else {
+    Slope_MEP_resist_tdxd * exp(eta_SMEP_mep)
+  }
 
   pars_i$rate_fun  <- make_tdxd_infusion(
     dose_mgkg  = 5.4, BW_kg = 70,
@@ -140,8 +150,9 @@ for (i in 1:N_patients) {
   )
 
   if (!is.null(out) && nrow(out) > 10) {
-    results$is_sensitive[i] <- is_sens
-    results$CL_ADC[i]       <- pars_i$CL_ADC
+    results$is_sensitive[i]     <- is_sens_cmp
+    results$is_sensitive_mep[i] <- is_sens_mep
+    results$CL_ADC[i]           <- pars_i$CL_ADC
     results$V1_ADC[i]       <- pars_i$V1_ADC
     results$Slope_CMP[i]    <- pars_i$Slope_CMP
     results$Slope_MEP[i]    <- pars_i$Slope_MEP
@@ -218,6 +229,20 @@ cat(sprintf("  Nadir sensibles: %.2f [%.2f-%.2f]  résistants: %.2f [%.2f-%.2f] 
             median(res_resist$Neut_nadir, na.rm=TRUE),
             quantile(res_resist$Neut_nadir, 0.1, na.rm=TRUE),
             quantile(res_resist$Neut_nadir, 0.9, na.rm=TRUE)))
+
+# ── Breakdown anémie par sous-groupe MEP ──
+res_mep_sens  <- results[results$is_sensitive_mep == TRUE,  ]
+res_mep_resist<- results[results$is_sensitive_mep == FALSE, ]
+n_ms <- nrow(res_mep_sens)
+n_mr <- nrow(res_mep_resist)
+cat(sprintf("\n  Anémie — mixture MEP : %d sensibles (%.0f%%) | %d résistants (%.0f%%)\n",
+            n_ms, 100*n_ms/n_ok, n_mr, 100*n_mr/n_ok))
+cat(sprintf("  G3-4 anémie sensibles : %.1f%%  (cible ~13%%)\n",
+            if (n_ms > 0) 100 * sum(res_mep_sens$RBC_nadir / pars_typ$RBC0 < 0.67) / n_ms else 0))
+cat(sprintf("  G3-4 anémie résistants: %.1f%%  (cible ~0%%)\n",
+            if (n_mr > 0) 100 * sum(res_mep_resist$RBC_nadir / pars_typ$RBC0 < 0.67) / n_mr else 0))
+cat(sprintf("  G0  anémie résistants : %.1f%%  (cible ~100%%)\n",
+            if (n_mr > 0) 100 * sum(res_mep_resist$RBC_nadir / pars_typ$RBC0 >= 0.90) / n_mr else 0))
 
 cat("\n─────────────────────────────────────────────────────────\n")
 cat("  Statistiques exposition (médiane [P10-P90]) :\n")
