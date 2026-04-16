@@ -116,16 +116,14 @@ V1_fda_nhp  <- mean(V1_v)   # L
 CL_fda_nhp  <- mean(CL_v)   # L/h
 V2_fda_nhp  <- mean(V2_v)   # L
 
-# ── k_int NHP — estimation depuis non-linéarité CL(dose) ─
-# À forte dose (30 mg/kg) : TMDD saturé → CL_obs ≈ CL_linéaire
-# À faible dose (3 mg/kg)  : CL_obs > CL_linéaire (TMDD actif)
-# k_int ≈ ΔCLL / V1  où  ΔCLL = CL@3mg/kg − CL@30mg/kg
-# NOTE : valeur allométrique Vasalou 2024 serait 0.01507 × (70/4)^0.25 ≈ 0.031 h⁻¹
-#        mais incompatible avec CL@30mg/kg (CL_linéaire deviendrait négatif)
-#        → k_int_nhp issu de la dose-dépendance Table 7 = ~3-5 × 10⁻³ h⁻¹
-CL_linear_nhp <- CL_v[3]             # L/h — régime linéaire (30 mg/kg)
-k_int_nhp     <- (CL_v[1] - CL_v[3]) / V1_v[1]   # h⁻¹
-k_int_nhp     <- max(k_int_nhp, 0)   # plancher
+# ── k_int NHP — Option B : k_int = 0 ────────────────────
+# Le T½ augmente avec la dose (3.9 → 5.3 → 7.1 j) = signature TMDD
+# mais un k_int linéaire ne capture pas la saturation HER2 :
+#   k_int calibré sur ΔCL donne AUC −14%/−25% aux doses 10-30 mg/kg.
+# Option B retenue : k_int = 0, CL = moyenne des 3 doses
+#   → erreur AUC équilibrée : +24% / +5% / −8%  sur 3/10/30 mg/kg
+#   → à utiliser si TMDD explicite (Michaelis-Menten) non implémenté
+k_int_nhp     <- 0                    # h⁻¹  (TMDD absorbé dans CL_mean)
 
 # ── DXd — CL_DXd et V_DXd allométriques depuis rat ──────
 CL_DXd_nhp <- CL_DXd_allom   # L/h  (allom. rat → NHP, pas de calibration DXd)
@@ -150,7 +148,7 @@ for (i in seq_along(fda_tk_nhp)) {
 krel_fda_nhp <- mean(krel_v)   # h⁻¹
 
 # ── Consolidation des paramètres finaux ───────────────────
-tdxd_nhp$CL_ADC        <- CL_linear_nhp   # CL linéaire (TMDD saturé, 30 mg/kg)
+tdxd_nhp$CL_ADC        <- CL_fda_nhp      # CL_mean des 3 doses (Option B)
 tdxd_nhp$V1_ADC        <- V1_fda_nhp
 tdxd_nhp$V2_ADC        <- V2_fda_nhp
 tdxd_nhp$Q_ADC         <- Q_ADC_allom     # allométrie (pas de calibration Q)
@@ -170,10 +168,8 @@ tdxd_nhp$k_rep         <- 0.017
 tdxd_nhp$mgL_to_uM_DXd <- 1000 / tdxd_nhp$MW_DXd
 
 # ── Cibles de validation FDA Table 7 ────────────────────
-# Pour chaque dose, C0 et AUC prédits (vérification boucle inverse)
-# C0_pred  = dose / V1_fda    ≈ C0_obs  (par construction)
-# AUC_pred = dose / (CL_total × 24)
-#   où CL_total = CL_linear + k_int × V1
+# C0_pred  = dose / V1_mean  (±6% vs Table 7)
+# AUC_pred = dose / (CL_mean × 24)  (Option B : +24%/+5%/−8%)
 fda_nhp_targets <- fda_tk_nhp
 
 # ── Fonction d'administration IV (identique rat) ─────────
@@ -215,16 +211,15 @@ cat(sprintf("  BW_nhp = %.1f kg   |  allo_CL = (4/0.25)^0.75 = %.1f   allo_V = %
 cat("── ADC (2-cpt) : allométrie rat → NHP ──────────────────────\n")
 cat(sprintf("  Allométrique  : V1=%.4f L  V2=%.4f L  CL=%.4e L/h\n",
             V1_ADC_allom, V2_ADC_allom, CL_ADC_allom))
-cat(sprintf("  Calibré FDA   : V1=%.4f L  V2=%.4f L  CL_linear=%.4e L/h\n",
+cat(sprintf("  Calibré FDA   : V1=%.4f L  V2=%.4f L  CL_mean=%.4e L/h\n",
             tdxd_nhp$V1_ADC, tdxd_nhp$V2_ADC, tdxd_nhp$CL_ADC))
 cat(sprintf("  Ratio FDA/allo: V1×%.2f            CL×%.2f\n\n",
             tdxd_nhp$V1_ADC / V1_ADC_allom,
             tdxd_nhp$CL_ADC / CL_ADC_allom))
 
-cat("── k_int (HER2, singe exprime HER2) ────────────────────────\n")
-cat(sprintf("  k_int_nhp = %.4e h⁻¹  (estimé depuis ΔCL = CL@3 − CL@30 mg/kg)\n",
-            tdxd_nhp$k_int))
-cat(sprintf("  Ref Vasalou 2024 humain = 0.01507 h⁻¹  (incompatible : CL_lin<0 si utilisé)\n\n"))
+cat("── k_int = 0 (Option B) ────────────────────────────────────\n")
+cat(sprintf("  k_int = 0  |  TMDD absorbé dans CL_mean\n"))
+cat(sprintf("  Erreur AUC attendue : +24%% (3mg/kg) / +5%% (10mg/kg) / -8%% (30mg/kg)\n\n"))
 
 cat("── DXd (1-cpt) : allométrie rat → NHP ─────────────────────\n")
 cat(sprintf("  CL_DXd = %.4f L/h   V_DXd = %.4f L   V_ic = %.4f L\n",
@@ -243,10 +238,9 @@ for (i in seq_along(fda_tk_nhp)) {
   d       <- fda_tk_nhp[[i]]
   dose_mg <- d$dose_mgkg * BW_nhp
 
-  # Prédiction NCA : C0_pred = dose/V1 | AUC_pred = dose/(CL_total×24)
-  CL_total_i <- tdxd_nhp$CL_ADC + tdxd_nhp$k_int * V1_v[i]
-  C0_pred    <- dose_mg / V1_v[i]
-  AUC_pred   <- dose_mg / (CL_total_i * 24)
+  # Option B : CL_mean fixe, k_int=0
+  C0_pred  <- dose_mg / V1_v[i]
+  AUC_pred <- dose_mg / (tdxd_nhp$CL_ADC * 24)
 
   cat(sprintf("  %-8s  %-12.1f  %-12.1f  %-10.3f  %-12.1f  %-12.1f\n",
               paste0(d$dose_mgkg, " mg/kg"),
