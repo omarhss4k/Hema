@@ -65,22 +65,22 @@ V_DXd_allom   <- V_DXd_rat  * allo_V   # L
 # MAAA-1181a (DXd) : C0 [ng/mL]
 fda_tk_nhp <- list(
   list(dose_mgkg  = 3,
-       C0_ADC     = mean(101,   95.3),   # µg/mL  (M=101,  F=95.3)
-       AUC21d_ADC = mean(317,   268),    # µg.d/mL (M=317,  F=268)
-       t_half_d   = mean(3.95,  3.85),   # jours   (M=3.95, F=3.85)
-       C0_DXd_ng  = mean(0.242, 0.248)), # ng/mL   (M=0.242,F=0.248)
+       C0_ADC     = (101   + 95.3) / 2,   # µg/mL   M+F mean (M=101,   F=95.3)
+       AUC21d_ADC = (317   + 268)  / 2,   # µg.d/mL M+F mean (M=317,   F=268)
+       t_half_d   = (3.95  + 3.85) / 2,   # jours   M+F mean (M=3.95,  F=3.85)
+       C0_DXd_ng  = (0.242 + 0.248)/ 2),  # ng/mL   M+F mean (M=0.242, F=0.248)
 
   list(dose_mgkg  = 10,
-       C0_ADC     = mean(295,   339),
-       AUC21d_ADC = mean(1220,  1080),
-       t_half_d   = mean(5.56,  5.13),
-       C0_DXd_ng  = mean(0.656, 1.02)),
+       C0_ADC     = (295   + 339)  / 2,
+       AUC21d_ADC = (1220  + 1080) / 2,
+       t_half_d   = (5.56  + 5.13) / 2,
+       C0_DXd_ng  = (0.656 + 1.02) / 2),
 
   list(dose_mgkg  = 30,
-       C0_ADC     = mean(877,   899),
-       AUC21d_ADC = mean(4090,  3770),
-       t_half_d   = mean(7.71,  6.53),
-       C0_DXd_ng  = mean(2.71,  3.9))
+       C0_ADC     = (877   + 899)  / 2,
+       AUC21d_ADC = (4090  + 3770) / 2,
+       t_half_d   = (7.71  + 6.53) / 2,
+       C0_DXd_ng  = (2.71  + 3.9)  / 2)
 )
 
 interval_h <- 21 * 24   # 504 h = Q3W
@@ -112,18 +112,26 @@ for (i in seq_along(fda_tk_nhp)) {
   V1_v[i] <- V1;  CL_v[i] <- CL;  V2_v[i] <- V2
 }
 
-V1_fda_nhp  <- mean(V1_v)   # L
-CL_fda_nhp  <- mean(CL_v)   # L/h
-V2_fda_nhp  <- mean(V2_v)   # L
+# WLS-optimal: minimise Σ(pred/obs − 1)²  →  w* = Σwi² / Σwi
+V1_fda_nhp  <- sum(V1_v^2) / sum(V1_v)   # L    WLS-optimal C0
+CL_fda_nhp  <- sum(CL_v^2) / sum(CL_v)   # L/h  WLS-optimal AUC
 
-# ── k_int NHP — Option B : k_int = 0 ────────────────────
+# V2 analytically → geometric-mean terminal T½ of M+F Table 7
+t_half_geo_d <- exp(mean(log(sapply(fda_tk_nhp, function(x) x$t_half_d))))
+beta_tgt     <- log(2) / (t_half_geo_d * 24)    # h⁻¹
+k10_nhp      <- CL_fda_nhp  / V1_fda_nhp
+k12_nhp      <- Q_ADC_allom / V1_fda_nhp
+# Solve 2-cpt beta quadratic for k21 given target beta:
+#   k21 = beta*(beta − k10 − k12) / (beta − k10)
+k21_tgt      <- beta_tgt * (beta_tgt - k10_nhp - k12_nhp) / (beta_tgt - k10_nhp)
+V2_fda_nhp   <- Q_ADC_allom / k21_tgt            # L
+
+# ── k_int NHP : k_int = 0 ────────────────────────────────
 # Le T½ augmente avec la dose (3.9 → 5.3 → 7.1 j) = signature TMDD
-# mais un k_int linéaire ne capture pas la saturation HER2 :
-#   k_int calibré sur ΔCL donne AUC −14%/−25% aux doses 10-30 mg/kg.
-# Option B retenue : k_int = 0, CL = moyenne des 3 doses
-#   → erreur AUC équilibrée : +24% / +5% / −8%  sur 3/10/30 mg/kg
-#   → à utiliser si TMDD explicite (Michaelis-Menten) non implémenté
-k_int_nhp     <- 0                    # h⁻¹  (TMDD absorbé dans CL_mean)
+# Un k_int linéaire ne capte pas la saturation HER2 → Option retenue :
+#   k_int = 0,  V1/CL WLS-optimaux (moindres-carrés pondérés),
+#   V2 analytique pour T½ = moyenne géométrique des T½ observés
+k_int_nhp     <- 0                    # h⁻¹  (TMDD absorbé dans CL_wls)
 
 # ── DXd — CL_DXd et V_DXd allométriques depuis rat ──────
 CL_DXd_nhp <- CL_DXd_allom   # L/h  (allom. rat → NHP, pas de calibration DXd)
@@ -148,7 +156,7 @@ for (i in seq_along(fda_tk_nhp)) {
 krel_fda_nhp <- mean(krel_v)   # h⁻¹
 
 # ── Consolidation des paramètres finaux ───────────────────
-tdxd_nhp$CL_ADC        <- CL_fda_nhp      # CL_mean des 3 doses (Option B)
+tdxd_nhp$CL_ADC        <- CL_fda_nhp      # WLS-optimal (k_int=0, TMDD dans CL)
 tdxd_nhp$V1_ADC        <- V1_fda_nhp
 tdxd_nhp$V2_ADC        <- V2_fda_nhp
 tdxd_nhp$Q_ADC         <- Q_ADC_allom     # allométrie (pas de calibration Q)
@@ -168,8 +176,6 @@ tdxd_nhp$k_rep         <- 0.017
 tdxd_nhp$mgL_to_uM_DXd <- 1000 / tdxd_nhp$MW_DXd
 
 # ── Cibles de validation FDA Table 7 ────────────────────
-# C0_pred  = dose / V1_mean  (±6% vs Table 7)
-# AUC_pred = dose / (CL_mean × 24)  (Option B : +24%/+5%/−8%)
 fda_nhp_targets <- fda_tk_nhp
 
 # ── Fonction d'administration IV (identique rat) ─────────
@@ -211,43 +217,57 @@ cat(sprintf("  BW_nhp = %.1f kg   |  allo_CL = (4/0.25)^0.75 = %.1f   allo_V = %
 cat("── ADC (2-cpt) : allométrie rat → NHP ──────────────────────\n")
 cat(sprintf("  Allométrique  : V1=%.4f L  V2=%.4f L  CL=%.4e L/h\n",
             V1_ADC_allom, V2_ADC_allom, CL_ADC_allom))
-cat(sprintf("  Calibré FDA   : V1=%.4f L  V2=%.4f L  CL_mean=%.4e L/h\n",
+cat(sprintf("  Calibré FDA   : V1=%.5f L  V2=%.5f L  CL_wls=%.4e L/h\n",
             tdxd_nhp$V1_ADC, tdxd_nhp$V2_ADC, tdxd_nhp$CL_ADC))
+cat(sprintf("  T½ géomoyenne : %.2f j  (obs 3.9/5.3/7.1 j)\n",
+            t_half_geo_d))
 cat(sprintf("  Ratio FDA/allo: V1×%.2f            CL×%.2f\n\n",
             tdxd_nhp$V1_ADC / V1_ADC_allom,
             tdxd_nhp$CL_ADC / CL_ADC_allom))
 
-cat("── k_int = 0 (Option B) ────────────────────────────────────\n")
-cat(sprintf("  k_int = 0  |  TMDD absorbé dans CL_mean\n"))
-cat(sprintf("  Erreur AUC attendue : +24%% (3mg/kg) / +5%% (10mg/kg) / -8%% (30mg/kg)\n\n"))
+cat("── k_int = 0 ; V1/CL WLS-optimaux, V2 → T½ géomoyenne ─────\n")
+cat(sprintf("  k_int = 0  |  TMDD absorbé dans CL_wls\n"))
+cat(sprintf("  V1_wls=Σk²/Σk  CL_wls=Σm²/Σm  V2 analytique → T½=%.2f j\n\n",
+            t_half_geo_d))
 
 cat("── DXd (1-cpt) : allométrie rat → NHP ─────────────────────\n")
 cat(sprintf("  CL_DXd = %.4f L/h   V_DXd = %.4f L   V_ic = %.4f L\n",
             tdxd_nhp$CL_DXd, tdxd_nhp$V_DXd, tdxd_nhp$V_ic))
-cat(sprintf("  Krel   = %.4e h⁻¹  (calibré C0_DXd/C0_ADC Table 7)\n\n",
+cat(sprintf("  Krel   = %.4e h⁻¹  (calibré C0_DXd/C0_ADC Table 7 M+F)\n\n",
             tdxd_nhp$k_rel_c1))
 
-cat("── Validation NCA Table 7 (prédiction modèle 1-cpt approx.) ─\n")
-cat(sprintf("  %-8s  %-12s  %-12s  %-10s  %-12s  %-12s\n",
-            "Dose", "C0_obs", "C0_pred", "Ratio", "AUC_obs", "AUC_pred"))
-cat(sprintf("  %-8s  %-12s  %-12s  %-10s  %-12s  %-12s\n",
-            "mg/kg", "(µg/mL)", "(µg/mL)", "", "(µg.d/mL)", "(µg.d/mL)"))
-cat(sprintf("  %s\n", paste(rep("─", 75), collapse="")))
+cat("── Validation NCA Table 7 (2-cpt analytique, k_int=0) ─────\n")
+cat(sprintf("  %-8s  %-7s %-7s %-7s │ %-8s %-8s %-7s │ %-6s\n",
+            "Dose","C0_obs","C0_sim","ratio","AUC_obs","AUC_sim","ratio","T½_sim"))
+cat(sprintf("  %-8s  %-7s %-7s %-7s │ %-8s %-8s %-7s │ %-6s\n",
+            "mg/kg","µg/mL","µg/mL","","µg.d/mL","µg.d/mL","","jours"))
+cat(sprintf("  %s\n", paste(rep("─", 80), collapse="")))
 
 for (i in seq_along(fda_tk_nhp)) {
   d       <- fda_tk_nhp[[i]]
   dose_mg <- d$dose_mgkg * BW_nhp
 
-  # Option B : CL_mean fixe, k_int=0
-  C0_pred  <- dose_mg / V1_v[i]
-  AUC_pred <- dose_mg / (tdxd_nhp$CL_ADC * 24)
+  # 2-cpt analytical prediction
+  V1 <- tdxd_nhp$V1_ADC; CL <- tdxd_nhp$CL_ADC
+  V2 <- tdxd_nhp$V2_ADC; Q  <- tdxd_nhp$Q_ADC
+  k10 <- CL/V1; k12 <- Q/V1; k21 <- Q/V2
+  s   <- k10+k12+k21
+  b   <- (s - sqrt(s^2 - 4*k10*k21))/2
+  a   <- s - b
+  A   <- (a-k21)/(a-b) * dose_mg/V1
+  B   <- (k21-b)/(a-b) * dose_mg/V1
+  T   <- 21*24
+  C0_sim  <- dose_mg / V1
+  AUC_sim <- (A/a*(1-exp(-a*T)) + B/b*(1-exp(-b*T))) / 24
+  t12_sim <- log(2)/b/24
 
-  cat(sprintf("  %-8s  %-12.1f  %-12.1f  %-10.3f  %-12.1f  %-12.1f\n",
+  cat(sprintf("  %-8s  %-7.1f %-7.1f %-7.3f │ %-8.1f %-8.1f %-7.3f │ %-6.2f\n",
               paste0(d$dose_mgkg, " mg/kg"),
-              d$C0_ADC, C0_pred, C0_pred / d$C0_ADC,
-              d$AUC21d_ADC, AUC_pred))
+              d$C0_ADC, C0_sim, C0_sim/d$C0_ADC,
+              d$AUC21d_ADC, AUC_sim, AUC_sim/d$AUC21d_ADC,
+              t12_sim))
 }
-cat(sprintf("  (AUC_pred = AUC0-inf estimée | AUC_obs = AUC0-21d Table 7)\n\n"))
+cat(sprintf("  (T½_sim = T½_bêta unique du modèle ; T½_obs dose-dépendant = TMDD)\n\n"))
 
 cat("── Krel par dose ───────────────────────────────────────────\n")
 for (i in seq_along(fda_tk_nhp)) {
