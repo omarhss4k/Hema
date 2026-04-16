@@ -116,24 +116,35 @@ Slope_MEP_sensitive_tdxd <- 0.80   # recalibré N=300 : 0.66→6.3%, 1.24→20.7
 omega_Slope_MEP_sensitive <- 0.50  # IIV élargi pour spread G1/G2/G3
 
 # ── Cibles de validation clinique FDA BLA 761139 ─────────
-# 5.4 mg/kg Q3W, géométrique moyen cycle 1
+# 5.4 mg/kg Q3W, popPK géométrique moyen steady-state
+# Source : FDA BLA 761139 Multi-Discipline Review, p.89 (Table 11)
 tdxd_hu_targets <- list(
-  dose_mgkg       = 5.4,
-  BW_kg           = 70,
-  Tinfu_h         = 1.5,
-  Cmax_ADC_mgL    = 122,        # µg/mL  (FDA Clinical Pharm Review)
-  Cmax_DXd_ngmL   = 4.4,        # ng/mL  (DXd libre plasmatique)
-  Cmax_DXd_mgL    = 4.4e-3,
-  tol_Cmax        = 0.30        # ±30%
+  dose_mgkg          = 5.4,
+  BW_kg              = 70,
+  Tinfu_h            = 1.5,
+  # PK ADC (fam-trastuzumab deruxtecan)
+  Cmax_ADC_mgL       = 122,       # µg/mL  popPK SS geometric mean (CV=20%)
+  AUCtau_ADC_ugdmL   = 735,       # µg·d/mL popPK SS geometric mean (CV=31%)
+  Racc_ADC           = 1.3,       # accumulation ratio SS/C1 (Q3W)
+  # PK DXd (MAAA-1181a, free plasma)
+  Cmax_DXd_ngmL      = 4.4,       # ng/mL  popPK SS geometric mean (CV=40%)
+  Cmax_DXd_mgL       = 4.4e-3,
+  AUCtau_DXd_ngdmL   = 28,        # ng·d/mL popPK SS geometric mean (CV=37%)
+  # Tolerance
+  tol_Cmax           = 0.30       # ±30%
 )
 
 # ── Effets cliniques attendus (FDA BLA 761139, Safety Review) ─
-# 5.4 mg/kg Q3W (DESTINY-Breast01, n=184)
-# Grade 3-4 neutropenia : ~20% patients → Neut < 1.0 × 10⁹/L
-# Grade 1-2 neutropenia : ~35% patients → 1.0 < Neut < 2.0
-# Grade 3-4 anemia      : ~10%
-# → Le modèle doit prédire une chute modérée de Neut (~20-40%)
-#   cohérente avec Grade 1-2 en médiane
+# 5.4 mg/kg Q3W
+# Pooled 5.4 mg/kg (N=234, Table 44 FDA p.189-190) :
+#   Neutropénie G3-4 : 16.2%  (lab any grade : 61.5%)
+#   Anémie      G3-4 :  7.3%  (lab any grade : 69.7%)
+#   Thrombocy.  G3-4 :  3.4%  (lab any grade : 36.8%)
+# DESTINY-Breast01 (U201, N=184) — cibles primaires modèle :
+#   Neutropénie G3-4 : ~20%   Tout grade : ~29%
+#   Anémie      G3-4 :  ~9%   Tout grade : ~70%
+#   Thrombocytopénie G3-4 : ~3-4%
+# → E-R : DXd Cavg (cycle-averaged) = prédicteur hématologie (FDA p.94)
 
 # ── État initial ─────────────────────────────────────────
 tdxd_hu_state0 <- c(

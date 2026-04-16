@@ -214,6 +214,31 @@ simulate_pkpd_tdxd <- function(times, pars, state0,
   cat(sprintf("  ✓ Damage max     = %.4f\n",
               max(out$Damage,      na.rm = TRUE)))
 
+  # AUCtau cycle 1 (trapèze)
+  # NOTE : si k_int>0 (humain), CL_eff = CL_ADC + k_int×V1 >> CL_ADC_FDA
+  #        → AUCtau modèle < FDA (735 µg·d/mL SS) car k_int non découplé de CL_ADC
+  #        Pour rat (k_int=0) : AUCtau modèle ≈ Dose/CL_ADC (valide vs FDA TK)
+  ivl <- if (!is.null(pars$interval_h)) pars$interval_h else 504
+  c1  <- out[out$time_h <= ivl + 0.5, ]    # légère tolérance numérique
+  if (nrow(c1) > 1) {
+    dt       <- diff(c1$time_h)
+    auc_adc1 <- sum(dt * (head(c1$C_ADC1, -1) + tail(c1$C_ADC1, -1)) / 2) / 24
+    auc_dxd1 <- sum(dt * (head(c1$C_DXd,  -1) + tail(c1$C_DXd,  -1)) / 2) * 1000 / 24
+    k_int_val <- if (!is.null(pars$k_int)) pars$k_int else 0
+    if (k_int_val > 0) {
+      cat(sprintf("  ✓ AUCtau ADC C1  = %.0f µg·d/mL  [k_int actif → CL_eff≈%.3fL/h > CL_FDA]\n",
+                  auc_adc1, pars$CL_ADC + k_int_val * pars$V1_ADC))
+      cat(sprintf("  ✓ AUCtau DXd C1  = %.1f ng·d/mL  (FDA SS=28 non comparable : k_int inclus dans CL_FDA)\n",
+                  auc_dxd1))
+    } else {
+      racc <- 1.3
+      cat(sprintf("  ✓ AUCtau ADC C1  = %.0f µg·d/mL  (extrapolé SS×%.1f = %.0f µg·d/mL)\n",
+                  auc_adc1, racc, auc_adc1 * racc))
+      cat(sprintf("  ✓ AUCtau DXd C1  = %.1f ng·d/mL  (extrapolé SS×%.1f = %.1f ng·d/mL)\n",
+                  auc_dxd1, racc, auc_dxd1 * racc))
+    }
+  }
+
   # Diagnostics PD — nadirs
   cat(sprintf("  ✓ Neut nadir     = %.4f  (baseline = %.2f)\n",
               min(out$Neut, na.rm = TRUE), pars$Neut0))

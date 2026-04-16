@@ -3,9 +3,11 @@
 # Simulation de population — T-DXd 5.4 mg/kg Q3W × 6 cycles
 #
 # Objectif : reproduire la distribution de toxicité CTCAE
-#   DESTINY-Breast01 (FDA BLA 761139, n=184) :
+#   FDA BLA 761139 (cibles primaires DESTINY-Breast01, n=184) :
 #   Neutropénie G3-4 : ~20%    Anémie G3-4 : ~9%
 #   Neutropénie tout grade : ~29%  Anémie tout grade : ~70%
+#   FDA pooled 5.4 mg/kg (N=234, Table 44) :
+#   Neutropénie G3-4 : 16.2%  Anémie G3-4 : 7.3%  Thrombocy. G3-4 : 3.4%
 #
 # MODÈLE DE MÉLANGE BIMODAL (mixture) :
 #   71% résistants  : Slope_CMP = Slope_resist_tdxd   × exp(η)  → G0 garanti
@@ -74,6 +76,17 @@ ctcae_anemia <- function(rbc, rbc0) {
   else                   "G0"
 }
 
+# ── CTCAE Grade Thrombocytopénie (Plt en ×10⁹/L) ─────────
+# Plt0 = 345 ×10⁹/L (Fornari 2019 humain)
+# CTCAE v5 : G1 : <LLN-75  G2 : 50-<75  G3 : 25-<50  G4 : <25
+ctcae_plt <- function(plt) {
+  if      (plt < 25)  "G4"
+  else if (plt < 50)  "G3"
+  else if (plt < 75)  "G2"
+  else if (plt < 150) "G1"   # LLN ≈ 150 ×10⁹/L
+  else                "G0"
+}
+
 # ══════════════════════════════════════════════════════════
 # Simulation population
 # ══════════════════════════════════════════════════════════
@@ -96,7 +109,8 @@ results <- data.frame(
   RBC_nadir    = NA_real_,
   Plt_nadir    = NA_real_,
   Grade_Neut   = NA_character_,
-  Grade_Anemia = NA_character_
+  Grade_Anemia = NA_character_,
+  Grade_Plt    = NA_character_
 )
 
 pb_step <- floor(N_patients / 10)
@@ -165,6 +179,7 @@ for (i in 1:N_patients) {
     results$Plt_nadir[i]   <- min(out$Plt,     na.rm=TRUE)
     results$Grade_Neut[i]  <- ctcae_neut(results$Neut_nadir[i])
     results$Grade_Anemia[i]<- ctcae_anemia(results$RBC_nadir[i], pars_typ$RBC0)
+    results$Grade_Plt[i]   <- ctcae_plt(results$Plt_nadir[i])
   }
 
   if (i %% pb_step == 0)
@@ -181,9 +196,11 @@ grade_order <- c("G0", "G1", "G2", "G3", "G4")
 
 tab_neut  <- table(factor(results$Grade_Neut,   levels = grade_order))
 tab_anemia<- table(factor(results$Grade_Anemia, levels = grade_order))
+tab_plt   <- table(factor(results$Grade_Plt,    levels = grade_order))
 
 pct_n <- round(100 * tab_neut  / n_ok, 1)
 pct_a <- round(100 * tab_anemia/ n_ok, 1)
+pct_p <- round(100 * tab_plt   / n_ok, 1)
 
 cat("\n═══════════════════════════════════════════════════════════\n")
 cat(sprintf("  SIMULATION POPULATION — T-DXd 5.4 mg/kg Q3W × 6 (N=%d)\n", n_ok))
@@ -194,9 +211,9 @@ for (g in grade_order) {
   fda_ref <- switch(g, G0="~71%", G1="~7%", G2="~7%", G3="~13%", G4="~3%")
   cat(sprintf("    %-5s  %6d  %6.1f%%   %s\n", g, tab_neut[g], pct_n[g], fda_ref))
 }
-cat(sprintf("    TOTAL G3-4 : %.1f%%  (FDA : ~16-20%%)\n",
+cat(sprintf("    TOTAL G3-4 : %.1f%%  (FDA : ~20%% U201 / 16.2%% pooled N=234)\n",
             pct_n["G3"] + pct_n["G4"]))
-cat(sprintf("    TOUT GRADE : %.1f%%  (FDA : ~29%%)\n",
+cat(sprintf("    TOUT GRADE : %.1f%%  (FDA : ~29%% U201 / 29.5%% pooled)\n",
             pct_n["G1"] + pct_n["G2"] + pct_n["G3"] + pct_n["G4"]))
 
 cat("\n  ANÉMIE (proxy RBC) :\n")
@@ -207,6 +224,15 @@ for (g in grade_order) {
 }
 cat(sprintf("    TOTAL G3-4 : %.1f%%  (FDA : ~9%%)\n",
             pct_a["G3"] + pct_a["G4"]))
+
+cat("\n  THROMBOCYTOPÉNIE (Plt) :\n")
+cat(sprintf("    %-5s  %6s  %7s   %s\n", "Grade", "n", "%", "FDA obs. (N=234)"))
+for (g in grade_order) {
+  fda_ref <- switch(g, G0="~63%", G1="~30%", G2="~4%", G3="~2%", G4="~1%")
+  cat(sprintf("    %-5s  %6d  %6.1f%%   %s\n", g, tab_plt[g], pct_p[g], fda_ref))
+}
+cat(sprintf("    TOTAL G3-4 : %.1f%%  (FDA : ~3.4%%)\n",
+            pct_p["G3"] + pct_p["G4"]))
 
 cat("\n─────────────────────────────────────────────────────────\n")
 # ── Breakdown par sous-groupe ──
@@ -250,12 +276,15 @@ quants <- function(x) quantile(x, c(0.1, 0.5, 0.9), na.rm=TRUE)
 q_adc  <- quants(results$Cmax_ADC)
 q_dxd  <- quants(results$Cmax_DXd_ng)
 q_neut <- quants(results$Neut_nadir)
-cat(sprintf("    ADC Cmax  : %.0f [%.0f–%.0f] µg/mL  (FDA=122)\n",
+q_plt  <- quants(results$Plt_nadir)
+cat(sprintf("    ADC Cmax  : %.0f [%.0f–%.0f] µg/mL  (FDA SS=122)\n",
             q_adc[2], q_adc[1], q_adc[3]))
-cat(sprintf("    DXd Cmax  : %.1f [%.1f–%.1f] ng/mL  (FDA=4.4)\n",
+cat(sprintf("    DXd Cmax  : %.1f [%.1f–%.1f] ng/mL  (FDA SS=4.4)\n",
             q_dxd[2], q_dxd[1], q_dxd[3]))
 cat(sprintf("    Neut nadir: %.2f [%.2f–%.2f] × 10⁹/L\n",
             q_neut[2], q_neut[1], q_neut[3]))
+cat(sprintf("    Plt nadir : %.0f [%.0f–%.0f] × 10⁹/L  (Plt0=%.0f)\n",
+            q_plt[2], q_plt[1], q_plt[3], pars_typ$Plt0))
 cat("═══════════════════════════════════════════════════════════\n")
 
 # ══════════════════════════════════════════════════════════
