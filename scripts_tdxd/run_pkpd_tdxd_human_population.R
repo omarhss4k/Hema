@@ -188,6 +188,7 @@ for (i in 1:N_patients) {
 
 results <- results[!is.na(results$Neut_nadir), ]
 n_ok <- nrow(results)
+saveRDS(results, "results_PKPD_human/population_results.rds")
 
 # ══════════════════════════════════════════════════════════
 # Résultats
@@ -364,3 +365,8 @@ legend("topright", names(grade_cols), pch = 16,
 
 dev.off()
 cat("  -> results_PKPD_human/PKPD_human_population_VPC.pdf\n")
+
+# ══════════════════════════════════════════════════════════
+# Graphique focalisé : grades Neutropénie + Anémie
+# ══════════════════════════════════════════════════════════
+source("../scripts_tdxd/plot_grades_human.R")
