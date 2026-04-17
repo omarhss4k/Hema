@@ -348,7 +348,120 @@ text(0.62, legend_y + 0.01,
 dev.off()
 cat("  -> results_TDXD/NHP_NCA_Table_FDA_vs_Sim.pdf\n")
 
+# ════════════════════════════════════════════════════════
+# Tableau CTCAE v5.0 — Grades anémie + neutropénie
+# ════════════════════════════════════════════════════════
+pdf("results_TDXD/NHP_CTCAE_Grades_Anemie_Neut.pdf", width = 13, height = 8)
+
+# ── couleurs grades ───────────────────────────────────
+gc <- c(G1 = "#ffffb2", G2 = "#fecc5c", G3 = "#fd8d3c", G4 = "#e31a1c")
+gc_txt <- c(G1 = "black",  G2 = "black",   G3 = "white",   G4 = "white")
+
+par(mar = c(1, 1, 3.5, 1), bg = "white")
+plot.new()
+mtext("CTCAE v5.0 — Grades hématologiques : Anémie & Neutropénie",
+      side = 3, line = 1.8, cex = 1.35, font = 2)
+mtext("Référence humain — applicable à l'interprétation des effets T-DXd (DS-8201a)",
+      side = 3, line = 0.4, cex = 0.9, col = "grey30")
+
+# ──────────────────────────────────────────────────────
+# BLOC ANÉMIE  (hémoglobine)
+# ──────────────────────────────────────────────────────
+# En-tête bloc
+rect(0.02, 0.71, 0.49, 0.90, col = "#2166ac", border = NA)
+text(0.255, 0.805, "ANÉMIE  (Hémoglobine / Hgb)", col = "white", cex = 1.1, font = 2)
+
+# Sous-en-têtes
+sub_x <- c(0.055, 0.175, 0.355, 0.455)
+rect(0.02, 0.63, 0.49, 0.71, col = "#d0e4f5", border = NA)
+text(sub_x[1], 0.67, "Grade", font = 2, cex = 0.9)
+text(sub_x[2], 0.67, "Hgb (g/dL)", font = 2, cex = 0.9)
+text(sub_x[3], 0.67, "Définition clinique", font = 2, cex = 0.9)
+text(sub_x[4], 0.67, "NHP ref.", font = 2, cex = 0.9)
+
+anemie <- list(
+  list(g="G1", hgb="LLN – 10.0",   def="Asymptomatique",                 nhp="LLN singe ≈ 12 g/dL"),
+  list(g="G2", hgb="8.0 – <10.0",  def="Symptômes modérés / fatigue",    nhp=""),
+  list(g="G3", hgb="<8.0",         def="Transfusion indiquée",           nhp=""),
+  list(g="G4", hgb="<6.5 (typ.)",  def="Pronostic vital — urgence",      nhp="")
+)
+row_ys_a <- c(0.56, 0.47, 0.38, 0.29)
+
+for (k in seq_along(anemie)) {
+  a  <- anemie[[k]]; yy <- row_ys_a[k]
+  bg <- if (k %% 2 == 0) "#f0f0f0" else "white"
+  rect(0.02, yy - 0.045, 0.49, yy + 0.045, col = bg, border = NA)
+  # badge grade
+  rect(0.02, yy - 0.038, 0.09, yy + 0.038, col = gc[a$g], border = NA)
+  text(0.055,   yy, a$g, col = gc_txt[a$g], font = 2, cex = 0.95)
+  text(sub_x[2], yy, a$hgb, cex = 0.88)
+  text(sub_x[3], yy, a$def, cex = 0.85)
+  text(sub_x[4], yy, a$nhp, cex = 0.72, col = "grey40")
+}
+rect(0.02, 0.245, 0.49, 0.90, col = NA, border = "#2166ac", lwd = 1.5)
+
+# Note LLN anémie
+text(0.02, 0.21, "LLN humain : Hgb ~12.0 g/dL (femme) / 13.5 g/dL (homme)  |  NHP cynomolgus : 12–16 g/dL",
+     cex = 0.72, col = "grey30", adj = 0)
+
+# ──────────────────────────────────────────────────────
+# BLOC NEUTROPÉNIE  (ANC)
+# ──────────────────────────────────────────────────────
+rect(0.51, 0.71, 0.98, 0.90, col = "#b2182b", border = NA)
+text(0.745, 0.805,
+     "NEUTROPÉNIE  (ANC — Absolute Neutrophil Count)",
+     col = "white", cex = 1.05, font = 2)
+
+sub_x2 <- c(0.545, 0.660, 0.840, 0.945)
+rect(0.51, 0.63, 0.98, 0.71, col = "#fde0d9", border = NA)
+text(sub_x2[1], 0.67, "Grade", font = 2, cex = 0.9)
+text(sub_x2[2], 0.67, "ANC (×10⁹/L)", font = 2, cex = 0.9)
+text(sub_x2[3], 0.67, "Définition clinique", font = 2, cex = 0.9)
+text(sub_x2[4], 0.67, "NHP ref.", font = 2, cex = 0.9)
+
+neutro <- list(
+  list(g="G1", anc="LLN – 1.5",  def="Asymptomatique",                 nhp="LLN singe ≈ 1.0"),
+  list(g="G2", anc="1.0 – <1.5", def="Risque infectieux modéré",        nhp=""),
+  list(g="G3", anc="0.5 – <1.0", def="Prophylaxie G-CSF recommandée",  nhp=""),
+  list(g="G4", anc="<0.5",       def="Neutropénie fébrile — urgence",  nhp="")
+)
+row_ys_n <- c(0.56, 0.47, 0.38, 0.29)
+
+for (k in seq_along(neutro)) {
+  n  <- neutro[[k]]; yy <- row_ys_n[k]
+  bg <- if (k %% 2 == 0) "#f0f0f0" else "white"
+  rect(0.51, yy - 0.045, 0.98, yy + 0.045, col = bg, border = NA)
+  rect(0.51, yy - 0.038, 0.60, yy + 0.038, col = gc[n$g], border = NA)
+  text(sub_x2[1], yy, n$g, col = gc_txt[n$g], font = 2, cex = 0.95)
+  text(sub_x2[2], yy, n$anc, cex = 0.88)
+  text(sub_x2[3], yy, n$def, cex = 0.85)
+  text(sub_x2[4], yy, n$nhp, cex = 0.72, col = "grey40")
+}
+rect(0.51, 0.245, 0.98, 0.90, col = NA, border = "#b2182b", lwd = 1.5)
+
+text(0.51, 0.21,
+     "LLN humain : ANC ~1.8 ×10⁹/L  |  NHP cynomolgus : ANC ~1.0–8.0 ×10⁹/L (moy. ~3.0)",
+     cex = 0.72, col = "grey30", adj = 0)
+
+# ──────────────────────────────────────────────────────
+# Pied de page
+# ──────────────────────────────────────────────────────
+# Bande légende grades
+lx <- seq(0.02, 0.30, length.out = 4)
+for (k in 1:4) {
+  rect(lx[k], 0.04, lx[k] + 0.06, 0.10, col = gc[k], border = "grey50")
+  text(lx[k] + 0.03, 0.07, paste0("Grade ", k),
+       col = gc_txt[k], font = 2, cex = 0.78)
+}
+text(0.38, 0.07, "Source : NCI CTCAE v5.0 (2017)", cex = 0.75, col = "grey40", adj = 0)
+text(0.38, 0.04, "T-DXd (DS-8201a) — effets hématologiques attendus : anémie & neutropénie (DXd topoisomérase I)",
+     cex = 0.72, col = "grey30", adj = 0)
+
+dev.off()
+cat("  -> results_TDXD/NHP_CTCAE_Grades_Anemie_Neut.pdf\n")
+
 cat("  Fichiers générés dans results_TDXD/ :\n")
 cat("    -> NHP_PK_validation_Table7.pdf\n")
 cat("    -> NHP_PK_3doses_comparison.pdf\n")
 cat("    -> NHP_NCA_Table_FDA_vs_Sim.pdf\n")
+cat("    -> NHP_CTCAE_Grades_Anemie_Neut.pdf\n")
