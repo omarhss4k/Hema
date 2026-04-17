@@ -219,3 +219,62 @@ pk2comp_rxode2 <- list(
 save(pk2comp_rxode2, df,
      file = "scripts/resultats_PK2comp_rxode2_FGFR2.RData")
 cat("Résultats → scripts/resultats_PK2comp_rxode2_FGFR2.RData\n")
+
+# =============================================================================
+# 9. SIMULATION MULTI-DOSES — 49 jours, administration tous les 14 jours
+#    Doses à j0, j14, j28, j42  (4 injections IV bolus)
+#    Utilisé comme profil PK d'entrée pour le modèle PKPD
+# =============================================================================
+
+n_doses    <- 4          # nombre d'injections
+interval_h <- 14 * 24   # intervalle entre doses (heures)
+obs_end_h  <- 49 * 24   # fin d'observation (heures)
+
+sim_multidose <- function(dose, params, n, interval, t_end) {
+  ev <- eventTable()
+  ev$add.dosing(dose = dose, nbr.doses = n,
+                dosing.interval = interval,
+                dosing.to = 1, start.time = 0)
+  ev$add.sampling(seq(0, t_end, by = 1))
+
+  out <- rxSolve(mod2comp, params, ev)
+  data.frame(t_h = out$time, t_j = out$time / 24, C1 = out$C1)
+}
+
+df_multi <- do.call(rbind, lapply(
+  list(list(dose10, "10 mg/kg"),
+       list(dose1,  "1 mg/kg")),
+  function(x) {
+    s <- sim_multidose(x[[1]], best_par, n_doses, interval_h, obs_end_h)
+    s$Dose <- x[[2]]
+    s
+  }
+))
+df_multi$Dose <- factor(df_multi$Dose, levels = c("10 mg/kg", "1 mg/kg"))
+
+# Lignes verticales aux jours d'administration
+dose_days <- seq(0, (n_doses - 1) * 14, by = 14)
+
+ggplot(df_multi, aes(x = t_j, y = C1, color = Dose)) +
+  geom_line(linewidth = 1) +
+  geom_vline(xintercept = dose_days, linetype = "dashed",
+             color = "grey60", linewidth = 0.5) +
+  annotate("text", x = dose_days, y = max(df_multi$C1) * 1.05,
+           label = paste0("j", dose_days),
+           size = 3, color = "grey40", hjust = 0.5) +
+  scale_y_log10() +
+  labs(
+    title    = "PK multi-doses (rxode2) — Fc-silent B/C huBPA-LP1 (FGFR2)",
+    subtitle = paste0(
+      "4 doses IV bolus, toutes les 14 j | ",
+      "CL = ", round(best_par["CL"] * 24, 4), " L/j/kg",
+      "   V1 = ", round(best_par["V1"], 4), " L/kg",
+      "   t½β = ", round(t_half_beta / 24, 1), " j"
+    ),
+    x = "Temps (jours)",
+    y = "Concentration (échelle log)"
+  ) +
+  theme_bw(base_size = 13)
+
+ggsave("scripts/plot_PK2comp_multidose_FGFR2.png", width = 9, height = 5, dpi = 150)
+cat("Graphique multi-doses → scripts/plot_PK2comp_multidose_FGFR2.png\n")
