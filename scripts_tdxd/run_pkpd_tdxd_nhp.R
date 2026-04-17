@@ -224,6 +224,131 @@ cat("  Ratio ~1.0 = bonne concordance avec FDA Table 7\n")
 cat("  Écart attendu : non-linéarité TMDD non modélisée (k_int fixe)\n")
 cat("═══════════════════════════════════════════════════════════\n\n")
 
+# ════════════════════════════════════════════════════════
+# Tableau comparatif PDF — Simulé vs FDA BLA Table 7
+# ════════════════════════════════════════════════════════
+nca_rows <- vector("list", length(doses))
+for (i in seq_along(doses)) {
+  s   <- sims[[i]]
+  fda <- fda_tk_nhp[[i]]
+
+  C0_sim  <- max(s$C_ADC1[s$time <= 24])
+  idx     <- s$time <= 504
+  AUC_sim <- sum(diff(s$time[idx]) *
+                 (s$C_ADC1[idx][-sum(idx)] + s$C_ADC1[idx][-1]) / 2) / 24
+  idx_t   <- s$time >= 100 & s$time <= 480
+  lm_fit  <- lm(log(C_ADC1) ~ time, data = s[idx_t & s$C_ADC1 > 0, ])
+  t12_sim <- log(2) / abs(coef(lm_fit)[2]) / 24
+
+  nca_rows[[i]] <- list(
+    dose    = doses[i],
+    C0_obs  = fda$C0_ADC,
+    C0_sim  = C0_sim,
+    C0_r    = C0_sim / fda$C0_ADC,
+    AUC_obs = fda$AUC21d_ADC,
+    AUC_sim = AUC_sim,
+    AUC_r   = AUC_sim / fda$AUC21d_ADC,
+    t12_obs = fda$t_half_d,
+    t12_sim = t12_sim,
+    t12_r   = t12_sim / fda$t_half_d
+  )
+}
+
+# ── helper : couleur ratio ────────────────────────────
+ratio_col <- function(r) {
+  err <- abs(r - 1)
+  if      (err <= 0.10) "#2ca02c"   # vert   ≤ 10 %
+  else if (err <= 0.25) "#ff7f0e"   # orange 10–25 %
+  else                  "#d62728"   # rouge  > 25 %
+}
+
+pdf("results_TDXD/NHP_NCA_Table_FDA_vs_Sim.pdf", width = 14, height = 7)
+
+# En-tête
+par(mar = c(1, 1, 3, 1), bg = "white")
+plot.new()
+mtext("T-DXd NHP — Simulation vs FDA BLA 761139 Table 7 (Day 1, M+F mean, Q3W)",
+      side = 3, line = 1, cex = 1.3, font = 2)
+mtext("Doses : 3 / 10 / 30 mg/kg   |   Modèle : ADC 2-cpt, k_int = 0, V1/CL WLS-optimaux",
+      side = 3, line = -0.2, cex = 0.85, col = "grey30")
+
+# ── coordonnées tableau ───────────────────────────────
+# colonnes : dose | C0_obs C0_sim C0_r | AUC_obs AUC_sim AUC_r | T½_obs T½_sim T½_r
+col_x  <- c(0.05, 0.14, 0.22, 0.30,  0.40, 0.50, 0.58,  0.68, 0.77, 0.86)
+row_y  <- c(0.83, 0.65, 0.45, 0.25)   # en-têtes + 3 doses
+
+hdrs1  <- c("Dose\n(mg/kg)",
+            "C0 FDA\n(µg/mL)", "C0 sim\n(µg/mL)", "ratio",
+            "AUC FDA\n(µg·d/mL)", "AUC sim\n(µg·d/mL)", "ratio",
+            "T½ FDA\n(jours)", "T½ sim\n(jours)", "ratio")
+
+# Bandes de fond
+rect(0.0, 0.18, 1.0, 0.90, col = "#f7f7f7", border = NA)
+for (r in c(0.58, 0.38)) rect(0.0, r - 0.10, 1.0, r + 0.10, col = "white", border = NA)
+
+# Séparateurs de groupes
+segments(c(0.325, 0.615), 0.18, c(0.325, 0.615), 0.90,
+         col = "#aaaaaa", lwd = 1.2, lty = 2)
+
+# En-têtes de groupes
+text(0.215, 0.93, "ADC sérum (DS-8201a)", font = 2, cex = 0.95)
+text(0.490, 0.93, "AUC0-21j (DS-8201a)", font = 2, cex = 0.95)
+text(0.775, 0.93, "Demi-vie terminale", font = 2, cex = 0.95)
+
+# En-têtes de colonnes
+for (j in seq_along(col_x))
+  text(col_x[j], row_y[1], hdrs1[j], cex = 0.82, font = 2,
+       col = ifelse(j == 1, "black", "grey20"))
+
+# Données
+for (i in seq_along(doses)) {
+  r  <- nca_rows[[i]]
+  yy <- row_y[i + 1]
+  bg <- if (i %% 2 == 0) "#eaf3fb" else "white"
+  rect(0.0, yy - 0.09, 1.0, yy + 0.09, col = bg, border = NA)
+
+  # valeurs FDA
+  text(col_x[1],  yy, sprintf("%d mg/kg", r$dose), cex = 0.9, font = 2)
+  text(col_x[2],  yy, sprintf("%.1f",  r$C0_obs),  cex = 0.88)
+  text(col_x[3],  yy, sprintf("%.1f",  r$C0_sim),  cex = 0.88)
+  text(col_x[4],  yy, sprintf("%.3f",  r$C0_r),    cex = 0.88,
+       col = ratio_col(r$C0_r), font = 2)
+
+  text(col_x[5],  yy, sprintf("%.0f",  r$AUC_obs), cex = 0.88)
+  text(col_x[6],  yy, sprintf("%.0f",  r$AUC_sim), cex = 0.88)
+  text(col_x[7],  yy, sprintf("%.3f",  r$AUC_r),   cex = 0.88,
+       col = ratio_col(r$AUC_r), font = 2)
+
+  text(col_x[8],  yy, sprintf("%.2f",  r$t12_obs), cex = 0.88)
+  text(col_x[9],  yy, sprintf("%.2f",  r$t12_sim), cex = 0.88)
+  text(col_x[10], yy, sprintf("%.3f",  r$t12_r),   cex = 0.88,
+       col = ratio_col(r$t12_r), font = 2)
+}
+
+# Bordure
+rect(0.0, 0.18, 1.0, 0.90, col = NA, border = "#555555", lwd = 1.5)
+
+# Légende couleurs
+legend_x <- 0.05; legend_y <- 0.10
+text(legend_x, legend_y + 0.04, "Légende ratio sim/FDA :", cex = 0.78, adj = 0)
+rect(legend_x,       legend_y - 0.01, legend_x + 0.018, legend_y + 0.03,
+     col = "#2ca02c", border = NA)
+text(legend_x + 0.024, legend_y + 0.01, "≤ 10 %", cex = 0.75, adj = 0)
+rect(legend_x + 0.09,  legend_y - 0.01, legend_x + 0.108, legend_y + 0.03,
+     col = "#ff7f0e", border = NA)
+text(legend_x + 0.114, legend_y + 0.01, "10–25 %", cex = 0.75, adj = 0)
+rect(legend_x + 0.19,  legend_y - 0.01, legend_x + 0.208, legend_y + 0.03,
+     col = "#d62728", border = NA)
+text(legend_x + 0.214, legend_y + 0.01, "> 25 %", cex = 0.75, adj = 0)
+
+text(0.62, legend_y + 0.01,
+     "T½ dose-dépendant = signature TMDD HER2 (non-linéarité résiduelle attendue)",
+     cex = 0.75, col = "grey40", adj = 0)
+
+dev.off()
+cat("  -> results_TDXD/NHP_NCA_Table_FDA_vs_Sim.pdf\n")
+
 cat("  Fichiers générés dans results_TDXD/ :\n")
 cat("    -> NHP_PK_validation_Table7.pdf\n")
 cat("    -> NHP_PK_3doses_comparison.pdf\n")
+cat("    -> NHP_NCA_Table_FDA_vs_Sim.pdf\n")
