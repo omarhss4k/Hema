@@ -145,7 +145,8 @@ for (i in 1:N_patients) {
     "sensitive"
   }
 
-  eta_SMEP_mep <- rnorm(1, 0, omega_Slope_MEP_sensitive)
+  eta_SMEP_sens <- rnorm(1, 0, omega_Slope_MEP_sensitive)
+  eta_SMEP_light <- rnorm(1, 0, omega_Slope_MEP_light)
 
   pars_i <- pars_typ
   pars_i$CL_ADC  <- pars_typ$CL_ADC * exp(eta_CL)
@@ -156,9 +157,9 @@ for (i in 1:N_patients) {
     sensitive = Slope_sensitive_tdxd * exp(eta_SCMP)
   )
   pars_i$Slope_MEP <- switch(group_mep_i,
-    resistant = Slope_MEP_resist_tdxd    * exp(eta_SMEP_mep),
-    light     = Slope_MEP_light_tdxd     * exp(eta_SMEP_mep),
-    sensitive = Slope_MEP_sensitive_tdxd * exp(eta_SMEP_mep)
+    resistant = 0,
+    light     = Slope_MEP_light_tdxd     * exp(eta_SMEP_light),
+    sensitive = Slope_MEP_sensitive_tdxd * exp(eta_SMEP_sens)
   )
 
   pars_i$rate_fun  <- make_tdxd_infusion(
