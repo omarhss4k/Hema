@@ -136,11 +136,10 @@ simulate_single <- function(dose, params, obs_times, t_admin = 0) {
 
   out <- tryCatch(
     rxSolve(pkpd_model, params, ev, inits = inits_base),
-    error = function(e) NULL
+    error = function(e) { message("rxSolve error (single): ", e$message); NULL }
   )
   if (is.null(out)) return(rep(NA_real_, length(obs_times)))
-  approx(out$time, out$x1 + out$x2 + out$x3 + out$x4,
-         xout = obs_times, rule = 2)$y
+  approx(out$time, out$w, xout = obs_times, rule = 2)$y
 }
 
 # --- (B) Doses répétées toutes les 14 jours ---
@@ -155,11 +154,10 @@ simulate_multi <- function(dose, params, obs_times,
 
   out <- tryCatch(
     rxSolve(pkpd_model, params, ev, inits = inits_base),
-    error = function(e) NULL
+    error = function(e) { message("rxSolve error (multi): ", e$message); NULL }
   )
   if (is.null(out)) return(rep(NA_real_, length(obs_times)))
-  approx(out$time, out$x1 + out$x2 + out$x3 + out$x4,
-         xout = obs_times, rule = 2)$y
+  approx(out$time, out$w, xout = obs_times, rule = 2)$y
 }
 
 # =============================================================================
