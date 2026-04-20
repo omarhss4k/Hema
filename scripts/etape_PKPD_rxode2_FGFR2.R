@@ -52,11 +52,23 @@ p  <- 20
 # =============================================================================
 
 raw_pd  <- read_xlsx("data/TumorVolume_FGFR2.xlsx")
-time_d  <- as.numeric(colnames(raw_pd)[-1])   # jours
-time_h  <- time_d * 24                         # heures
 
-extract_group <- function(raw, group_name) {
-  row <- raw[raw[[1]] == group_name, -1]
+# Diagnostic — affiche la structure réelle du fichier
+cat("\n--- Structure du fichier Excel ---\n")
+cat("Dimensions :", nrow(raw_pd), "lignes x", ncol(raw_pd), "colonnes\n")
+cat("Noms de colonnes :", paste(colnames(raw_pd), collapse=" | "), "\n")
+cat("Colonne 1 (groupes) :", paste(raw_pd[[1]], collapse=" | "), "\n")
+
+# Noms de colonnes → temps en jours
+time_d <- suppressWarnings(as.numeric(colnames(raw_pd)[-1]))
+time_h <- time_d * 24
+cat("Temps lus (jours) :", paste(time_d, collapse=" "), "\n")
+
+# Extraction robuste : correspondance partielle insensible à la casse
+extract_group <- function(raw, pattern) {
+  idx <- grep(pattern, raw[[1]], ignore.case = TRUE)
+  if (length(idx) == 0) stop(paste("Groupe introuvable :", pattern))
+  row <- raw[idx[1], -1]
   as.numeric(unlist(row))
 }
 
