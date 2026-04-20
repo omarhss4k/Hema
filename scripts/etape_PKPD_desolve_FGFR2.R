@@ -69,16 +69,19 @@ w_d3   <- extract_group(raw_pd, "Group 04")
 
 mk <- function(t, w) {
   ok <- !is.na(w) & w > 0
-  data.frame(t = t[ok], w = w[ok])
+  data.frame(t = t[ok], w = w[ok] / 1000)   # mm³ → g
 }
 dat_ctrl <- mk(time_h, w_ctrl)
 dat_d10  <- mk(time_h, w_d10)
 dat_d3   <- mk(time_h, w_d3)
 
-cat("\nPoints par groupe :\n")
-cat("  Contrôle  :", nrow(dat_ctrl), "\n")
-cat("  10 mg/kg  :", nrow(dat_d10),  "\n")
-cat("   3 mg/kg  :", nrow(dat_d3),   "\n")
+cat("\nPoints par groupe (données converties mm³→g) :\n")
+cat("  Contrôle  :", nrow(dat_ctrl),
+    "  w_j0=", round(dat_ctrl$w[1],4), "g  w_fin=", round(tail(dat_ctrl$w,1),4), "g\n")
+cat("  10 mg/kg  :", nrow(dat_d10),
+    "  w_j0=", round(dat_d10$w[1],4),  "g  w_fin=", round(tail(dat_d10$w,1),4),  "g\n")
+cat("   3 mg/kg  :", nrow(dat_d3),
+    "  w_j0=", round(dat_d3$w[1],4),   "g  w_fin=", round(tail(dat_d3$w,1),4),   "g\n")
 
 dose10 <- 10 * 1000   # µg/kg
 dose3  <-  3 * 1000
