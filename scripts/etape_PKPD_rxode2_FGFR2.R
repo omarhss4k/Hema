@@ -135,7 +135,7 @@ simulate_single <- function(dose, params, obs_times, t_admin = 0) {
   ev$add.sampling(sort(unique(c(0, obs_times))))
 
   out <- tryCatch(
-    rxSolve(pkpd_model, params, ev, inits = inits_base),
+    rxSolve(pkpd_model, as.list(params), ev, inits = inits_base),
     error = function(e) { message("rxSolve error (single): ", e$message); NULL }
   )
   if (is.null(out)) return(rep(NA_real_, length(obs_times)))
@@ -153,7 +153,7 @@ simulate_multi <- function(dose, params, obs_times,
   ev$add.sampling(sort(unique(c(0, obs_times))))
 
   out <- tryCatch(
-    rxSolve(pkpd_model, params, ev, inits = inits_base),
+    rxSolve(pkpd_model, as.list(params), ev, inits = inits_base),
     error = function(e) { message("rxSolve error (multi): ", e$message); NULL }
   )
   if (is.null(out)) return(rep(NA_real_, length(obs_times)))
