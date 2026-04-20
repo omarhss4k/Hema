@@ -168,7 +168,7 @@ params_fixed <- c(PK, l0 = l0, l1 = l1, p = p)
 
 make_objective <- function(sim_fn) {
   function(logpar) {
-    par <- c(params_fixed, k1 = exp(logpar[1]), k2 = exp(logpar[2]))
+    par <- c(params_fixed, k1 = unname(exp(logpar[1])), k2 = unname(exp(logpar[2])))
 
     pc  <- tryCatch(sim_fn(dose0,  par, dat_ctrl$t), error = function(e) NULL)
     p3  <- tryCatch(sim_fn(dose3,  par, dat_d3$t),   error = function(e) NULL)
@@ -242,7 +242,7 @@ groups      <- c("Contrôle", "3 mg/kg", "10 mg/kg")
 lev         <- c("Contrôle", "3 mg/kg", "10 mg/kg")
 
 make_df_sim <- function(sim_fn, params_k1k2) {
-  par <- c(params_fixed, k1 = params_k1k2[1], k2 = params_k1k2[2])
+  par <- c(params_fixed, k1 = unname(params_k1k2[1]), k2 = unname(params_k1k2[2]))
   do.call(rbind, mapply(function(dose, grp)
     data.frame(t = times_full / 24,
                w = sim_fn(dose, par, times_full),
@@ -297,7 +297,7 @@ tgi <- function(w_ctrl_end, w_treat_end, w0_val) {
 }
 
 calc_tgi <- function(sim_fn, k1, k2, label) {
-  par    <- c(params_fixed, k1=k1, k2=k2)
+  par    <- c(params_fixed, k1 = unname(k1), k2 = unname(k2))
   t_seq  <- seq(0, 49*24, by = 24)   # un point par jour
   wc  <- tail(sim_fn(dose0,  par, t_seq), 1)
   w3  <- tail(sim_fn(dose3,  par, t_seq), 1)
