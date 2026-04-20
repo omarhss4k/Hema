@@ -51,7 +51,9 @@ p  <- 20
 #   Group 04 : Fc-silent FGFR2-huBPA-LP1,  3 mg/kg
 # =============================================================================
 
-raw_pd  <- read_xlsx("data/TumorVolume_FGFR2.xlsx")
+raw_pd  <- read_xlsx("data/TumorVolume_FGFR2.xlsx",
+                     n_max     = 3,
+                     col_types = c("text", rep("numeric", 15)))
 
 # Diagnostic — affiche la structure réelle du fichier
 cat("\n--- Structure du fichier Excel ---\n")
