@@ -109,16 +109,21 @@ Slope_sensitive_tdxd <- 59.1   # kill fort → G3-4
 # Compatibilité backward
 Slope_CMP_tdxd_human <- Slope_sensitive_tdxd
 
-# ── Mixture bimodale MEP — Anémie (DESTINY-Breast01) ────────────────────────
-# FDA BLA 761139 (n=184) : 30% G0 anémie, 37% G1, 24% G2, 9% G3-4
-# → distribution bimodale : 30% "résistants MEP" (G0) + 70% "sensibles MEP"
-# Tirages INDÉPENDANTS de la mixture CMP (neutropénie)
-# IIV sensibles : ω_SMEP_sensitive = 0.50 (plus large → spread G1/G2/G3)
+# ── Mixture TRIMODALE MEP — Anémie (DESTINY-Breast01) ───────────────────────
+# FDA BLA 761139 (n=184) : G0=30% G1=37% G2=24% G3=8% G4=1%
+# → 3 sous-groupes indépendants (tirages indép. de la mixture CMP) :
+#   30% résistants MEP → G0          (Slope=0)
+#   37% légers MEP     → G1          (Slope_light, à calibrer)
+#   33% sensibles MEP  → G2-G3       (Slope_sensitive, inchangé)
 
-p_sensitive_mep_tdxd     <- 0.70   # fraction sensibles anémie (FDA tout grade = 70%)
-Slope_MEP_resist_tdxd    <- 0.0    # Slope résistants MEP = 0 : drug_ret=0, kill_MEP=0 → G0 strict
-Slope_MEP_sensitive_tdxd <- 0.80   # recalibré N=300 : 0.66→6.3%, 1.24→20.7% → cible 9%
-omega_Slope_MEP_sensitive <- 0.50  # IIV élargi pour spread G1/G2/G3
+p_MEP_light_tdxd         <- 0.37   # G1 cible
+p_sensitive_mep_tdxd     <- 0.33   # G2-G3 cible (réduit de 0.70)
+# p_MEP_resistant = 1 - 0.37 - 0.33 = 0.30 → G0 cible
+
+Slope_MEP_resist_tdxd    <- 0.0    # Slope résistants MEP : kill=0 → G0
+Slope_MEP_light_tdxd     <- 0.25   # légers → G1 (à calibrer)
+Slope_MEP_sensitive_tdxd <- 0.80   # sensibles → G2-G3 (inchangé)
+omega_Slope_MEP_sensitive <- 0.50  # IIV spread G2/G3
 
 # ── Cibles de validation clinique FDA BLA 761139 ─────────
 # 5.4 mg/kg Q3W, popPK géométrique moyen steady-state

@@ -96,7 +96,7 @@ cat("(patience ~3-5 min)\n\n")
 results <- data.frame(
   id               = 1:N_patients,
   group_cmp        = NA_character_,   # "resistant" / "moderate" / "sensitive"
-  is_sensitive_mep = NA,
+  group_mep        = NA_character_,   # "resistant" / "light" / "sensitive"
   CL_ADC       = NA_real_,
   V1_ADC       = NA_real_,
   Slope_CMP    = NA_real_,
@@ -134,10 +134,17 @@ for (i in 1:N_patients) {
     "sensitive"
   }
 
-  # Mixture bimodale MEP (anémie) : tirage indépendant
-  is_sens_mep <- runif(1) < p_sensitive_mep_tdxd
+  # Mixture TRIMODALE MEP (anémie) : tirage indépendant
+  p_mep_resist <- 1 - p_MEP_light_tdxd - p_sensitive_mep_tdxd
+  rand_mep <- runif(1)
+  group_mep_i <- if (rand_mep < p_mep_resist) {
+    "resistant"
+  } else if (rand_mep < p_mep_resist + p_MEP_light_tdxd) {
+    "light"
+  } else {
+    "sensitive"
+  }
 
-  # IIV MEP sensibles : ω élargi à 0.50 pour spread G1/G2/G3
   eta_SMEP_mep <- rnorm(1, 0, omega_Slope_MEP_sensitive)
 
   pars_i <- pars_typ
@@ -148,11 +155,11 @@ for (i in 1:N_patients) {
     moderate  = Slope_moderate_tdxd  * exp(eta_SCMP),
     sensitive = Slope_sensitive_tdxd * exp(eta_SCMP)
   )
-  pars_i$Slope_MEP <- if (is_sens_mep) {
-    Slope_MEP_sensitive_tdxd * exp(eta_SMEP_mep)
-  } else {
-    Slope_MEP_resist_tdxd * exp(eta_SMEP_mep)
-  }
+  pars_i$Slope_MEP <- switch(group_mep_i,
+    resistant = Slope_MEP_resist_tdxd    * exp(eta_SMEP_mep),
+    light     = Slope_MEP_light_tdxd     * exp(eta_SMEP_mep),
+    sensitive = Slope_MEP_sensitive_tdxd * exp(eta_SMEP_mep)
+  )
 
   pars_i$rate_fun  <- make_tdxd_infusion(
     dose_mgkg  = 5.4, BW_kg = 70,
@@ -173,8 +180,8 @@ for (i in 1:N_patients) {
   )
 
   if (!is.null(out) && nrow(out) > 10) {
-    results$group_cmp[i]         <- group_cmp_i
-    results$is_sensitive_mep[i] <- is_sens_mep
+    results$group_cmp[i] <- group_cmp_i
+    results$group_mep[i] <- group_mep_i
     results$CL_ADC[i]           <- pars_i$CL_ADC
     results$V1_ADC[i]       <- pars_i$V1_ADC
     results$Slope_CMP[i]    <- pars_i$Slope_CMP
@@ -267,19 +274,24 @@ cat(sprintf("  Modérés     : G3-4=%.1f%%  G1-2=%.1f%%  nadir=%s\n",
 cat(sprintf("  Sensibles   : G3-4=%.1f%%  G1-2=%.1f%%  nadir=%s\n",
             pct_g34(res_s), pct_g12(res_s), nadir_q(res_s)))
 
-# ── Breakdown anémie par sous-groupe MEP ──
-res_mep_sens  <- results[results$is_sensitive_mep == TRUE,  ]
-res_mep_resist<- results[results$is_sensitive_mep == FALSE, ]
-n_ms <- nrow(res_mep_sens)
-n_mr <- nrow(res_mep_resist)
-cat(sprintf("\n  Anémie — mixture MEP : %d sensibles (%.0f%%) | %d résistants (%.0f%%)\n",
-            n_ms, 100*n_ms/n_ok, n_mr, 100*n_mr/n_ok))
-cat(sprintf("  G3-4 anémie sensibles : %.1f%%  (cible ~13%%)\n",
-            if (n_ms > 0) 100 * sum(res_mep_sens$RBC_nadir / pars_typ$RBC0 < 0.67) / n_ms else 0))
-cat(sprintf("  G3-4 anémie résistants: %.1f%%  (cible ~0%%)\n",
-            if (n_mr > 0) 100 * sum(res_mep_resist$RBC_nadir / pars_typ$RBC0 < 0.67) / n_mr else 0))
-cat(sprintf("  G0  anémie résistants : %.1f%%  (cible ~100%%)\n",
-            if (n_mr > 0) 100 * sum(res_mep_resist$RBC_nadir / pars_typ$RBC0 >= 0.90) / n_mr else 0))
+# ── Breakdown anémie par sous-groupe MEP trimodal ──
+res_mep_r <- results[results$group_mep == "resistant", ]
+res_mep_l <- results[results$group_mep == "light",     ]
+res_mep_s <- results[results$group_mep == "sensitive",  ]
+n_mr <- nrow(res_mep_r); n_ml <- nrow(res_mep_l); n_ms <- nrow(res_mep_s)
+rbc0 <- pars_typ$RBC0
+pct_anemia_grade <- function(x, lo, hi) {
+  if (nrow(x)==0) return(0)
+  100 * sum(x$RBC_nadir/rbc0 >= lo & x$RBC_nadir/rbc0 < hi) / nrow(x)
+}
+cat(sprintf("\n  Anémie — trimodal MEP : %d résistants (%.0f%%) | %d légers (%.0f%%) | %d sensibles (%.0f%%)\n",
+            n_mr, 100*n_mr/n_ok, n_ml, 100*n_ml/n_ok, n_ms, 100*n_ms/n_ok))
+for (grp in list(list(res_mep_r,"Résistants"), list(res_mep_l,"Légers"), list(res_mep_s,"Sensibles"))) {
+  x <- grp[[1]]; nm <- grp[[2]]
+  cat(sprintf("  %-11s: G0=%.0f%% G1=%.0f%% G2=%.0f%% G3-4=%.0f%%\n", nm,
+    pct_anemia_grade(x,0.90,Inf), pct_anemia_grade(x,0.83,0.90),
+    pct_anemia_grade(x,0.67,0.83), pct_anemia_grade(x,0,0.67)))
+}
 
 cat("\n─────────────────────────────────────────────────────────\n")
 cat("  Statistiques exposition (médiane [P10-P90]) :\n")
