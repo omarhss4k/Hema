@@ -306,11 +306,11 @@ tgi <- function(w_ctrl_end, w_treat_end, w0_val) {
 }
 
 calc_tgi <- function(sim_fn, k1, k2, label) {
-  par <- c(params_fixed, k1=k1, k2=k2)
-  t49 <- 49 * 24
-  wc  <- sim_fn(dose0,  par, t49)
-  w3  <- sim_fn(dose3,  par, t49)
-  w10 <- sim_fn(dose10, par, t49)
+  par    <- c(params_fixed, k1=k1, k2=k2)
+  t_seq  <- seq(0, 49*24, by = 24)   # un point par jour
+  wc  <- tail(sim_fn(dose0,  par, t_seq), 1)
+  w3  <- tail(sim_fn(dose3,  par, t_seq), 1)
+  w10 <- tail(sim_fn(dose10, par, t_seq), 1)
   cat("\nTGI à j49 —", label, ":\n")
   cat("   3 mg/kg  :", tgi(wc, w3,  w0), "%\n")
   cat("  10 mg/kg  :", tgi(wc, w10, w0), "%\n")
