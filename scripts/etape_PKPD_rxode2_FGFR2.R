@@ -1,9 +1,13 @@
 # =============================================================================
-# PKPD — Fc-silent B/C huBPA-LP1 (FGFR2) — Simeoni 2004 — rxode2
+# PKPD — Fc-silent FGFR2-huBPA-LP1 — Simeoni 2004 — rxode2
 # -----------------------------------------------------------------------------
-# PK   : 2-compartiments, paramètres FIXÉS depuis l'estimation PK
-# PD   : modèle Simeoni 2004 (l0, l1, p fixés ; k1, k2 à estimer)
-# Unités : heures (tout le script)
+# Groupes : Group 01 = Véhicule (contrôle)
+#           Group 03 = 10 mg/kg
+#           Group 04 =  3 mg/kg
+# Observation : 49 jours
+# Deux scénarios : (A) dose unique  (B) doses répétées toutes les 14j
+# PK fixé depuis estimation 2-comp rxode2
+# PD estimé : k1, k2
 # =============================================================================
 
 library(rxode2)
@@ -11,7 +15,7 @@ library(ggplot2)
 library(readxl)
 
 # =============================================================================
-# 1. PARAMÈTRES PK FIXÉS (issus de l'estimation 2-comp rxode2)
+# 1. PARAMÈTRES PK FIXÉS
 # =============================================================================
 
 load("scripts/resultats_PK2comp_rxode2_FGFR2.RData")   # → pk2comp_rxode2
@@ -24,116 +28,82 @@ PK <- c(
 )
 
 cat("=== Paramètres PK fixés ===\n")
-cat("CL =", round(PK["CL"], 6), "L/h/kg  →", round(PK["CL"]*24, 4), "L/j/kg\n")
+cat("CL =", round(PK["CL"], 6), "L/h/kg  =", round(PK["CL"]*24, 4), "L/j/kg\n")
 cat("V1 =", round(PK["V1"], 5), "L/kg\n")
 cat("V2 =", round(PK["V2"], 5), "L/kg\n")
 cat("Q  =", round(PK["Q"],  6), "L/h/kg\n")
 
 # =============================================================================
-# 2. PARAMÈTRES PD DE CROISSANCE FIXÉS (stagiaire)
-#    Convertis en heures (données originales en jours)
+# 2. PARAMÈTRES PD DE CROISSANCE FIXÉS (stagiaire — convertis en heures)
 # =============================================================================
 
-l0 <- 0.146 / 24   # /h  (taux croissance exponentielle)
-l1 <- 0.334 / 24   # g/h (taux croissance linéaire plateau)
-p  <- 20            # exposant de transition (sans unité)
-
-cat("\n=== Paramètres PD de croissance (fixés) ===\n")
-cat("l0 =", round(l0, 6), "/h  (=", 0.146, "/j)\n")
-cat("l1 =", round(l1, 6), "g/h (=", 0.334, "g/j)\n")
-cat("p  =", p, "\n")
+l0 <- 0.146 / 24   # /h
+l1 <- 0.334 / 24   # g/h
+p  <- 20
 
 # =============================================================================
 # 3. DONNÉES TUMORALES
 # -----------------------------------------------------------------------------
-# FORMAT ATTENDU pour le fichier Excel :
-#   Colonne 1 : temps (jours)
-#   Colonne 2 : volume tumoral groupe contrôle (g ou mm³)
-#   Colonne 3 : volume tumoral dose 1 mg/kg
-#   Colonne 4 : volume tumoral dose 5 mg/kg
-#   Colonne 5 : volume tumoral dose 10 mg/kg
-#
-# Remplacer le chemin ci-dessous par le vrai fichier :
+# Format Excel (wide) :
+#   Ligne 1  : "Group" | 0 | 4 | 7 | 11 | 14 | 18 | 21 | 25 | 28 | ...  (jours)
+#   Group 01 : Véhicule (ADC), 0 mg/kg
+#   Group 03 : Fc-silent FGFR2-huBPA-LP1, 10 mg/kg
+#   Group 04 : Fc-silent FGFR2-huBPA-LP1,  3 mg/kg
 # =============================================================================
 
-raw_pd <- read_xlsx("data/TumorVolume_FGFR2.xlsx")   # ← À RENSEIGNER
+raw_pd  <- read_xlsx("data/TumorVolume_FGFR2.xlsx")
+time_d  <- as.numeric(colnames(raw_pd)[-1])   # jours
+time_h  <- time_d * 24                         # heures
 
-time_d  <- as.numeric(raw_pd[[1]])   # jours
-w_ctrl  <- as.numeric(raw_pd[[2]])   # contrôle (véhicule)
-w_d1    <- as.numeric(raw_pd[[3]])   # 1  mg/kg
-w_d5    <- as.numeric(raw_pd[[4]])   # 5  mg/kg
-w_d10   <- as.numeric(raw_pd[[5]])   # 10 mg/kg
+extract_group <- function(raw, group_name) {
+  row <- raw[raw[[1]] == group_name, -1]
+  as.numeric(row)
+}
 
-# Conversion jours → heures
-time_h <- time_d * 24
+w_ctrl <- extract_group(raw_pd, "Group 01")
+w_d10  <- extract_group(raw_pd, "Group 03")
+w_d3   <- extract_group(raw_pd, "Group 04")
 
-# Doses (µg/kg)
-dose10 <- 10 * 1000
-dose5  <-  5 * 1000
-dose1  <-  1 * 1000
-dose0  <-  0            # contrôle
-
-# Jour d'administration → heures
-t_admin_h <- 13 * 24   # ← Ajuster si nécessaire
-
-# Nettoyage par groupe
 mk <- function(t, w) {
   ok <- !is.na(w) & w > 0
   data.frame(t = t[ok], w = w[ok])
 }
 dat_ctrl <- mk(time_h, w_ctrl)
-dat_d1   <- mk(time_h, w_d1)
-dat_d5   <- mk(time_h, w_d5)
 dat_d10  <- mk(time_h, w_d10)
+dat_d3   <- mk(time_h, w_d3)
 
 cat("\nPoints par groupe :\n")
-cat("  Contrôle :", nrow(dat_ctrl), "\n")
-cat("  1 mg/kg  :", nrow(dat_d1),  "\n")
-cat("  5 mg/kg  :", nrow(dat_d5),  "\n")
-cat("  10 mg/kg :", nrow(dat_d10), "\n")
+cat("  Contrôle  :", nrow(dat_ctrl), "\n")
+cat("  10 mg/kg  :", nrow(dat_d10),  "\n")
+cat("   3 mg/kg  :", nrow(dat_d3),   "\n")
+
+# Doses (µg/kg)
+dose10 <- 10 * 1000
+dose3  <-  3 * 1000
+dose0  <-  0
 
 # =============================================================================
-# 4. ESTIMATION DE w0 — masse tumorale initiale
-#    Régression log-linéaire sur les points pré-traitement
+# 4. MASSE TUMORALE INITIALE w0
+#    Premier point d'observation (t = 0)
 # =============================================================================
 
-est_w0 <- function(df, t_admin) {
-  pre <- df[df$t < t_admin, ]
-  if (nrow(pre) < 2) {
-    cat("  Moins de 2 points pré-traitement — w0 = premier point observé\n")
-    return(df$w[which.min(df$t)])
-  }
-  fit <- lm(log(w) ~ t, data = pre)
-  exp(predict(fit, newdata = data.frame(t = 0)))
-}
+w0 <- mean(c(
+  dat_ctrl$w[which.min(dat_ctrl$t)],
+  dat_d10$w[which.min(dat_d10$t)],
+  dat_d3$w[which.min(dat_d3$t)]
+), na.rm = TRUE)
 
-w0_ctrl <- est_w0(dat_ctrl, t_admin_h)
-w0_d1   <- est_w0(dat_d1,   t_admin_h)
-w0_d5   <- est_w0(dat_d5,   t_admin_h)
-w0_d10  <- est_w0(dat_d10,  t_admin_h)
-w0      <- mean(c(w0_ctrl, w0_d1, w0_d5, w0_d10), na.rm = TRUE)
-
-cat("\nw0 estimés :", round(c(w0_ctrl, w0_d1, w0_d5, w0_d10), 4), "\n")
-cat("w0 commun  :", round(w0, 4), "g\n")
+cat("\nw0 (moyenne premiers points) :", round(w0, 4), "g\n")
 
 # =============================================================================
 # 5. MODÈLE PKPD rxode2 — Simeoni 2004
-# -----------------------------------------------------------------------------
-# États :
-#   A1, A2 : quantités PK (µg/kg)
-#   x1     : cellules proliférantes (g)
-#   x2-x4  : compartiments de transit (cellules endommagées)
-#   C1 = A1/V1 : concentration (observée)
-#   w  = x1+x2+x3+x4 : masse tumorale totale (g)
 # =============================================================================
 
 pkpd_model <- rxode2({
-  # --- Pharmacocinétique ---
   C1       <- A1 / V1
   d/dt(A1) <- -(CL/V1 + Q/V1) * A1 + (Q/V2) * A2
   d/dt(A2) <-  (Q/V1) * A1 - (Q/V2) * A2
 
-  # --- Pharmacodynamique (Simeoni 2004) ---
   w      <- x1 + x2 + x3 + x4
   growth <- l0 * x1 / (1 + (l0/l1 * w)^p)^(1/p)
 
@@ -144,14 +114,13 @@ pkpd_model <- rxode2({
 })
 
 # =============================================================================
-# 6. SIMULATION D'UN GROUPE
-#    dose = 0 pour le contrôle (pas d'événement de dosage)
+# 6. FONCTIONS DE SIMULATION
 # =============================================================================
 
-simulate_group <- function(dose, params, obs_times, w0_val, t_admin) {
-  inits <- c(A1 = 0, A2 = 0,
-             x1 = w0_val, x2 = 0, x3 = 0, x4 = 0)
+inits_base <- c(A1 = 0, A2 = 0, x1 = w0, x2 = 0, x3 = 0, x4 = 0)
 
+# --- (A) Dose unique ---
+simulate_single <- function(dose, params, obs_times, t_admin = 0) {
   ev <- eventTable()
   if (dose > 0)
     ev$add.dosing(dose = dose, nbr.doses = 1,
@@ -159,54 +128,61 @@ simulate_group <- function(dose, params, obs_times, w0_val, t_admin) {
   ev$add.sampling(sort(unique(c(0, obs_times))))
 
   out <- tryCatch(
-    rxSolve(pkpd_model, params, ev, inits = inits),
+    rxSolve(pkpd_model, params, ev, inits = inits_base),
     error = function(e) NULL
   )
   if (is.null(out)) return(rep(NA_real_, length(obs_times)))
+  approx(out$time, out$x1 + out$x2 + out$x3 + out$x4,
+         xout = obs_times, rule = 2)$y
+}
 
-  w_tot <- out$x1 + out$x2 + out$x3 + out$x4
-  approx(out$time, w_tot, xout = obs_times, rule = 2)$y
+# --- (B) Doses répétées toutes les 14 jours ---
+simulate_multi <- function(dose, params, obs_times,
+                           t_admin = 0, n_doses = 4, interval_h = 14*24) {
+  ev <- eventTable()
+  if (dose > 0)
+    ev$add.dosing(dose = dose, nbr.doses = n_doses,
+                  dosing.interval = interval_h,
+                  dosing.to = 1, start.time = t_admin)
+  ev$add.sampling(sort(unique(c(0, obs_times))))
+
+  out <- tryCatch(
+    rxSolve(pkpd_model, params, ev, inits = inits_base),
+    error = function(e) NULL
+  )
+  if (is.null(out)) return(rep(NA_real_, length(obs_times)))
+  approx(out$time, out$x1 + out$x2 + out$x3 + out$x4,
+         xout = obs_times, rule = 2)$y
 }
 
 # =============================================================================
-# 7. FONCTION OBJECTIVE — résidus log, poids égaux par groupe
-#    Paramètres libres : k1, k2  (log-transformés)
-#    Paramètres fixés  : CL, V1, V2, Q, l0, l1, p, w0
+# 7. FONCTION OBJECTIVE GÉNÉRIQUE
 # =============================================================================
 
 params_fixed <- c(PK, l0 = l0, l1 = l1, p = p)
 
-objective <- function(logpar) {
-  k1 <- exp(logpar[1])
-  k2 <- exp(logpar[2])
-  par <- c(params_fixed, k1 = k1, k2 = k2)
+make_objective <- function(sim_fn) {
+  function(logpar) {
+    par <- c(params_fixed, k1 = exp(logpar[1]), k2 = exp(logpar[2]))
 
-  pc  <- tryCatch(simulate_group(dose0,  par, dat_ctrl$t, w0, t_admin_h),
-                  error = function(e) NULL)
-  p1  <- tryCatch(simulate_group(dose1,  par, dat_d1$t,   w0, t_admin_h),
-                  error = function(e) NULL)
-  p5  <- tryCatch(simulate_group(dose5,  par, dat_d5$t,   w0, t_admin_h),
-                  error = function(e) NULL)
-  p10 <- tryCatch(simulate_group(dose10, par, dat_d10$t,  w0, t_admin_h),
-                  error = function(e) NULL)
+    pc  <- tryCatch(sim_fn(dose0,  par, dat_ctrl$t), error = function(e) NULL)
+    p3  <- tryCatch(sim_fn(dose3,  par, dat_d3$t),   error = function(e) NULL)
+    p10 <- tryCatch(sim_fn(dose10, par, dat_d10$t),  error = function(e) NULL)
 
-  bad <- function(p, d) is.null(p) || any(is.na(p) | p <= 0)
-  if (bad(pc,  dat_ctrl)) return(1e10)
-  if (bad(p1,  dat_d1))   return(1e10)
-  if (bad(p5,  dat_d5))   return(1e10)
-  if (bad(p10, dat_d10))  return(1e10)
+    bad <- function(p) is.null(p) || any(is.na(p) | p <= 0)
+    if (bad(pc) || bad(p3) || bad(p10)) return(1e10)
 
-  mean((log(dat_ctrl$w) - log(pc))^2)  +
-  mean((log(dat_d1$w)   - log(p1))^2)  +
-  mean((log(dat_d5$w)   - log(p5))^2)  +
-  mean((log(dat_d10$w)  - log(p10))^2)
+    val <- mean((log(dat_ctrl$w) - log(pc))^2)  +
+           mean((log(dat_d3$w)   - log(p3))^2)   +
+           mean((log(dat_d10$w)  - log(p10))^2)
+
+    if (!is.finite(val)) return(1e10)
+    val
+  }
 }
 
 # =============================================================================
-# 8. OPTIMISATION — multi-start nlminb (k1, k2)
-#    Plages biologiquement raisonnables :
-#    k1 : 0.01–5 /h  (transit ≈ taux de mort cellulaire)
-#    k2 : 1e-7–0.01  (sensibilité au médicament)
+# 8. OPTIMISATION — multi-start nlminb pour les deux scénarios
 # =============================================================================
 
 start_grid <- list(
@@ -217,97 +193,123 @@ start_grid <- list(
   c(k1 = 0.2,  k2 = 5e-5)
 )
 
-cat("\nOptimisation nlminb (multi-start) ...\n")
-best_obj <- Inf
-best_fit <- NULL
-
-for (i in seq_along(start_grid)) {
-  s <- start_grid[[i]]
-  cat("  Départ", i, ": k1 =", s["k1"], " k2 =", s["k2"], "...\n")
-
-  fit_try <- tryCatch(
-    nlminb(log(s), objective,
-           control = list(eval.max = 3000, iter.max = 1500,
-                          rel.tol = 1e-12, x.tol = 1e-12)),
-    error = function(e) NULL
-  )
-
-  if (!is.null(fit_try) && is.finite(fit_try$objective) &&
-      fit_try$objective < best_obj) {
-    best_obj <- fit_try$objective
-    best_fit <- fit_try
+run_optim <- function(obj_fn, label) {
+  cat("\nOptimisation —", label, "...\n")
+  best_obj <- Inf
+  best_fit <- NULL
+  for (i in seq_along(start_grid)) {
+    s <- start_grid[[i]]
+    fit_try <- tryCatch(
+      nlminb(log(s), obj_fn,
+             control = list(eval.max = 3000, iter.max = 1500,
+                            rel.tol = 1e-12, x.tol = 1e-12)),
+      error = function(e) NULL
+    )
+    if (!is.null(fit_try) && is.finite(fit_try$objective) &&
+        fit_try$objective < best_obj) {
+      best_obj <- fit_try$objective
+      best_fit <- fit_try
+    }
   }
+  if (is.null(best_fit)) stop(paste("Aucune convergence pour", label))
+  cat("  k1 =", round(exp(best_fit$par[1]), 6), "/h\n")
+  cat("  k2 =", round(exp(best_fit$par[2]), 8), "\n")
+  cat("  Objectif :", round(best_fit$objective, 5), "\n")
+  best_fit
 }
 
-if (is.null(best_fit)) stop("Aucun point de départ n'a convergé.")
+fit_single <- run_optim(make_objective(simulate_single), "Dose unique")
+fit_multi  <- run_optim(make_objective(simulate_multi),  "Doses répétées (14j)")
 
-k1_est <- exp(best_fit$par[1])
-k2_est <- exp(best_fit$par[2])
+k1_single <- exp(fit_single$par[1]);  k2_single <- exp(fit_single$par[2])
+k1_multi  <- exp(fit_multi$par[1]);   k2_multi  <- exp(fit_multi$par[2])
 
-cat("\n=== Paramètres PKPD estimés ===\n")
-cat("k1 =", round(k1_est, 6), "/h\n")
-cat("k2 =", round(k2_est, 8), "\n")
-cat("Objectif :", round(best_fit$objective, 5), "\n")
+cat("\n=== Résultats PKPD ===\n")
+cat("Dose unique      : k1 =", round(k1_single, 6), "/h  k2 =", round(k2_single, 8), "\n")
+cat("Doses répétées   : k1 =", round(k1_multi,  6), "/h  k2 =", round(k2_multi,  8), "\n")
 
 # =============================================================================
-# 9. SIMULATION FINALE ET GRAPHIQUE
+# 9. GRAPHIQUES
 # =============================================================================
 
-best_params <- c(params_fixed, k1 = k1_est, k2 = k2_est)
-times_full  <- seq(0, max(time_h) * 1.05, by = 1)
+times_full  <- seq(0, 49 * 24, by = 1)
+groups      <- c("Contrôle", "3 mg/kg", "10 mg/kg")
+lev         <- c("Contrôle", "3 mg/kg", "10 mg/kg")
 
-sim <- list(
-  ctrl = simulate_group(dose0,  best_params, times_full, w0, t_admin_h),
-  d1   = simulate_group(dose1,  best_params, times_full, w0, t_admin_h),
-  d5   = simulate_group(dose5,  best_params, times_full, w0, t_admin_h),
-  d10  = simulate_group(dose10, best_params, times_full, w0, t_admin_h)
-)
-
-groups <- c("Contrôle", "1 mg/kg", "5 mg/kg", "10 mg/kg")
-
-df_sim <- do.call(rbind, mapply(function(s, g)
-  data.frame(t = times_full / 24, w = s, Groupe = g),
-  sim, groups, SIMPLIFY = FALSE))
+make_df_sim <- function(sim_fn, params_k1k2) {
+  par <- c(params_fixed, k1 = params_k1k2[1], k2 = params_k1k2[2])
+  do.call(rbind, mapply(function(dose, grp)
+    data.frame(t = times_full / 24,
+               w = sim_fn(dose, par, times_full),
+               Groupe = grp),
+    list(dose0, dose3, dose10), groups, SIMPLIFY = FALSE))
+}
 
 df_obs <- rbind(
-  data.frame(t = dat_ctrl$t / 24, w = dat_ctrl$w, Groupe = "Contrôle"),
-  data.frame(t = dat_d1$t   / 24, w = dat_d1$w,   Groupe = "1 mg/kg"),
-  data.frame(t = dat_d5$t   / 24, w = dat_d5$w,   Groupe = "5 mg/kg"),
-  data.frame(t = dat_d10$t  / 24, w = dat_d10$w,  Groupe = "10 mg/kg")
+  data.frame(t = dat_ctrl$t/24, w = dat_ctrl$w, Groupe = "Contrôle"),
+  data.frame(t = dat_d3$t/24,   w = dat_d3$w,   Groupe = "3 mg/kg"),
+  data.frame(t = dat_d10$t/24,  w = dat_d10$w,  Groupe = "10 mg/kg")
 )
-
-lev <- c("Contrôle", "1 mg/kg", "5 mg/kg", "10 mg/kg")
-df_sim$Groupe <- factor(df_sim$Groupe, levels = lev)
 df_obs$Groupe <- factor(df_obs$Groupe, levels = lev)
 
-ggplot() +
-  geom_line(data  = df_sim, aes(x = t, y = w, color = Groupe), linewidth = 1) +
-  geom_point(data = df_obs, aes(x = t, y = w, color = Groupe), size = 2.5) +
-  geom_vline(xintercept = t_admin_h / 24, linetype = "dashed", color = "grey50") +
-  annotate("text", x = t_admin_h/24 + 0.3,
-           y = max(df_obs$w, na.rm = TRUE) * 0.95,
-           label = "Administration", hjust = 0, size = 3.5, color = "grey40") +
-  labs(
-    title    = "PKPD Simeoni 2004 (rxode2) — Fc-silent B/C huBPA-LP1 (FGFR2)",
-    subtitle = paste0(
-      "k1 = ", round(k1_est, 5), " /h",
-      "   k2 = ", round(k2_est, 7),
-      "   (PK fixé : CL=", round(PK["CL"]*24, 4),
-      " L/j/kg, V1=", round(PK["V1"], 4), " L/kg)"
-    ),
-    x = "Temps (jours)",
-    y = "Masse tumorale (g)"
-  ) +
-  theme_bw(base_size = 13)
+plot_pkpd <- function(df_sim, df_obs, title_suffix, dose_days) {
+  df_sim$Groupe <- factor(df_sim$Groupe, levels = lev)
+  ggplot() +
+    geom_line(data  = df_sim, aes(x=t, y=w, color=Groupe), linewidth=1) +
+    geom_point(data = df_obs, aes(x=t, y=w, color=Groupe), size=2.5) +
+    geom_vline(xintercept = dose_days, linetype="dashed",
+               color="grey60", linewidth=0.5) +
+    annotate("text", x = dose_days, y = max(df_obs$w, na.rm=TRUE)*1.05,
+             label = paste0("j", dose_days), size=2.8, color="grey40", hjust=0.5) +
+    labs(
+      title    = paste("PKPD Simeoni 2004 (rxode2) —", title_suffix),
+      subtitle = paste0("Fc-silent FGFR2-huBPA-LP1 | ",
+                        "PK fixé : CL=", round(PK["CL"]*24,4), " L/j/kg"),
+      x = "Temps (jours)", y = "Masse tumorale (g)"
+    ) +
+    theme_bw(base_size = 13)
+}
 
-ggsave("scripts/plot_PKPD_rxode2_FGFR2.png", width = 8, height = 5, dpi = 150)
-cat("\nGraphique → scripts/plot_PKPD_rxode2_FGFR2.png\n")
+# Graphique A — dose unique
+df_sim_single <- make_df_sim(simulate_single, c(k1_single, k2_single))
+plot_pkpd(df_sim_single, df_obs, "Dose unique", dose_days = 0)
+ggsave("scripts/plot_PKPD_single_FGFR2.png", width=9, height=5, dpi=150)
+cat("\nGraphique dose unique → scripts/plot_PKPD_single_FGFR2.png\n")
+
+# Graphique B — doses répétées
+df_sim_multi <- make_df_sim(simulate_multi, c(k1_multi, k2_multi))
+plot_pkpd(df_sim_multi, df_obs, "Doses répétées (toutes les 14j)",
+          dose_days = c(0, 14, 28, 42))
+ggsave("scripts/plot_PKPD_multi_FGFR2.png", width=9, height=5, dpi=150)
+cat("Graphique doses répétées → scripts/plot_PKPD_multi_FGFR2.png\n")
 
 # =============================================================================
-# 10. SAUVEGARDE
+# 10. TGI — Tumor Growth Inhibition (au jour 49)
 # =============================================================================
 
-save(k1_est, k2_est, best_params, w0,
-     times_full, sim, dat_ctrl, dat_d1, dat_d5, dat_d10,
+tgi <- function(w_ctrl_end, w_treat_end, w0_val) {
+  round((1 - (w_treat_end - w0_val) / (w_ctrl_end - w0_val)) * 100, 1)
+}
+
+calc_tgi <- function(sim_fn, k1, k2, label) {
+  par <- c(params_fixed, k1=k1, k2=k2)
+  t49 <- 49 * 24
+  wc  <- sim_fn(dose0,  par, t49)
+  w3  <- sim_fn(dose3,  par, t49)
+  w10 <- sim_fn(dose10, par, t49)
+  cat("\nTGI à j49 —", label, ":\n")
+  cat("   3 mg/kg  :", tgi(wc, w3,  w0), "%\n")
+  cat("  10 mg/kg  :", tgi(wc, w10, w0), "%\n")
+}
+
+calc_tgi(simulate_single, k1_single, k2_single, "Dose unique")
+calc_tgi(simulate_multi,  k1_multi,  k2_multi,  "Doses répétées")
+
+# =============================================================================
+# 11. SAUVEGARDE
+# =============================================================================
+
+save(k1_single, k2_single, k1_multi, k2_multi,
+     params_fixed, w0, dat_ctrl, dat_d3, dat_d10,
      file = "scripts/resultats_PKPD_rxode2_FGFR2.RData")
-cat("Résultats → scripts/resultats_PKPD_rxode2_FGFR2.RData\n")
+cat("\nRésultats → scripts/resultats_PKPD_rxode2_FGFR2.RData\n")
