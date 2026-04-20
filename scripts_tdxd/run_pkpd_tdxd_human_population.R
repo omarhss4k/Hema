@@ -95,7 +95,7 @@ cat("(patience ~3-5 min)\n\n")
 
 results <- data.frame(
   id               = 1:N_patients,
-  is_sensitive     = NA,
+  group_cmp        = NA_character_,   # "resistant" / "moderate" / "sensitive"
   is_sensitive_mep = NA,
   CL_ADC       = NA_real_,
   V1_ADC       = NA_real_,
@@ -123,8 +123,17 @@ for (i in 1:N_patients) {
   eta_SCMP <- rnorm(1, 0, omega_Slope_CMP)
   eta_SMEP <- rnorm(1, 0, omega_Slope_MEP)
 
-  # Mixture bimodale CMP (neutropénie) : tirage indépendant
-  is_sens_cmp <- runif(1) < p_sensitive_tdxd
+  # Mixture TRIMODALE CMP (neutropénie) : tirage indépendant
+  p_resist <- 1 - p_sensitive_tdxd - p_moderate_tdxd
+  rand_cmp <- runif(1)
+  group_cmp_i <- if (rand_cmp < p_resist) {
+    "resistant"
+  } else if (rand_cmp < p_resist + p_moderate_tdxd) {
+    "moderate"
+  } else {
+    "sensitive"
+  }
+
   # Mixture bimodale MEP (anémie) : tirage indépendant
   is_sens_mep <- runif(1) < p_sensitive_mep_tdxd
 
@@ -134,11 +143,11 @@ for (i in 1:N_patients) {
   pars_i <- pars_typ
   pars_i$CL_ADC  <- pars_typ$CL_ADC * exp(eta_CL)
   pars_i$V1_ADC  <- pars_typ$V1_ADC * exp(eta_V1)
-  pars_i$Slope_CMP <- if (is_sens_cmp) {
-    Slope_sensitive_tdxd * exp(eta_SCMP)
-  } else {
-    Slope_resist_tdxd * exp(eta_SCMP)
-  }
+  pars_i$Slope_CMP <- switch(group_cmp_i,
+    resistant = Slope_resist_tdxd    * exp(eta_SCMP),
+    moderate  = Slope_moderate_tdxd  * exp(eta_SCMP),
+    sensitive = Slope_sensitive_tdxd * exp(eta_SCMP)
+  )
   pars_i$Slope_MEP <- if (is_sens_mep) {
     Slope_MEP_sensitive_tdxd * exp(eta_SMEP_mep)
   } else {
@@ -164,7 +173,7 @@ for (i in 1:N_patients) {
   )
 
   if (!is.null(out) && nrow(out) > 10) {
-    results$is_sensitive[i]     <- is_sens_cmp
+    results$group_cmp[i]         <- group_cmp_i
     results$is_sensitive_mep[i] <- is_sens_mep
     results$CL_ADC[i]           <- pars_i$CL_ADC
     results$V1_ADC[i]       <- pars_i$V1_ADC
@@ -236,26 +245,27 @@ cat(sprintf("    TOTAL G3-4 : %.1f%%  (FDA : ~3.4%%)\n",
             pct_p["G3"] + pct_p["G4"]))
 
 cat("\n─────────────────────────────────────────────────────────\n")
-# ── Breakdown par sous-groupe ──
-res_sens  <- results[results$is_sensitive == TRUE,  ]
-res_resist<- results[results$is_sensitive == FALSE, ]
-n_s  <- nrow(res_sens)
-n_r  <- nrow(res_resist)
-tab_s <- table(factor(res_sens$Grade_Neut,   levels = grade_order))
-tab_r <- table(factor(res_resist$Grade_Neut, levels = grade_order))
-cat(sprintf("  Sous-groupes (mixture) : %d sensibles (%.0f%%) | %d résistants (%.0f%%)\n",
-            n_s, 100*n_s/n_ok, n_r, 100*n_r/n_ok))
-cat(sprintf("  G3-4 sensibles : %.1f%%  (cible ~69%%)\n",
-            if (n_s > 0) 100 * sum(res_sens$Neut_nadir < 1.0) / n_s else 0))
-cat(sprintf("  G3-4 résistants: %.1f%%  (cible ~0%%)\n",
-            if (n_r > 0) 100 * sum(res_resist$Neut_nadir < 1.0) / n_r else 0))
-cat(sprintf("  Nadir sensibles: %.2f [%.2f-%.2f]  résistants: %.2f [%.2f-%.2f] × 10⁹/L\n",
-            median(res_sens$Neut_nadir,  na.rm=TRUE),
-            quantile(res_sens$Neut_nadir, 0.1, na.rm=TRUE),
-            quantile(res_sens$Neut_nadir, 0.9, na.rm=TRUE),
-            median(res_resist$Neut_nadir, na.rm=TRUE),
-            quantile(res_resist$Neut_nadir, 0.1, na.rm=TRUE),
-            quantile(res_resist$Neut_nadir, 0.9, na.rm=TRUE)))
+# ── Breakdown par sous-groupe trimodal ──
+res_r <- results[results$group_cmp == "resistant", ]
+res_m <- results[results$group_cmp == "moderate",  ]
+res_s <- results[results$group_cmp == "sensitive",  ]
+n_r <- nrow(res_r); n_m <- nrow(res_m); n_s <- nrow(res_s)
+cat(sprintf("  Sous-groupes (trimodal) : %d résistants (%.0f%%) | %d modérés (%.0f%%) | %d sensibles (%.0f%%)\n",
+            n_r, 100*n_r/n_ok, n_m, 100*n_m/n_ok, n_s, 100*n_s/n_ok))
+pct_g34 <- function(x) if (nrow(x)>0) 100*sum(x$Neut_nadir<1.0)/nrow(x) else 0
+pct_g12 <- function(x) if (nrow(x)>0) 100*sum(x$Neut_nadir>=1.0 & x$Neut_nadir<2.0)/nrow(x) else 0
+nadir_q  <- function(x) {
+  sprintf("%.2f [%.2f-%.2f]",
+          median(x$Neut_nadir,na.rm=T),
+          quantile(x$Neut_nadir,0.1,na.rm=T),
+          quantile(x$Neut_nadir,0.9,na.rm=T))
+}
+cat(sprintf("  Résistants  : G3-4=%.1f%%  G1-2=%.1f%%  nadir=%s\n",
+            pct_g34(res_r), pct_g12(res_r), nadir_q(res_r)))
+cat(sprintf("  Modérés     : G3-4=%.1f%%  G1-2=%.1f%%  nadir=%s\n",
+            pct_g34(res_m), pct_g12(res_m), nadir_q(res_m)))
+cat(sprintf("  Sensibles   : G3-4=%.1f%%  G1-2=%.1f%%  nadir=%s\n",
+            pct_g34(res_s), pct_g12(res_s), nadir_q(res_s)))
 
 # ── Breakdown anémie par sous-groupe MEP ──
 res_mep_sens  <- results[results$is_sensitive_mep == TRUE,  ]

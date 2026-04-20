@@ -91,15 +91,20 @@ tdxd_pars_hu <- list(
 
 tdxd_pars_hu$mgL_to_uM_DXd <- 1000 / tdxd_pars_hu$MW_DXd
 
-# ── Modèle de mélange bimodal (DESTINY-Breast01) ────────────────────────────
-# FDA BLA 761139 (n=184) : 71% G0 neutropénie, 29% tout grade neutropénie
-# → distribution bimodale : 71% "résistants" (faible Slope_CMP) + 29% "sensibles"
-# Résistants : Slope_CMP_resist très faible → kill < 10% → Neut reste ≥ 2.0 (G0)
-# Sensibles  : Slope_CMP_sensitive élevé → kill >> 1 → G3-4 chez ~69% (= 20%/29%)
+# ── Modèle de mélange TRIMODAL (DESTINY-Breast01) ───────────────────────────
+# FDA BLA 761139 pooled (N=234) : G0=71% G1=7% G2=7% G3=13% G4=3%
+# → 3 sous-groupes indépendants :
+#   66% résistants  → G0          (Slope très faible)
+#   14% modérés     → G1-G2       (Slope intermédiaire, à calibrer)
+#   20% sensibles   → G3-4 ~80%   (Slope élevé)
 
-p_sensitive_tdxd     <- 0.29   # fraction patients sensibles (FDA tout grade = 29%)
-Slope_resist_tdxd    <- 0.10   # Slope résistants : kill_max ≈ 7% → G0 garanti
-Slope_sensitive_tdxd <- 59.1   # calibré : entre 50 (G3-4_s=58%) et 70 (G3-4_s=82%)
+p_sensitive_tdxd     <- 0.20   # G3-4 = 20% × 80% ≈ 16% (pooled FDA 16.2%)
+p_moderate_tdxd      <- 0.14   # G1+G2 = 7%+7% = 14% (FDA pooled)
+# p_resistant = 1 - p_sensitive - p_moderate = 0.66
+
+Slope_resist_tdxd    <- 0.10   # kill_max ≈ 7%  → G0 garanti
+Slope_moderate_tdxd  <- 5.0    # kill intermédiaire → G1-G2 (à calibrer)
+Slope_sensitive_tdxd <- 59.1   # kill fort → G3-4
 
 # Compatibilité backward
 Slope_CMP_tdxd_human <- Slope_sensitive_tdxd
