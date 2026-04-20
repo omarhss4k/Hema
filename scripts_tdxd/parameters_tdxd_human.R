@@ -121,10 +121,10 @@ p_sensitive_mep_tdxd     <- 0.33   # G2-G3 cible (réduit de 0.70)
 # p_MEP_resistant = 1 - 0.37 - 0.33 = 0.30 → G0 cible
 
 Slope_MEP_resist_tdxd    <- 0.0    # Slope résistants MEP : kill=0 → G0
-Slope_MEP_light_tdxd     <- 0.20   # légers → G1 (calibré iter.3)
-Slope_MEP_sensitive_tdxd <- 1.00   # sensibles → G2-G3 (calibré iter.4)
+Slope_MEP_light_tdxd     <- 0.17   # légers → G1 (calibré iter.5)
+Slope_MEP_sensitive_tdxd <- 1.00   # sensibles → G2-G3 (inchangé)
 omega_Slope_MEP_sensitive <- 0.50  # IIV spread G2/G3
-omega_Slope_MEP_light     <- 0.15  # IIV réduit pour garder légers en G1
+omega_Slope_MEP_light     <- 0.10  # IIV quasi-déterministe pour légers en G1
 
 # ── Cibles de validation clinique FDA BLA 761139 ─────────
 # 5.4 mg/kg Q3W, popPK géométrique moyen steady-state
