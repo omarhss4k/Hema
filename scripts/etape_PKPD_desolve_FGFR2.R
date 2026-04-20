@@ -100,6 +100,50 @@ w0 <- mean(c(
 cat("\nw0 (moyenne premiers points) :", round(w0, 4), "g\n")
 
 # =============================================================================
+# 4b. CALIBRATION l0 / l1 SUR LE GROUPE CONTRÔLE
+# -----------------------------------------------------------------------------
+# Pour dose=0 : C1=0 → x2=x3=x4=0 toujours → w = x1
+# Modèle réduit 1D : dw/dt = l0*w / (1+(l0/l1*w)^p)^(1/p)
+# =============================================================================
+
+growth_1d <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    list(c(l0 * w / (1 + (l0/l1 * w)^p)^(1/p)))
+  })
+}
+
+obj_ctrl_growth <- function(logpar) {
+  l0_f <- unname(exp(logpar[1]))
+  l1_f <- unname(exp(logpar[2]))
+  pars  <- c(l0=l0_f, l1=l1_f, p=p)
+  times <- sort(unique(c(0, dat_ctrl$t)))
+
+  out <- tryCatch(
+    as.data.frame(lsoda(c(w=w0), times, growth_1d, pars,
+                        rtol=1e-6, atol=1e-8)),
+    error = function(e) NULL
+  )
+  if (is.null(out)) return(1e10)
+  w_pred <- pmax(approx(out$time, out$w, xout=dat_ctrl$t, rule=2)$y, 1e-9)
+  val <- mean((log(dat_ctrl$w) - log(w_pred))^2)
+  if (!is.finite(val)) 1e10 else val
+}
+
+fit_ctrl_growth <- nlminb(
+  start     = log(c(l0=l0, l1=l1)),
+  objective = obj_ctrl_growth,
+  control   = list(eval.max=2000, iter.max=1000, rel.tol=1e-12, x.tol=1e-12)
+)
+l0 <- unname(exp(fit_ctrl_growth$par[1]))
+l1 <- unname(exp(fit_ctrl_growth$par[2]))
+
+cat("\n=== l0/l1 calibrés sur le groupe contrôle ===\n")
+cat("l0 =", round(l0*24, 5), "/j  (", round(l0, 7), "/h)  t½ expo =",
+    round(log(2)/(l0*24), 1), "j\n")
+cat("l1 =", round(l1*24, 5), "g/j  (", round(l1, 7), "g/h)\n")
+cat("Objectif contrôle :", round(fit_ctrl_growth$objective, 6), "\n")
+
+# =============================================================================
 # 5. MODÈLE ODE — Simeoni 2004
 # =============================================================================
 
