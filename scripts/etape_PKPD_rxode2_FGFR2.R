@@ -55,16 +55,9 @@ raw_pd  <- read_xlsx("data/TumorVolume_FGFR2.xlsx",
                      n_max     = 3,
                      col_types = c("text", rep("numeric", 15)))
 
-# Diagnostic — affiche la structure réelle du fichier
-cat("\n--- Structure du fichier Excel ---\n")
-cat("Dimensions :", nrow(raw_pd), "lignes x", ncol(raw_pd), "colonnes\n")
-cat("Noms de colonnes :", paste(colnames(raw_pd), collapse=" | "), "\n")
-cat("Colonne 1 (groupes) :", paste(raw_pd[[1]], collapse=" | "), "\n")
-
 # Noms de colonnes → temps en jours
 time_d <- suppressWarnings(as.numeric(colnames(raw_pd)[-1]))
 time_h <- time_d * 24
-cat("Temps lus (jours) :", paste(time_d, collapse=" "), "\n")
 
 # Extraction robuste : correspondance partielle insensible à la casse
 extract_group <- function(raw, pattern) {
@@ -113,7 +106,7 @@ cat("\nw0 (moyenne premiers points) :", round(w0, 4), "g\n")
 # 5. MODÈLE PKPD rxode2 — Simeoni 2004
 # =============================================================================
 
-pkpd_model <- rxode2({
+pkpd_model <- suppressMessages(rxode2({
   C1       <- A1 / V1
   d/dt(A1) <- -(CL/V1 + Q/V1) * A1 + (Q/V2) * A2
   d/dt(A2) <-  (Q/V1) * A1 - (Q/V2) * A2
@@ -125,7 +118,7 @@ pkpd_model <- rxode2({
   d/dt(x2) <- k2 * C1 * x1 - k1 * x2
   d/dt(x3) <- k1 * (x2 - x3)
   d/dt(x4) <- k1 * (x3 - x4)
-})
+}))
 
 # =============================================================================
 # 6. FONCTIONS DE SIMULATION
