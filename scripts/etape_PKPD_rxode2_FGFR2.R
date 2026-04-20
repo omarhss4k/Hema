@@ -73,7 +73,7 @@ w_d3   <- extract_group(raw_pd, "Group 04")
 
 mk <- function(t, w) {
   ok <- !is.na(w) & w > 0
-  data.frame(t = t[ok], w = w[ok])
+  data.frame(t = t[ok], w = w[ok] / 1000)   # mm³ → g (l1 en g/h)
 }
 dat_ctrl <- mk(time_h, w_ctrl)
 dat_d10  <- mk(time_h, w_d10)
