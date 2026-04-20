@@ -57,7 +57,7 @@ time_h  <- time_d * 24                         # heures
 
 extract_group <- function(raw, group_name) {
   row <- raw[raw[[1]] == group_name, -1]
-  as.numeric(row)
+  as.numeric(unlist(row))
 }
 
 w_ctrl <- extract_group(raw_pd, "Group 01")
