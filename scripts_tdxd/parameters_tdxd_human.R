@@ -103,7 +103,7 @@ p_moderate_tdxd      <- 0.14   # G1+G2 = 7%+7% = 14% (FDA pooled)
 # p_resistant = 1 - p_sensitive - p_moderate = 0.66
 
 Slope_resist_tdxd    <- 0.10   # kill_max ≈ 7%  → G0 garanti
-Slope_moderate_tdxd  <- 5.0    # kill intermédiaire → G1-G2 (à calibrer)
+Slope_moderate_tdxd  <- 12.0   # kill intermédiaire → G1-G2 (calibré iter.2)
 Slope_sensitive_tdxd <- 59.1   # kill fort → G3-4
 
 # Compatibilité backward
