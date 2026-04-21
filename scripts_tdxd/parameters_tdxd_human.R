@@ -104,7 +104,7 @@ p_moderate_tdxd      <- 0.14   # G1+G2 = 7%+7% = 14% (FDA pooled)
 
 Slope_resist_tdxd    <- 0.10   # kill_max ≈ 7%  → G0 garanti
 Slope_moderate_tdxd  <- 12.0   # kill intermédiaire → G1-G2
-Slope_sensitive_tdxd <- 22.0   # kill fort → G3-4 (réduit de 59.1, ratio resist/sens=1/220)
+Slope_sensitive_tdxd <- 59.1   # kill fort → G3-4 (nécessaire pour séparation binaire)
 
 # Compatibilité backward
 Slope_CMP_tdxd_human <- Slope_sensitive_tdxd
