@@ -116,13 +116,13 @@ Slope_CMP_tdxd_human <- Slope_sensitive_tdxd
 #   37% légers MEP     → G1          (Slope_light, à calibrer)
 #   33% sensibles MEP  → G2-G3       (Slope_sensitive, inchangé)
 
-p_MEP_light_tdxd         <- 0.37   # G1 cible
-p_sensitive_mep_tdxd     <- 0.33   # G2-G3 cible (réduit de 0.70)
-# p_MEP_resistant = 1 - 0.37 - 0.33 = 0.30 → G0 cible
+p_MEP_light_tdxd         <- 0.33   # G1 cible (iter.8)
+p_sensitive_mep_tdxd     <- 0.33   # G2-G3 cible (inchangé)
+# p_MEP_resistant = 1 - 0.33 - 0.33 = 0.34 → G0 cible (iter.8)
 
 Slope_MEP_resist_tdxd    <- 0.0    # Slope résistants MEP : kill=0 → G0
 Slope_MEP_light_tdxd     <- 0.20   # légers → centre G1 (calibré iter.7, seuil 80%)
-Slope_MEP_sensitive_tdxd <- 1.40   # sensibles → G2-G3 (calibré iter.7, G3-4 cible 9%)
+Slope_MEP_sensitive_tdxd <- 1.25   # sensibles → G2-G3 (calibré iter.8, G3 cible 8%)
 omega_Slope_MEP_sensitive <- 0.50  # IIV spread G2/G3
 omega_Slope_MEP_light     <- 0.10  # IIV quasi-déterministe pour légers en G1
 
