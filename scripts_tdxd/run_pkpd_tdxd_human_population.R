@@ -61,17 +61,17 @@ ctcae_neut <- function(neut) {
 }
 
 # ── CTCAE Grade Anémie (proxy Hgb via RBC) ───────────────
-# RBC0 = 5000 × 10⁹/L → Hgb ≈ 12 g/dL
-# Grade basé sur % drop de RBC (proxy Hgb) :
-#   G1 : Hgb < LNL (≈10 g/dL → RBC -17%)
-#   G2 : Hgb < 10.0 → RBC < 83% baseline
-#   G3 : Hgb < 8.0  → RBC < 67% baseline
-#   G4 : Hgb < 6.5  → RBC < 54% baseline
+# RBC0 = 5000 × 10⁹/L → Hgb₀ ≈ 12.5 g/dL (DESTINY-B01, patientes prétaitées)
+# CTCAE v5 (seuils absolus Hgb → % RBC avec Hgb₀=12.5 g/dL) :
+#   G1 : Hgb < 12 g/dL  → RBC < 96%  ... mais G0/G1 maintenu à 90% (LLN pratique)
+#   G2 : Hgb < 10 g/dL  → RBC < 80%  (10/12.5)
+#   G3 : Hgb < 8.0 g/dL → RBC < 67%  (8/12)
+#   G4 : Hgb < 6.5 g/dL → RBC < 54%
 ctcae_anemia <- function(rbc, rbc0) {
   frac <- rbc / rbc0
   if      (frac < 0.54) "G4"
   else if (frac < 0.67) "G3"
-  else if (frac < 0.83) "G2"
+  else if (frac < 0.80) "G2"
   else if (frac < 0.90) "G1"
   else                   "G0"
 }
