@@ -134,17 +134,19 @@ wrss_tmdd <- function(CL_lin, Vmax_MM, Km_MM) {
     nca <- nca_tmdd(sol, fda)
     if (!nca$ok || nca$C0 <= 0 || nca$AUC <= 0 || nca$t12 <= 0) return(1e8)
     total <- total +
-      (log(nca$C0  / fda$C0_ADC))^2 +
-      (log(nca$AUC / fda$AUC21d_ADC))^2 +
-      (log(nca$t12 / fda$t_half_d))^2
+      1.0 * (log(nca$C0  / fda$C0_ADC))^2 +
+      1.0 * (log(nca$AUC / fda$AUC21d_ADC))^2 +
+      2.0 * (log(nca$t12 / fda$t_half_d))^2   # T½ x2 : signature clé TMDD
   }
   total
 }
 
-# Grille grossière : 9 × 6 × 7
-CL_grid <- exp(seq(log(4e-4), log(2e-3), length.out = 9))
-VM_grid <- exp(seq(log(0.02),  log(0.20),  length.out = 6))
-Km_grid <- exp(seq(log(1.0),   log(30.0),  length.out = 7))
+# ── Grille élargie : Vmax jusqu'à 2 mg/L/h, Km jusqu'à 300 µg/mL ─────────────
+# La physique TMDD implique Km dans la gamme des conc. terminales (~10-100 µg/mL)
+# et Vmax ~0.1-1.0 mg/L/h pour expliquer la variation CL × 1.5 entre doses
+CL_grid <- exp(seq(log(1e-4),  log(2e-3),  length.out = 10))
+VM_grid <- exp(seq(log(0.02),  log(2.0),   length.out = 10))
+Km_grid <- exp(seq(log(1.0),   log(300.0), length.out = 10))
 
 best_val <- 1e8; best_par <- c(1.115e-3, 0.060, 4.0)
 for (cl in CL_grid) for (vm in VM_grid) for (km in Km_grid) {
@@ -152,12 +154,12 @@ for (cl in CL_grid) for (vm in VM_grid) for (km in Km_grid) {
   if (v < best_val) { best_val <- v; best_par <- c(cl, vm, km) }
 }
 cat(sprintf("Coarse: CL=%.3e Vmax=%.3f Km=%.1f  RMSE=%.1f%%\n",
-            best_par[1], best_par[2], best_par[3], 100*sqrt(best_val/9)))
+            best_par[1], best_par[2], best_par[3], 100*sqrt(best_val/12)))
 
-# Grille fine autour du meilleur
-CL_f <- exp(seq(log(best_par[1]*0.7), log(best_par[1]*1.4), length.out = 7))
-VM_f <- exp(seq(log(best_par[2]*0.5), log(best_par[2]*2.0), length.out = 7))
-Km_f <- exp(seq(log(best_par[3]*0.4), log(best_par[3]*2.5), length.out = 7))
+# Grille fine : ×0.4–×2.5 autour du meilleur
+CL_f <- exp(seq(log(best_par[1]*0.4), log(best_par[1]*2.5), length.out = 8))
+VM_f <- exp(seq(log(best_par[2]*0.3), log(best_par[2]*3.0), length.out = 8))
+Km_f <- exp(seq(log(best_par[3]*0.3), log(best_par[3]*3.0), length.out = 8))
 
 best_val2 <- best_val; best_par2 <- best_par
 for (cl in CL_f) for (vm in VM_f) for (km in Km_f) {
@@ -165,7 +167,7 @@ for (cl in CL_f) for (vm in VM_f) for (km in Km_f) {
   if (v < best_val2) { best_val2 <- v; best_par2 <- c(cl, vm, km) }
 }
 cat(sprintf("Fine:   CL=%.4e Vmax=%.4f Km=%.2f  RMSE=%.1f%%\n",
-            best_par2[1], best_par2[2], best_par2[3], 100*sqrt(best_val2/9)))
+            best_par2[1], best_par2[2], best_par2[3], 100*sqrt(best_val2/12)))
 
 # ── Raffinement Nelder-Mead autour du meilleur de la grille fine ─────────────
 obj_tmdd <- function(theta) {
@@ -182,7 +184,7 @@ opt <- optim(log(best_par2), obj_tmdd, method = "Nelder-Mead",
 CL_lin_cal  <- exp(opt$par[1])
 Vmax_MM_cal <- exp(opt$par[2])
 Km_MM_cal   <- exp(opt$par[3])
-rmse_cal    <- 100 * sqrt(opt$value / 9)
+rmse_cal    <- 100 * sqrt(opt$value / 12)   # 12 = (C0+AUC+T½×2) × 3 doses
 
 # Mise à jour des paramètres dans tdxd_nhp
 tdxd_nhp$CL_lin  <- CL_lin_cal
