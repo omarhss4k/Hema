@@ -131,7 +131,7 @@ V2_fda_nhp   <- Q_ADC_allom / k21_tgt            # L
 # Un k_int linéaire ne capte pas la saturation HER2 → Option retenue :
 #   k_int = 0,  V1/CL WLS-optimaux (moindres-carrés pondérés),
 #   V2 analytique pour T½ = moyenne géométrique des T½ observés
-k_int_nhp     <- 0                    # h⁻¹  (TMDD absorbé dans CL_wls)
+k_int_nhp     <- 0                    # h⁻¹  (TMDD via MM, pas d'internalisation linéaire)
 
 # ── DXd — CL_DXd et V_DXd allométriques depuis rat ──────
 CL_DXd_nhp <- CL_DXd_allom   # L/h  (allom. rat → NHP, pas de calibration DXd)
@@ -156,7 +156,10 @@ for (i in seq_along(fda_tk_nhp)) {
 krel_fda_nhp <- mean(krel_v)   # h⁻¹
 
 # ── Consolidation des paramètres finaux ───────────────────
-tdxd_nhp$CL_ADC        <- CL_fda_nhp      # WLS-optimal (k_int=0, TMDD dans CL)
+tdxd_nhp$CL_ADC        <- CL_fda_nhp      # WLS-optimal (référence linéaire)
+tdxd_nhp$CL_lin        <- CL_fda_nhp      # L/h  (départ optim TMDD = CL_wls)
+tdxd_nhp$Vmax_MM       <- 0.060           # mg/L/h (départ grille analytique 1-cpt)
+tdxd_nhp$Km_MM         <- 4.0             # mg/L   (départ grille analytique 1-cpt)
 tdxd_nhp$V1_ADC        <- V1_fda_nhp
 tdxd_nhp$V2_ADC        <- V2_fda_nhp
 tdxd_nhp$Q_ADC         <- Q_ADC_allom     # allométrie (pas de calibration Q)
@@ -225,10 +228,10 @@ cat(sprintf("  Ratio FDA/allo: V1×%.2f            CL×%.2f\n\n",
             tdxd_nhp$V1_ADC / V1_ADC_allom,
             tdxd_nhp$CL_ADC / CL_ADC_allom))
 
-cat("── k_int = 0 ; V1/CL WLS-optimaux, V2 → T½ géomoyenne ─────\n")
-cat(sprintf("  k_int = 0  |  TMDD absorbé dans CL_wls\n"))
-cat(sprintf("  V1_wls=Σk²/Σk  CL_wls=Σm²/Σm  V2 analytique → T½=%.2f j\n\n",
-            t_half_geo_d))
+cat("── TMDD (Michaelis-Menten) : calibration via optim() ──────────\n")
+cat(sprintf("  k_int = 0  |  CL_lin départ=CL_wls, Vmax_MM=0.060, Km_MM=4.0 (grille 1-cpt)\n"))
+cat(sprintf("  Calibration finale (C0+AUC+T½ × 3 doses) → run_pkpd_tdxd_nhp.R\n"))
+cat(sprintf("  V2 analytique → T½ géomoyenne = %.2f j\n\n", t_half_geo_d))
 
 cat("── DXd (1-cpt) : allométrie rat → NHP ─────────────────────\n")
 cat(sprintf("  CL_DXd = %.4f L/h   V_DXd = %.4f L   V_ic = %.4f L\n",
@@ -236,7 +239,7 @@ cat(sprintf("  CL_DXd = %.4f L/h   V_DXd = %.4f L   V_ic = %.4f L\n",
 cat(sprintf("  Krel   = %.4e h⁻¹  (calibré C0_DXd/C0_ADC Table 7 M+F)\n\n",
             tdxd_nhp$k_rel_c1))
 
-cat("── Validation NCA Table 7 (2-cpt analytique, k_int=0) ─────\n")
+cat("── Validation NCA Table 7 (2-cpt linéaire, avant TMDD) ────────\n")
 cat(sprintf("  %-8s  %-7s %-7s %-7s │ %-8s %-8s %-7s │ %-6s\n",
             "Dose","C0_obs","C0_sim","ratio","AUC_obs","AUC_sim","ratio","T½_sim"))
 cat(sprintf("  %-8s  %-7s %-7s %-7s │ %-8s %-8s %-7s │ %-6s\n",
@@ -267,7 +270,7 @@ for (i in seq_along(fda_tk_nhp)) {
               d$AUC21d_ADC, AUC_sim, AUC_sim/d$AUC21d_ADC,
               t12_sim))
 }
-cat(sprintf("  (T½_sim = T½_bêta unique du modèle ; T½_obs dose-dépendant = TMDD)\n\n"))
+cat(sprintf("  (T½ linéaire — modèle TMDD calibré dans run_pkpd_tdxd_nhp.R)\n\n"))
 
 cat("── Krel par dose ───────────────────────────────────────────\n")
 for (i in seq_along(fda_tk_nhp)) {

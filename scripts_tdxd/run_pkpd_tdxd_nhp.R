@@ -29,10 +29,11 @@ pk_nhp_ode <- function(time, state, pars) {
     krel_t    <- k_rel_c1 * cycle_num^krel_power *
                  ifelse(cycle_num > 1L, krel_factor, 1.0)
 
-    # ADC — 2 compartiments + internalisation HER2 (k_int)
+    # ADC — 2 compartiments + élimination TMDD (Michaelis-Menten)
     dC_ADC1 <- rate_in / V1_ADC +
                (Q_ADC / V2_ADC) * C_ADC2 -
-               (CL_ADC / V1_ADC + Q_ADC / V1_ADC + k_int) * C_ADC1
+               (CL_lin / V1_ADC + Q_ADC / V1_ADC + k_int) * C_ADC1 -
+               Vmax_MM * C_ADC1 / (Km_MM + C_ADC1)
 
     dC_ADC2 <- (Q_ADC / V1_ADC) * C_ADC1 -
                (Q_ADC / V2_ADC) * C_ADC2
@@ -81,6 +82,130 @@ simulate_pk_nhp <- function(dose_mgkg, n_cycles = 3,
   sol$C_DXd_ic_uM <- sol$C_DXd_ic * tdxd_nhp$mgL_to_uM_DXd
   sol
 }
+
+# ════════════════════════════════════════════════════════
+# Calibration TMDD via optim() — Michaelis-Menten non-linéaire
+# Paramètres : CL_lin [L/h], Vmax_MM [mg/L/h], Km_MM [mg/L]
+# Objectif   : WRSS log-relatif sur C0, AUC0-21d, T½ × 3 doses
+# ════════════════════════════════════════════════════════
+cat("\nGrid search TMDD (2-cpt + Michaelis-Menten) ...\n")
+
+doses_cal <- c(3, 10, 30)
+
+# ── Grille grossière : CL × Vmax × Km ────────────────────────────────────────
+sim_one_tmdd <- function(dose_mgkg, CL_lin, Vmax_MM, Km_MM) {
+  p <- tdxd_nhp
+  p$CL_lin  <- CL_lin
+  p$Vmax_MM <- Vmax_MM
+  p$Km_MM   <- Km_MM
+  p$rate_fun <- make_nhp_infusion(dose_mgkg = dose_mgkg, BW_kg = 4.0,
+                                   Tinfu_h = 0.5, interval_h = NULL, n_cycles = 1)
+  times <- c(seq(0, 2, by = 0.1), seq(3, 504, by = 1))
+  sol <- tryCatch(
+    suppressWarnings(as.data.frame(ode(
+      y = tdxd_nhp_state0, times = times,
+      func = pk_nhp_ode, parms = p, method = "lsoda"))),
+    error = function(e) NULL)
+  if (is.null(sol) || any(is.nan(sol$C_ADC1)) || min(sol$C_ADC1) < -1e-6)
+    return(NULL)
+  sol$C_ADC1 <- pmax(sol$C_ADC1, 1e-12)
+  sol
+}
+
+nca_tmdd <- function(sol, fda) {
+  if (is.null(sol)) return(list(C0=NA, AUC=NA, t12=NA, ok=FALSE))
+  C0  <- max(sol$C_ADC1[sol$time <= 1])
+  idx <- sol$time <= 504
+  AUC <- sum(diff(sol$time[idx]) *
+             (sol$C_ADC1[idx][-sum(idx)] + sol$C_ADC1[idx][-1]) / 2) / 24
+  idt <- sol$time >= 100 & sol$time <= 480 & sol$C_ADC1 > 0
+  if (sum(idt) < 5) return(list(C0=C0, AUC=AUC, t12=NA, ok=FALSE))
+  lm_f <- tryCatch(lm(log(C_ADC1) ~ time, data = sol[idt, ]), error=function(e) NULL)
+  if (is.null(lm_f) || coef(lm_f)[2] >= 0) return(list(C0=C0, AUC=AUC, t12=NA, ok=FALSE))
+  t12 <- log(2) / (-coef(lm_f)[2]) / 24
+  list(C0=C0, AUC=AUC, t12=t12, ok=TRUE)
+}
+
+wrss_tmdd <- function(CL_lin, Vmax_MM, Km_MM) {
+  total <- 0
+  for (i in seq_along(doses_cal)) {
+    fda <- fda_tk_nhp[[i]]
+    sol <- sim_one_tmdd(doses_cal[i], CL_lin, Vmax_MM, Km_MM)
+    nca <- nca_tmdd(sol, fda)
+    if (!nca$ok || nca$C0 <= 0 || nca$AUC <= 0 || nca$t12 <= 0) return(1e8)
+    total <- total +
+      (log(nca$C0  / fda$C0_ADC))^2 +
+      (log(nca$AUC / fda$AUC21d_ADC))^2 +
+      (log(nca$t12 / fda$t_half_d))^2
+  }
+  total
+}
+
+# Grille grossière : 9 × 6 × 7
+CL_grid <- exp(seq(log(4e-4), log(2e-3), length.out = 9))
+VM_grid <- exp(seq(log(0.02),  log(0.20),  length.out = 6))
+Km_grid <- exp(seq(log(1.0),   log(30.0),  length.out = 7))
+
+best_val <- 1e8; best_par <- c(1.115e-3, 0.060, 4.0)
+for (cl in CL_grid) for (vm in VM_grid) for (km in Km_grid) {
+  v <- wrss_tmdd(cl, vm, km)
+  if (v < best_val) { best_val <- v; best_par <- c(cl, vm, km) }
+}
+cat(sprintf("Coarse: CL=%.3e Vmax=%.3f Km=%.1f  RMSE=%.1f%%\n",
+            best_par[1], best_par[2], best_par[3], 100*sqrt(best_val/9)))
+
+# Grille fine autour du meilleur
+CL_f <- exp(seq(log(best_par[1]*0.7), log(best_par[1]*1.4), length.out = 7))
+VM_f <- exp(seq(log(best_par[2]*0.5), log(best_par[2]*2.0), length.out = 7))
+Km_f <- exp(seq(log(best_par[3]*0.4), log(best_par[3]*2.5), length.out = 7))
+
+best_val2 <- best_val; best_par2 <- best_par
+for (cl in CL_f) for (vm in VM_f) for (km in Km_f) {
+  v <- wrss_tmdd(cl, vm, km)
+  if (v < best_val2) { best_val2 <- v; best_par2 <- c(cl, vm, km) }
+}
+cat(sprintf("Fine:   CL=%.4e Vmax=%.4f Km=%.2f  RMSE=%.1f%%\n",
+            best_par2[1], best_par2[2], best_par2[3], 100*sqrt(best_val2/9)))
+
+# ── Raffinement Nelder-Mead autour du meilleur de la grille fine ─────────────
+obj_tmdd <- function(theta) {
+  CL_lin  <- exp(theta[1])
+  Vmax_MM <- exp(theta[2])
+  Km_MM   <- exp(theta[3])
+  if (any(c(CL_lin, Vmax_MM, Km_MM) <= 0)) return(1e8)
+  wrss_tmdd(CL_lin, Vmax_MM, Km_MM)
+}
+
+opt <- optim(log(best_par2), obj_tmdd, method = "Nelder-Mead",
+             control = list(maxit = 5000, reltol = 1e-10))
+
+CL_lin_cal  <- exp(opt$par[1])
+Vmax_MM_cal <- exp(opt$par[2])
+Km_MM_cal   <- exp(opt$par[3])
+rmse_cal    <- 100 * sqrt(opt$value / 9)
+
+# Mise à jour des paramètres dans tdxd_nhp
+tdxd_nhp$CL_lin  <- CL_lin_cal
+tdxd_nhp$Vmax_MM <- Vmax_MM_cal
+tdxd_nhp$Km_MM   <- Km_MM_cal
+
+# ── Validation finale ─────────────────────────────────────────────────────────
+cat("\n═══ VALIDATION FINALE — 2-cpt + TMDD ═══\n")
+for (i in seq_along(doses_cal)) {
+  fda <- fda_tk_nhp[[i]]
+  sol <- sim_one_tmdd(doses_cal[i], CL_lin_cal, Vmax_MM_cal, Km_MM_cal)
+  nca <- nca_tmdd(sol, fda)
+  cat(sprintf("  %2d mg/kg: C0 %.1f/%.1f (%+.1f%%)  AUC %d/%d (%+.1f%%)  T½ %.2f/%.2f (%+.1f%%)\n",
+              doses_cal[i],
+              nca$C0,  fda$C0_ADC,      100*(nca$C0  / fda$C0_ADC      - 1),
+              round(nca$AUC), round(fda$AUC21d_ADC), 100*(nca$AUC / fda$AUC21d_ADC - 1),
+              nca$t12, fda$t_half_d,    100*(nca$t12 / fda$t_half_d    - 1)))
+}
+cat(sprintf("\n  RMSE(C0,AUC,T½) = %.1f%%\n", rmse_cal))
+cat("\n  → Paramètres TMDD :\n")
+cat(sprintf("    CL_lin  <- %.5e  # L/h\n",   CL_lin_cal))
+cat(sprintf("    Vmax_MM <- %.5f  # mg/L/h\n", Vmax_MM_cal))
+cat(sprintf("    Km_MM   <- %.2f      # mg/L (µg/mL)\n\n", Km_MM_cal))
 
 # ════════════════════════════════════════════════════════
 # Simulations doses FDA Table 7 : 3, 10, 30 mg/kg Q3W × 3
@@ -221,7 +346,7 @@ for (i in seq_along(doses)) {
 }
 cat("═══════════════════════════════════════════════════════════\n")
 cat("  Ratio ~1.0 = bonne concordance avec FDA Table 7\n")
-cat("  Écart attendu : non-linéarité TMDD non modélisée (k_int fixe)\n")
+cat("  T½ dose-dépendant modélisé via TMDD Michaelis-Menten (Vmax/Km calibrés optim)\n")
 cat("═══════════════════════════════════════════════════════════\n\n")
 
 # ════════════════════════════════════════════════════════
@@ -269,7 +394,7 @@ par(mar = c(1, 1, 3, 1), bg = "white")
 plot.new()
 mtext("T-DXd NHP — Simulation vs FDA BLA 761139 Table 7 (Day 1, M+F mean, Q3W)",
       side = 3, line = 1, cex = 1.3, font = 2)
-mtext("Doses : 3 / 10 / 30 mg/kg   |   Modèle : ADC 2-cpt, k_int = 0, V1/CL WLS-optimaux",
+mtext("Doses : 3 / 10 / 30 mg/kg   |   Modèle : ADC 2-cpt + TMDD Michaelis-Menten, k_int = 0",
       side = 3, line = -0.2, cex = 0.85, col = "grey30")
 
 # ── coordonnées tableau ───────────────────────────────
@@ -342,7 +467,7 @@ rect(legend_x + 0.19,  legend_y - 0.01, legend_x + 0.208, legend_y + 0.03,
 text(legend_x + 0.214, legend_y + 0.01, "> 25 %", cex = 0.75, adj = 0)
 
 text(0.62, legend_y + 0.01,
-     "T½ dose-dépendant = signature TMDD HER2 (non-linéarité résiduelle attendue)",
+     "TMDD Michaelis-Menten : T½ dose-dépendant modélisé (Vmax/Km calibrés par optim)",
      cex = 0.75, col = "grey40", adj = 0)
 
 dev.off()
