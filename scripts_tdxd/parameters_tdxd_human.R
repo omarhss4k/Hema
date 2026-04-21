@@ -103,8 +103,8 @@ p_moderate_tdxd      <- 0.14   # G1+G2 = 7%+7% = 14% (FDA pooled)
 # p_resistant = 1 - p_sensitive - p_moderate = 0.66
 
 Slope_resist_tdxd    <- 0.10   # kill_max ≈ 7%  → G0 garanti
-Slope_moderate_tdxd  <- 12.0   # kill intermédiaire → G1-G2 (calibré iter.2)
-Slope_sensitive_tdxd <- 59.1   # kill fort → G3-4
+Slope_moderate_tdxd  <- 12.0   # kill intermédiaire → G1-G2
+Slope_sensitive_tdxd <- 22.0   # kill fort → G3-4 (réduit de 59.1, ratio resist/sens=1/220)
 
 # Compatibilité backward
 Slope_CMP_tdxd_human <- Slope_sensitive_tdxd
@@ -120,11 +120,11 @@ p_MEP_light_tdxd         <- 0.33   # G1 cible (iter.8)
 p_sensitive_mep_tdxd     <- 0.33   # G2-G3 cible (inchangé)
 # p_MEP_resistant = 1 - 0.33 - 0.33 = 0.34 → G0 cible (iter.8)
 
-Slope_MEP_resist_tdxd    <- 0.0    # Slope résistants MEP : kill=0 → G0
-Slope_MEP_light_tdxd     <- 0.20   # légers → centre G1 (calibré iter.7, seuil 80%)
-Slope_MEP_sensitive_tdxd <- 1.25   # sensibles → G2-G3 (calibré iter.8, G3 cible 8%)
+Slope_MEP_resist_tdxd    <- 0.01   # résistants MEP : quasi-nul → G0 (<0.5% chute RBC)
+Slope_MEP_light_tdxd     <- 0.18   # légers → centre G1 (ω élargi, Slope légèrement baissé)
+Slope_MEP_sensitive_tdxd <- 1.25   # sensibles → G2-G3 (inchangé)
 omega_Slope_MEP_sensitive <- 0.50  # IIV spread G2/G3
-omega_Slope_MEP_light     <- 0.10  # IIV quasi-déterministe pour légers en G1
+omega_Slope_MEP_light     <- 0.20  # IIV élargi (biologique), vs 0.10 artificiellement bas
 
 # ── Cibles de validation clinique FDA BLA 761139 ─────────
 # 5.4 mg/kg Q3W, popPK géométrique moyen steady-state
