@@ -93,11 +93,13 @@ cat("\nGrid search TMDD (2-cpt + Michaelis-Menten) ...\n")
 doses_cal <- c(3, 10, 30)
 
 # ── Grille grossière : CL × Vmax × Km ────────────────────────────────────────
-sim_one_tmdd <- function(dose_mgkg, CL_lin, Vmax_MM, Km_MM) {
+sim_one_tmdd <- function(dose_mgkg, CL_lin, Vmax_MM, Km_MM,
+                          V2 = tdxd_nhp$V2_ADC) {
   p <- tdxd_nhp
   p$CL_lin  <- CL_lin
   p$Vmax_MM <- Vmax_MM
   p$Km_MM   <- Km_MM
+  p$V2_ADC  <- V2
   p$rate_fun <- make_nhp_infusion(dose_mgkg = dose_mgkg, BW_kg = 4.0,
                                    Tinfu_h = 0.5, interval_h = NULL, n_cycles = 1)
   times <- c(seq(0, 2, by = 0.1), seq(3, 504, by = 1))
@@ -118,7 +120,8 @@ nca_tmdd <- function(sol, fda) {
   idx <- sol$time <= 504
   AUC <- sum(diff(sol$time[idx]) *
              (sol$C_ADC1[idx][-sum(idx)] + sol$C_ADC1[idx][-1]) / 2) / 24
-  idt <- sol$time >= 100 & sol$time <= 480 & sol$C_ADC1 > 0
+  # t>=200h : élimine la contamination phase-alpha (T½_α≈31h → 1.2% restant à 200h)
+  idt <- sol$time >= 200 & sol$time <= 480 & sol$C_ADC1 > 0
   if (sum(idt) < 5) return(list(C0=C0, AUC=AUC, t12=NA, ok=FALSE))
   lm_f <- tryCatch(lm(log(C_ADC1) ~ time, data = sol[idt, ]), error=function(e) NULL)
   if (is.null(lm_f) || coef(lm_f)[2] >= 0) return(list(C0=C0, AUC=AUC, t12=NA, ok=FALSE))
@@ -126,11 +129,11 @@ nca_tmdd <- function(sol, fda) {
   list(C0=C0, AUC=AUC, t12=t12, ok=TRUE)
 }
 
-wrss_tmdd <- function(CL_lin, Vmax_MM, Km_MM) {
+wrss_tmdd <- function(CL_lin, Vmax_MM, Km_MM, V2 = tdxd_nhp$V2_ADC) {
   total <- 0
   for (i in seq_along(doses_cal)) {
     fda <- fda_tk_nhp[[i]]
-    sol <- sim_one_tmdd(doses_cal[i], CL_lin, Vmax_MM, Km_MM)
+    sol <- sim_one_tmdd(doses_cal[i], CL_lin, Vmax_MM, Km_MM, V2)
     nca <- nca_tmdd(sol, fda)
     if (!nca$ok || nca$C0 <= 0 || nca$AUC <= 0 || nca$t12 <= 0) return(1e8)
     total <- total +
@@ -169,33 +172,40 @@ for (cl in CL_f) for (vm in VM_f) for (km in Km_f) {
 cat(sprintf("Fine:   CL=%.4e Vmax=%.4f Km=%.2f  RMSE=%.1f%%\n",
             best_par2[1], best_par2[2], best_par2[3], 100*sqrt(best_val2/12)))
 
-# ── Raffinement Nelder-Mead autour du meilleur de la grille fine ─────────────
+# ── Raffinement Nelder-Mead 4D : CL_lin, Vmax_MM, Km_MM, V2_ADC ─────────────
+# V2 libre : V2 fixé sur T½ linéaire ≠ T½ TMDD optimal
 obj_tmdd <- function(theta) {
   CL_lin  <- exp(theta[1])
   Vmax_MM <- exp(theta[2])
   Km_MM   <- exp(theta[3])
-  if (any(c(CL_lin, Vmax_MM, Km_MM) <= 0)) return(1e8)
-  wrss_tmdd(CL_lin, Vmax_MM, Km_MM)
+  V2      <- exp(theta[4])
+  if (any(c(CL_lin, Vmax_MM, Km_MM, V2) <= 0)) return(1e8)
+  if (V2 < 0.01 || V2 > 0.60) return(1e8)   # garde-fou physique
+  wrss_tmdd(CL_lin, Vmax_MM, Km_MM, V2)
 }
 
-opt <- optim(log(best_par2), obj_tmdd, method = "Nelder-Mead",
-             control = list(maxit = 5000, reltol = 1e-10))
+theta0_4d <- c(log(best_par2), log(tdxd_nhp$V2_ADC))
+
+opt <- optim(theta0_4d, obj_tmdd, method = "Nelder-Mead",
+             control = list(maxit = 8000, reltol = 1e-10))
 
 CL_lin_cal  <- exp(opt$par[1])
 Vmax_MM_cal <- exp(opt$par[2])
 Km_MM_cal   <- exp(opt$par[3])
+V2_cal      <- exp(opt$par[4])
 rmse_cal    <- 100 * sqrt(opt$value / 12)   # 12 = (C0+AUC+T½×2) × 3 doses
 
 # Mise à jour des paramètres dans tdxd_nhp
 tdxd_nhp$CL_lin  <- CL_lin_cal
 tdxd_nhp$Vmax_MM <- Vmax_MM_cal
 tdxd_nhp$Km_MM   <- Km_MM_cal
+tdxd_nhp$V2_ADC  <- V2_cal
 
 # ── Validation finale ─────────────────────────────────────────────────────────
 cat("\n═══ VALIDATION FINALE — 2-cpt + TMDD ═══\n")
 for (i in seq_along(doses_cal)) {
   fda <- fda_tk_nhp[[i]]
-  sol <- sim_one_tmdd(doses_cal[i], CL_lin_cal, Vmax_MM_cal, Km_MM_cal)
+  sol <- sim_one_tmdd(doses_cal[i], CL_lin_cal, Vmax_MM_cal, Km_MM_cal, V2_cal)
   nca <- nca_tmdd(sol, fda)
   cat(sprintf("  %2d mg/kg: C0 %.1f/%.1f (%+.1f%%)  AUC %d/%d (%+.1f%%)  T½ %.2f/%.2f (%+.1f%%)\n",
               doses_cal[i],
@@ -207,7 +217,8 @@ cat(sprintf("\n  RMSE(C0,AUC,T½) = %.1f%%\n", rmse_cal))
 cat("\n  → Paramètres TMDD :\n")
 cat(sprintf("    CL_lin  <- %.5e  # L/h\n",   CL_lin_cal))
 cat(sprintf("    Vmax_MM <- %.5f  # mg/L/h\n", Vmax_MM_cal))
-cat(sprintf("    Km_MM   <- %.2f      # mg/L (µg/mL)\n\n", Km_MM_cal))
+cat(sprintf("    Km_MM   <- %.2f      # mg/L (µg/mL)\n",   Km_MM_cal))
+cat(sprintf("    V2_ADC  <- %.5f  # L  (calibré TMDD)\n\n", V2_cal))
 
 # ════════════════════════════════════════════════════════
 # Simulations doses FDA Table 7 : 3, 10, 30 mg/kg Q3W × 3
