@@ -18,7 +18,7 @@ library(readxl)
 # 1. PARAMÈTRES PK FIXÉS
 # =============================================================================
 
-load("scripts/resultats_PK2comp_rxode2_FGFR2.RData")   # → pk2comp_rxode2
+load("resultats_PK2comp_rxode2_FGFR2.RData")   # → pk2comp_rxode2
 
 PK <- c(
   CL = unname(pk2comp_rxode2$CL),   # L/h/kg
@@ -51,7 +51,7 @@ p  <- 20
 #   Group 04 : Fc-silent FGFR2-huBPA-LP1,  3 mg/kg
 # =============================================================================
 
-raw_pd  <- read_xlsx("data/TumorVolume_FGFR2.xlsx",
+raw_pd  <- read_xlsx("TumorVolume_FGFR2.xlsx",   # lancer depuis le dossier contenant ce fichier
                      n_max     = 3,
                      col_types = c("text", rep("numeric", 15)))
 
@@ -73,7 +73,7 @@ w_d3   <- extract_group(raw_pd, "Group 04")
 
 mk <- function(t, w) {
   ok <- !is.na(w) & w > 0
-  data.frame(t = t[ok], w = w[ok] / 1000)   # mm³ → g (l1 en g/h)
+  data.frame(t = t[ok], w = w[ok] / 1000)   # mm³ → g
 }
 dat_ctrl <- mk(time_h, w_ctrl)
 dat_d10  <- mk(time_h, w_d10)
@@ -135,7 +135,7 @@ simulate_single <- function(dose, params, obs_times, t_admin = 0) {
   ev$add.sampling(sort(unique(c(0, obs_times))))
 
   out <- tryCatch(
-    rxSolve(pkpd_model, params, ev, inits = inits_base),
+    rxSolve(pkpd_model, as.list(params), ev, inits = inits_base),
     error = function(e) { message("rxSolve error (single): ", e$message); NULL }
   )
   if (is.null(out)) return(rep(NA_real_, length(obs_times)))
@@ -153,7 +153,7 @@ simulate_multi <- function(dose, params, obs_times,
   ev$add.sampling(sort(unique(c(0, obs_times))))
 
   out <- tryCatch(
-    rxSolve(pkpd_model, params, ev, inits = inits_base),
+    rxSolve(pkpd_model, as.list(params), ev, inits = inits_base),
     error = function(e) { message("rxSolve error (multi): ", e$message); NULL }
   )
   if (is.null(out)) return(rep(NA_real_, length(obs_times)))
@@ -164,12 +164,7 @@ simulate_multi <- function(dose, params, obs_times,
 # 7. FONCTION OBJECTIVE GÉNÉRIQUE
 # =============================================================================
 
-params_fixed <- c(
-  CL = unname(PK["CL"]), V1 = unname(PK["V1"]),
-  V2 = unname(PK["V2"]), Q  = unname(PK["Q"]),
-  l0 = unname(l0), l1 = unname(l1), p = unname(p)
-)
-cat("Noms params_fixed :", paste(names(params_fixed), collapse=", "), "\n")
+params_fixed <- c(PK, l0 = l0, l1 = l1, p = p)
 
 make_objective <- function(sim_fn) {
   function(logpar) {
