@@ -128,10 +128,8 @@ inits_base <- c(A1 = 0, A2 = 0, x1 = w0, x2 = 0, x3 = 0, x4 = 0)
   if (max(out$time) < max(obs_times) - 1)
     return(rep(NA_real_, length(obs_times)))
 
-  w_tot  <- pmax(out$x1 + out$x2 + out$x3 + out$x4, 1e-9)
-  result <- approx(out$time, w_tot, xout = obs_times, rule = 1)$y
-  if (any(is.na(result))) return(rep(NA_real_, length(obs_times)))
-  result
+  # rule=2 sûr ici : la complétude de l'intégration est déjà vérifiée
+  approx(out$time, pmax(out$w, 1e-9), xout = obs_times, rule = 2)$y
 }
 
 simulate_single <- function(dose, params, obs_times, t_admin = 0) {
