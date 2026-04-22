@@ -158,48 +158,63 @@ simulate_multi <- function(dose, params, obs_times,
 
 params_fixed <- c(PK, l0 = l0, l1 = l1, p = p)
 
+# ------ seuil de stabilité numérique ----------------------------------------
+# k2 · C1_max > STAB_FACTOR · l0  →  x1 → 0 en quelques pas → NaN garanti
+STAB_FACTOR <- 50   # k2·C1_max autorisé jusqu'à 50·l0
+
+.stable_k2 <- function(k2) k2 * C1_max_10 <= STAB_FACTOR * l0
+
+# ------ résidus log sécurisés ------------------------------------------------
 .residuals <- function(sim_fn, par) {
   pc  <- tryCatch(sim_fn(dose0,  par, dat_ctrl$t), error = function(e) NULL)
   p3  <- tryCatch(sim_fn(dose3,  par, dat_d3$t),   error = function(e) NULL)
   p10 <- tryCatch(sim_fn(dose10, par, dat_d10$t),  error = function(e) NULL)
-  bad <- function(p) is.null(p) || any(is.na(p) | p <= 0)
+
+  bad <- function(p)
+    is.null(p) || length(p) == 0 ||
+    any(is.na(p) | is.nan(p) | is.infinite(p) | p <= 0)
+
   if (bad(pc) || bad(p3) || bad(p10)) return(1e10)
+
   val <- mean((log(dat_ctrl$w) - log(pc))^2)  +
          mean((log(dat_d3$w)   - log(p3))^2)  +
          mean((log(dat_d10$w)  - log(p10))^2)
-  if (!is.finite(val)) 1e10 else val
+
+  if (!is.finite(val) || is.nan(val)) 1e10 else val
 }
 
-# Objectif pour un scénario unique (k1 + k2 libres)
+# ------ objectifs ------------------------------------------------------------
+
+# k1 + k2 libres, un scénario
 make_objective <- function(sim_fn) {
   function(logpar) {
-    par <- c(params_fixed,
-             k1 = unname(exp(logpar[1])),
-             k2 = unname(exp(logpar[2])))
+    k1 <- unname(exp(logpar[1]));  k2 <- unname(exp(logpar[2]))
+    if (!.stable_k2(k2)) return(1e10)          # pré-vérif stabilité
+    par <- c(params_fixed, k1 = k1, k2 = k2)
     .residuals(sim_fn, par)
   }
 }
 
-# Objectif k2 seul (k1 fixé)
+# k2 seul (k1 fixé)
 make_objective_k2 <- function(sim_fn, k1_fixed) {
   function(logpar_k2) {
-    par <- c(params_fixed,
-             k1 = k1_fixed,
-             k2 = unname(exp(logpar_k2[1])))
+    k2 <- unname(exp(logpar_k2[1]))
+    if (!.stable_k2(k2)) return(1e10)
+    par <- c(params_fixed, k1 = k1_fixed, k2 = k2)
     .residuals(sim_fn, par)
   }
 }
 
-# Objectif global : mêmes k1/k2 doivent expliquer les deux scénarios
+# k1 + k2 communs aux deux scénarios
 make_objective_global <- function() {
   function(logpar) {
-    par <- c(params_fixed,
-             k1 = unname(exp(logpar[1])),
-             k2 = unname(exp(logpar[2])))
+    k1 <- unname(exp(logpar[1]));  k2 <- unname(exp(logpar[2]))
+    if (!.stable_k2(k2)) return(1e10)
+    par <- c(params_fixed, k1 = k1, k2 = k2)
     rs  <- .residuals(simulate_single, par)
     rm  <- .residuals(simulate_multi,  par)
     if (rs >= 1e10 || rm >= 1e10) return(1e10)
-    (rs + rm) / 2   # moyenne pour équipondérer les deux scénarios
+    (rs + rm) / 2
   }
 }
 
@@ -218,12 +233,23 @@ start_grid <- list(
   c(k1 = 0.5,  k2 = 1e-9)
 )
 
-run_optim <- function(obj_fn, starts, label) {
+# Bornes physiques en log-espace
+# k1 : 0.01–10 /h  (transit demi-vie entre 1.7 min et 70 h)
+# k2 : 1e-10–1e-5  (unités L/(µg·h), C1_max ~ 1e5 µg/L → k2·C1 ≤ 1e-5·1e5=1/h)
+LOG_LOWER_2 <- c(log(0.01),  log(1e-10))
+LOG_UPPER_2 <- c(log(10),    log(1e-5))
+LOG_LOWER_1 <- c(log(1e-10))   # pour fits k2 seul
+LOG_UPPER_1 <- c(log(1e-5))
+
+run_optim <- function(obj_fn, starts, label,
+                      lower = LOG_LOWER_2, upper = LOG_UPPER_2) {
   cat("\nOptimisation —", label, "...\n")
   best_obj <- Inf;  best_fit <- NULL
   for (s in starts) {
     fit_try <- tryCatch(
       nlminb(log(s), obj_fn,
+             lower   = lower,
+             upper   = upper,
              control = list(eval.max = 3000, iter.max = 1500,
                             rel.tol = 1e-12, x.tol = 1e-12)),
       error = function(e) NULL
@@ -259,9 +285,11 @@ cat("  Objectif :", round(fit_global$objective, 5), "\n")
 starts_k2 <- lapply(start_grid, function(s) s["k2"])
 
 fit_k2_single <- run_optim(make_objective_k2(simulate_single, k1_global),
-                           starts_k2, "k2 dose unique (k1 fixé)")
+                           starts_k2, "k2 dose unique (k1 fixé)",
+                           lower = LOG_LOWER_1, upper = LOG_UPPER_1)
 fit_k2_multi  <- run_optim(make_objective_k2(simulate_multi,  k1_global),
-                           starts_k2, "k2 doses répétées (k1 fixé)")
+                           starts_k2, "k2 doses répétées (k1 fixé)",
+                           lower = LOG_LOWER_1, upper = LOG_UPPER_1)
 
 k2_single <- unname(exp(fit_k2_single$par[1]))
 k2_multi  <- unname(exp(fit_k2_multi$par[1]))
