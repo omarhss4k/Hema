@@ -1,12 +1,8 @@
 # =============================================================================
-# PKPD — Fc-silent FGFR2-huBPA-LP1 — Simeoni 2004 — deSolve/lsoda
-# (rxode2 échoue silencieusement pour ce modèle → remplacé par deSolve)
-# Version corrigée :
-#   - l0, l1 estimés depuis le contrôle (croissance pure, dose=0)
-#   - DEoptim (Évolution Différentielle) : optimiseur global, sans point de départ
-#   - pénalité gradiente si lsoda échoue (rep(1e6) au lieu de NA)
-#   - TGI : gestion régression tumorale et dénominateur nul
-#   - Stratégie : calibrer l0/l1 → fit global (k1, k2) → k2 libre par scénario
+# PKPD — Fc-silent FGFR2-huBPA-LP1 — Simeoni 2004 — Protocole GA6822
+# Q2W × 3 doses (j0, j14, j28) | Simulation à 56 jours
+# Identique à etape_PKPD_rxode2_FGFR2.R pour le fitting (données j0–j49) ;
+# seules les projections graphiques et TGI sont à 56j / 3 doses.
 # =============================================================================
 
 library(deSolve)
@@ -39,7 +35,6 @@ cat("Q  =", round(PK["Q"],  6), "L/h/kg\n")
 
 p <- 20   # coefficient de Hill — fixé (Simeoni 2004)
 
-# C1_max : repère pour les bornes k2 (k2_ref affiché après calibration l0)
 C1_max_10 <- 10000 / PK["V1"]
 cat("\nRepère PK : C1_max(10 mg/kg) =", round(C1_max_10, 0), "µg/L\n")
 
@@ -137,14 +132,6 @@ obj_growth <- function(logpar) {
   if (!is.finite(val)) 1e10 else val
 }
 
-# Bornes : l0 ∈ [0.001, 0.5] /j, l1 ∈ [0.005, 5] g/j (en /h)
-starts_growth <- list(
-  c(l0 = 0.05/24, l1 = 0.20/24),
-  c(l0 = 0.02/24, l1 = 0.10/24),
-  c(l0 = 0.10/24, l1 = 0.50/24),
-  c(l0 = 0.03/24, l1 = 0.30/24)
-)
-
 cat("\nPré-calibration l0, l1 depuis le groupe contrôle (DEoptim)...\n")
 fit_growth <- DEoptim(
   obj_growth,
@@ -169,7 +156,7 @@ cat("  Repère k2 : k2_ref ≈", formatC(k2_ref, format = "e", digits = 2), "\n"
 # 6. FONCTIONS DE SIMULATION — deSolve/lsoda + pénalité si échec
 # =============================================================================
 
-.PENALTY <- 1e6   # renvoyé si lsoda échoue → pénalité avec gradient
+.PENALTY <- 1e6
 
 .sim <- function(state0, pars_list, obs_times, events_df = NULL) {
   times <- sort(unique(c(0, obs_times)))
@@ -192,8 +179,9 @@ simulate_single <- function(dose, params, obs_times, t_admin = 0) {
   .sim(state0, pars_list, obs_times, events_df = NULL)
 }
 
+# GA6822 : Q2W × 3 doses (j0, j14, j28) — n_doses = 3 par défaut
 simulate_multi <- function(dose, params, obs_times,
-                           t_admin = 0, n_doses = 4, interval_h = 14*24) {
+                           t_admin = 0, n_doses = 3, interval_h = 14*24) {
   state0    <- c(A1 = dose, A2 = 0, x1 = w0, x2 = 0, x3 = 0, x4 = 0)
   pars_list <- as.list(params)
   events_df <- if (n_doses > 1)
@@ -213,52 +201,32 @@ simulate_multi <- function(dose, params, obs_times,
 
 params_fixed <- c(PK, l0 = l0, l1 = l1, p = p)
 
-# ------ seuil de stabilité numérique ----------------------------------------
-# k2 · C1_max > STAB_FACTOR · l0  →  x1 → 0 en quelques pas → NaN garanti
-STAB_FACTOR <- 50   # k2·C1_max autorisé jusqu'à 50·l0
-
+STAB_FACTOR <- 50
 .stable_k2 <- function(k2) k2 * C1_max_10 <= STAB_FACTOR * l0
 
-# ------ résidus log sécurisés ------------------------------------------------
 .residuals <- function(sim_fn, par) {
   pc  <- tryCatch(sim_fn(dose0,  par, dat_ctrl$t), error = function(e) NULL)
   p3  <- tryCatch(sim_fn(dose3,  par, dat_d3$t),   error = function(e) NULL)
   p10 <- tryCatch(sim_fn(dose10, par, dat_d10$t),  error = function(e) NULL)
 
   bad <- function(p) is.null(p) || length(p) == 0 || any(!is.finite(p) | p <= 0)
-
   if (bad(pc) || bad(p3) || bad(p10)) return(1e10)
 
   val <- mean((log(dat_ctrl$w) - log(pc))^2)  +
          mean((log(dat_d3$w)   - log(p3))^2)  +
          mean((log(dat_d10$w)  - log(p10))^2)
-
   if (!is.finite(val)) 1e10 else val
 }
 
-# ------ objectifs ------------------------------------------------------------
-
-# k1 + k2 libres, un scénario
-make_objective <- function(sim_fn) {
-  function(logpar) {
-    k1 <- unname(exp(logpar[1]));  k2 <- unname(exp(logpar[2]))
-    if (!.stable_k2(k2)) return(1e10)          # pré-vérif stabilité
-    par <- c(params_fixed, k1 = k1, k2 = k2)
-    .residuals(sim_fn, par)
-  }
-}
-
-# k2 seul (k1 fixé)
-make_objective_k2 <- function(sim_fn, k1_fixed) {
+make_objective_k2 <- function(sim_fn, k1_val) {
   function(logpar_k2) {
     k2 <- unname(exp(logpar_k2[1]))
     if (!.stable_k2(k2)) return(1e10)
-    par <- c(params_fixed, k1 = k1_fixed, k2 = k2)
+    par <- c(params_fixed, k1 = k1_val, k2 = k2)
     .residuals(sim_fn, par)
   }
 }
 
-# k2 global (k1 fixé) — pour la phase 1 avec k1 contraint
 make_objective_k2_global <- function(k1_val) {
   function(logpar_k2) {
     k2 <- unname(exp(logpar_k2[1]))
@@ -272,15 +240,10 @@ make_objective_k2_global <- function(k1_val) {
 }
 
 # =============================================================================
-# 8. OPTIMISATION — DEoptim (Évolution Différentielle)
-#    Optimiseur global : pas de point de départ, bornes directes en log-espace
+# 8. OPTIMISATION — DEoptim
 # =============================================================================
 
-# Bornes en log-espace
-# k1 : [0.001, 10] /h  |  k2 : [1e-9, 0.1] (filtre .stable_k2 actif)
-LOG_LOWER_2 <- c(log(0.001), log(1e-9))
-LOG_UPPER_2 <- c(log(10),    log(0.1))
-LOG_LOWER_1 <- c(log(1e-9))    # pour fits k2 seul
+LOG_LOWER_1 <- c(log(1e-9))
 LOG_UPPER_1 <- c(log(0.1))
 
 run_optim <- function(obj_fn, lower, upper, label, NP = NULL) {
@@ -302,12 +265,10 @@ run_optim <- function(obj_fn, lower, upper, label, NP = NULL) {
 }
 
 # =============================================================================
-# 9. PHASE 1 — k2 GLOBAL (k1 fixé à la valeur de référence Simeoni 2004)
-#    k1 n'est pas identifiable depuis ces données (converge vers la borne basse)
-#    → fixé à 0.5/j = 0.0208/h (transit moyen = 4/k1 = 8 jours)
+# 9. PHASE 1 — k2 GLOBAL (k1 fixé)
 # =============================================================================
 
-k1_fixed <- 0.5 / 24   # /h — ajustable, valeur ref Simeoni 2004
+k1_fixed <- 0.5 / 24   # /h (= 0.5 /j, transit moyen = 8 j)
 
 fit_global <- run_optim(make_objective_k2_global(k1_fixed),
                         LOG_LOWER_1, LOG_UPPER_1, "Fit global k2 (k1 fixé)", NP = 10L)
@@ -319,8 +280,7 @@ cat("  k2 =", formatC(k2_global, format="e", digits=3), "\n")
 cat("  Objectif :", round(fit_global$optim$bestval, 5), "\n")
 
 # =============================================================================
-# 10. PHASE 2 — k2 LIBRE PAR SCÉNARIO (k1 = k1_fixed fixé)
-#     Permet de détecter résistance ou accumulation
+# 10. PHASE 2 — k2 LIBRE PAR SCÉNARIO
 # =============================================================================
 
 fit_k2_single <- run_optim(make_objective_k2(simulate_single, k1_fixed),
@@ -328,14 +288,14 @@ fit_k2_single <- run_optim(make_objective_k2(simulate_single, k1_fixed),
                            "k2 dose unique (k1 fixé)", NP = 10L)
 fit_k2_multi  <- run_optim(make_objective_k2(simulate_multi,  k1_fixed),
                            LOG_LOWER_1, LOG_UPPER_1,
-                           "k2 doses répétées (k1 fixé)", NP = 10L)
+                           "k2 Q2W×3 (k1 fixé)", NP = 10L)
 
 k2_single <- unname(exp(fit_k2_single$optim$bestmem[1]))
 k2_multi  <- unname(exp(fit_k2_multi$optim$bestmem[1]))
 
-cat("\n=== Fits séparés k2 (k1 =", round(k1_fixed, 5), "/h fixé) ===\n")
-cat("  k2 dose unique    :", formatC(k2_single, format="e", digits=3), "\n")
-cat("  k2 doses répétées :", formatC(k2_multi,  format="e", digits=3), "\n")
+cat("\n=== Fits séparés k2 (k1 =", round(k1_fixed * 24, 4), "/j fixé) ===\n")
+cat("  k2 dose unique :", formatC(k2_single, format="e", digits=3), "\n")
+cat("  k2 Q2W×3       :", formatC(k2_multi,  format="e", digits=3), "\n")
 ratio <- k2_multi / k2_single
 cat("  Ratio k2_multi/k2_single :", round(ratio, 3),
     if (ratio > 1.5) "→ accumulation possible" else
@@ -343,10 +303,13 @@ cat("  Ratio k2_multi/k2_single :", round(ratio, 3),
     "→ pas de dérive notable", "\n")
 
 # =============================================================================
-# 11. GRAPHIQUES
+# 11. GRAPHIQUES — simulation à 56 jours, doses Q2W (j0, j14, j28)
 # =============================================================================
 
-times_full <- seq(0, 49 * 24, by = 1)    # 1177 pts — deSolve gère sans problème
+T_END     <- 56 * 24              # horizon de simulation (h)
+DOSE_DAYS <- c(0, 14, 28)         # protocole GA6822 Q2W × 3
+
+times_full <- seq(0, T_END, by = 1)
 lev        <- c("Contrôle", "3 mg/kg", "10 mg/kg")
 doses      <- list(dose0, dose3, dose10)
 grps       <- c("Contrôle", "3 mg/kg", "10 mg/kg")
@@ -360,6 +323,7 @@ make_df_sim <- function(sim_fn, k1, k2) {
     doses, grps, SIMPLIFY = FALSE))
 }
 
+# Observations (tous points pour les graphiques, dont contrôle j>35)
 df_obs <- rbind(
   data.frame(t = dat_ctrl_all$t/24, w = dat_ctrl_all$w, Groupe = "Contrôle"),
   data.frame(t = dat_d3$t/24,       w = dat_d3$w,       Groupe = "3 mg/kg"),
@@ -378,54 +342,52 @@ plot_pkpd <- function(df_sim, title_suffix, dose_days, k1, k2) {
              label = paste0("j", dose_days), size=2.8,
              color="grey40", hjust=0.5) +
     labs(
-      title    = paste("PKPD Simeoni 2004 (rxode2) —", title_suffix),
+      title    = paste("PKPD Simeoni 2004 — GA6822 Q2W×3 —", title_suffix),
       subtitle = paste0("Fc-silent FGFR2-huBPA-LP1 | ",
-                        "k1=", round(k1, 4), " /h  ",
+                        "k1=", round(k1 * 24, 3), " /j  ",
                         "k2=", formatC(k2, format="e", digits=2)),
       x = "Temps (jours)", y = "Volume tumoral (g)"
     ) +
     theme_bw(base_size = 13)
 }
 
-# Graphique fit global
+# Fit global (k2 commun)
+df_sim_global_m <- make_df_sim(simulate_multi, k1_fixed, k2_global)
+plot_pkpd(df_sim_global_m, "Doses répétées — fit global",
+          dose_days = DOSE_DAYS, k1_fixed, k2_global)
+ggsave("scripts/plot_GA6822_global_multi_FGFR2.png", width=9, height=5, dpi=150)
+
 df_sim_global_s <- make_df_sim(simulate_single, k1_fixed, k2_global)
 plot_pkpd(df_sim_global_s, "Dose unique — fit global",
           dose_days = 0, k1_fixed, k2_global)
-ggsave("scripts/plot_PKPD_global_single_FGFR2.png", width=9, height=5, dpi=150)
+ggsave("scripts/plot_GA6822_global_single_FGFR2.png", width=9, height=5, dpi=150)
 
-df_sim_global_m <- make_df_sim(simulate_multi, k1_fixed, k2_global)
-plot_pkpd(df_sim_global_m, "Doses répétées — fit global",
-          dose_days = c(0,14,28,42), k1_fixed, k2_global)
-ggsave("scripts/plot_PKPD_global_multi_FGFR2.png", width=9, height=5, dpi=150)
+# k2 libre par scénario
+df_sim_k2m <- make_df_sim(simulate_multi, k1_fixed, k2_multi)
+plot_pkpd(df_sim_k2m, "Q2W×3 — k2 libre",
+          dose_days = DOSE_DAYS, k1_fixed, k2_multi)
+ggsave("scripts/plot_GA6822_k2sep_multi_FGFR2.png", width=9, height=5, dpi=150)
 
-# Graphique fits séparés k2
 df_sim_k2s <- make_df_sim(simulate_single, k1_fixed, k2_single)
 plot_pkpd(df_sim_k2s, "Dose unique — k2 libre",
           dose_days = 0, k1_fixed, k2_single)
-ggsave("scripts/plot_PKPD_k2sep_single_FGFR2.png", width=9, height=5, dpi=150)
+ggsave("scripts/plot_GA6822_k2sep_single_FGFR2.png", width=9, height=5, dpi=150)
 
-df_sim_k2m <- make_df_sim(simulate_multi, k1_fixed, k2_multi)
-plot_pkpd(df_sim_k2m, "Doses répétées — k2 libre",
-          dose_days = c(0,14,28,42), k1_fixed, k2_multi)
-ggsave("scripts/plot_PKPD_k2sep_multi_FGFR2.png", width=9, height=5, dpi=150)
-
-cat("\nGraphiques → scripts/plot_PKPD_*_FGFR2.png\n")
+cat("\nGraphiques → scripts/plot_GA6822_*_FGFR2.png\n")
 
 # =============================================================================
-# 12. TGI — gestion régression tumorale et dénominateur nul
+# 12. TGI — calculé à j56
 # =============================================================================
 
 tgi <- function(w_ctrl_end, w_treat_end, w0_val) {
   delta_ctrl <- w_ctrl_end - w0_val
-  if (is.na(delta_ctrl) || delta_ctrl <= 0) return(NA_real_)  # contrôle n'a pas crû
+  if (is.na(delta_ctrl) || delta_ctrl <= 0) return(NA_real_)
   round((1 - (w_treat_end - w0_val) / delta_ctrl) * 100, 1)
-  # Note : valeur > 100% = régression tumorale (W_treat < W0)
-  #        valeur < 0%   = croissance malgré traitement
 }
 
 calc_tgi <- function(sim_fn, k1, k2, label) {
   par   <- c(params_fixed, k1 = k1, k2 = k2)
-  t_seq <- seq(0, 49*24, by = 24)
+  t_seq <- seq(0, T_END, by = 24)
   wc  <- tail(sim_fn(dose0,  par, t_seq), 1)
   w3  <- tail(sim_fn(dose3,  par, t_seq), 1)
   w10 <- tail(sim_fn(dose10, par, t_seq), 1)
@@ -433,20 +395,20 @@ calc_tgi <- function(sim_fn, k1, k2, label) {
   tgi3  <- tgi(wc, w3,  w0)
   tgi10 <- tgi(wc, w10, w0)
 
-  cat("\nTGI à j49 —", label, ":\n")
+  cat("\nTGI à j56 —", label, ":\n")
   cat("   3 mg/kg  :", if (is.na(tgi3))  "NA" else
       if (tgi3 > 100) paste0(tgi3, "% (régression)") else paste0(tgi3, "%"), "\n")
   cat("  10 mg/kg  :", if (is.na(tgi10)) "NA" else
       if (tgi10 > 100) paste0(tgi10, "% (régression)") else paste0(tgi10, "%"), "\n")
 }
 
-cat("\n--- TGI fit global ---\n")
+cat("\n--- TGI j56 — fit global ---\n")
 calc_tgi(simulate_single, k1_fixed, k2_global, "Dose unique")
-calc_tgi(simulate_multi,  k1_fixed, k2_global, "Doses répétées")
+calc_tgi(simulate_multi,  k1_fixed, k2_global, "Q2W×3")
 
-cat("\n--- TGI k2 libre par scénario ---\n")
+cat("\n--- TGI j56 — k2 libre ---\n")
 calc_tgi(simulate_single, k1_fixed, k2_single, "Dose unique")
-calc_tgi(simulate_multi,  k1_fixed, k2_multi,  "Doses répétées")
+calc_tgi(simulate_multi,  k1_fixed, k2_multi,  "Q2W×3")
 
 # =============================================================================
 # 13. SAUVEGARDE
@@ -454,5 +416,5 @@ calc_tgi(simulate_multi,  k1_fixed, k2_multi,  "Doses répétées")
 
 save(k1_fixed, k2_global, k2_single, k2_multi,
      params_fixed, w0, dat_ctrl, dat_d3, dat_d10,
-     file = "scripts/resultats_PKPD_rxode2_FGFR2.RData")
-cat("\nRésultats → scripts/resultats_PKPD_rxode2_FGFR2.RData\n")
+     file = "scripts/resultats_GA6822_FGFR2.RData")
+cat("\nRésultats → scripts/resultats_GA6822_FGFR2.RData\n")
