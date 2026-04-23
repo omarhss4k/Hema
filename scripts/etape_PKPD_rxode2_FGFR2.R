@@ -117,27 +117,32 @@ pkpd_model <- suppressMessages(rxode2({
 
 inits_base <- c(A1 = 0, A2 = 0, x1 = w0, x2 = 0, x3 = 0, x4 = 0)
 
+# Grille interne fixe : évite de passer des centaines de sampling points à rxode2
+# (cause principale des NA silencieux quand obs_times est dense)
+.INT_BY <- 12   # un point toutes les 12h → ~98 pts sur 49j, stable et précis
+
+.PENALTY <- 1e6   # valeur renvoyée si rxSolve échoue (pénalité gradiente)
+
 .sim <- function(ev, params, obs_times) {
   out <- tryCatch(
     rxSolve(pkpd_model, as.list(params), ev, inits = inits_base),
     error = function(e) NULL
   )
-  if (is.null(out)) return(rep(NA_real_, length(obs_times)))
-
-  # Intégration incomplète → NA plutôt qu'extrapolation silencieuse
-  if (max(out$time) < max(obs_times) - 1)
-    return(rep(NA_real_, length(obs_times)))
-
-  # rule=2 sûr ici : la complétude de l'intégration est déjà vérifiée
-  approx(out$time, pmax(out$w, 1e-9), xout = obs_times, rule = 2)$y
+  if (is.null(out)) return(rep(.PENALTY, length(obs_times)))
+  w_vec <- pmax(out$w, 1e-9)
+  if (any(is.na(w_vec)) || max(out$time) < max(obs_times) - 1)
+    return(rep(.PENALTY, length(obs_times)))
+  approx(out$time, w_vec, xout = obs_times, rule = 2)$y
 }
 
 simulate_single <- function(dose, params, obs_times, t_admin = 0) {
-  ev <- eventTable()
+  ev   <- eventTable()
   if (dose > 0)
     ev$add.dosing(dose = dose, nbr.doses = 1,
                   dosing.to = 1, start.time = t_admin)
-  ev$add.sampling(sort(unique(c(0, obs_times))))
+  # Grille interne + points d'observation requis (jamais > ~150 pts)
+  grid <- sort(unique(c(seq(0, max(obs_times), by = .INT_BY), obs_times)))
+  ev$add.sampling(grid)
   .sim(ev, params, obs_times)
 }
 
@@ -148,7 +153,8 @@ simulate_multi <- function(dose, params, obs_times,
     ev$add.dosing(dose = dose, nbr.doses = n_doses,
                   dosing.interval = interval_h,
                   dosing.to = 1, start.time = t_admin)
-  ev$add.sampling(sort(unique(c(0, obs_times))))
+  grid <- sort(unique(c(seq(0, max(obs_times), by = .INT_BY), obs_times)))
+  ev$add.sampling(grid)
   .sim(ev, params, obs_times)
 }
 
@@ -170,9 +176,7 @@ STAB_FACTOR <- 50   # k2·C1_max autorisé jusqu'à 50·l0
   p3  <- tryCatch(sim_fn(dose3,  par, dat_d3$t),   error = function(e) NULL)
   p10 <- tryCatch(sim_fn(dose10, par, dat_d10$t),  error = function(e) NULL)
 
-  bad <- function(p)
-    is.null(p) || length(p) == 0 ||
-    any(is.na(p) | is.nan(p) | is.infinite(p) | p <= 0)
+  bad <- function(p) is.null(p) || length(p) == 0 || any(!is.finite(p) | p <= 0)
 
   if (bad(pc) || bad(p3) || bad(p10)) return(1e10)
 
@@ -180,7 +184,7 @@ STAB_FACTOR <- 50   # k2·C1_max autorisé jusqu'à 50·l0
          mean((log(dat_d3$w)   - log(p3))^2)  +
          mean((log(dat_d10$w)  - log(p10))^2)
 
-  if (!is.finite(val) || is.nan(val)) 1e10 else val
+  if (!is.finite(val)) 1e10 else val
 }
 
 # ------ objectifs ------------------------------------------------------------
@@ -234,12 +238,12 @@ start_grid <- list(
 )
 
 # Bornes physiques en log-espace
-# k1 : 0.01–10 /h  (transit demi-vie entre 1.7 min et 70 h)
-# k2 : 1e-10–1e-5  (unités L/(µg·h), C1_max ~ 1e5 µg/L → k2·C1 ≤ 1e-5·1e5=1/h)
-LOG_LOWER_2 <- c(log(0.01),  log(1e-10))
-LOG_UPPER_2 <- c(log(10),    log(1e-5))
-LOG_LOWER_1 <- c(log(1e-10))   # pour fits k2 seul
-LOG_UPPER_1 <- c(log(1e-5))
+# k1 : 0.001–10 /h
+# k2 : 1e-9–0.1  (la vérif .stable_k2 écarte les valeurs > 50·l0/C1_max ≈ 2e-6)
+LOG_LOWER_2 <- c(log(0.001), log(1e-9))
+LOG_UPPER_2 <- c(log(10),    log(0.1))
+LOG_LOWER_1 <- c(log(1e-9))    # pour fits k2 seul
+LOG_UPPER_1 <- c(log(0.1))
 
 run_optim <- function(obj_fn, starts, label,
                       lower = LOG_LOWER_2, upper = LOG_UPPER_2) {
@@ -307,18 +311,19 @@ cat("  Ratio k2_multi/k2_single :", round(ratio, 3),
 # 11. GRAPHIQUES
 # =============================================================================
 
-times_full <- seq(0, 49 * 24, by = 1)
+times_sim  <- seq(0, 49 * 24, by = 6)    # grille de simulation (~197 pts, stable)
+times_full <- seq(0, 49 * 24, by = 1)    # grille d'affichage (interpolée)
 lev        <- c("Contrôle", "3 mg/kg", "10 mg/kg")
 doses      <- list(dose0, dose3, dose10)
 grps       <- c("Contrôle", "3 mg/kg", "10 mg/kg")
 
 make_df_sim <- function(sim_fn, k1, k2) {
   par <- c(params_fixed, k1 = k1, k2 = k2)
-  do.call(rbind, mapply(function(d, g)
-    data.frame(t = times_full/24,
-               w = sim_fn(d, par, times_full),
-               Groupe = g),
-    doses, grps, SIMPLIFY = FALSE))
+  do.call(rbind, mapply(function(d, g) {
+    w_sim  <- sim_fn(d, par, times_sim)
+    w_full <- approx(times_sim, w_sim, xout = times_full, rule = 2)$y
+    data.frame(t = times_full / 24, w = w_full, Groupe = g)
+  }, doses, grps, SIMPLIFY = FALSE))
 }
 
 df_obs <- rbind(
