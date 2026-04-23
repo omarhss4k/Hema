@@ -2,10 +2,11 @@
 # PKPD — Fc-silent FGFR2-huBPA-LP1 — Simeoni 2004 — deSolve/lsoda
 # (rxode2 échoue silencieusement pour ce modèle → remplacé par deSolve)
 # Version corrigée :
+#   - l0, l1 estimés depuis le contrôle (croissance pure, dose=0)
 #   - start_grid k2 recalibré pour doses en µg/kg
 #   - pénalité gradiente si lsoda échoue (rep(1e6) au lieu de NA)
 #   - TGI : gestion régression tumorale et dénominateur nul
-#   - Stratégie : fit global (k1, k2) puis k2 libre par scénario (k1 fixé)
+#   - Stratégie : calibrer l0/l1 → fit global (k1, k2) → k2 libre par scénario
 # =============================================================================
 
 library(deSolve)
@@ -32,18 +33,14 @@ cat("V2 =", round(PK["V2"], 5), "L/kg\n")
 cat("Q  =", round(PK["Q"],  6), "L/h/kg\n")
 
 # =============================================================================
-# 2. PARAMÈTRES PD DE CROISSANCE FIXÉS
+# 2. PARAMÈTRE PD FIXÉ — p (Hill) ; l0 et l1 estimés (section 5.5)
 # =============================================================================
 
-l0 <- 0.146 / 24   # /h
-l1 <- 0.334 / 24   # g/h
-p  <- 20
+p <- 20   # coefficient de Hill — fixé (Simeoni 2004)
 
-# C1_max pour 10 mg/kg → ordre de grandeur k2 attendu
+# C1_max : repère pour les bornes k2 (k2_ref affiché après calibration l0)
 C1_max_10 <- 10000 / PK["V1"]
-k2_ref    <- l0 / C1_max_10   # effet ~l0 au pic : k2 * C1_max ≈ l0
-cat("\nRepère k2 : C1_max(10 mg/kg) =", round(C1_max_10, 0),
-    "µg/L  →  k2_ref ≈", formatC(k2_ref, format="e", digits=2), "\n")
+cat("\nRepère PK : C1_max(10 mg/kg) =", round(C1_max_10, 0), "µg/L\n")
 
 # =============================================================================
 # 3. DONNÉES TUMORALES (mm³ → g)
@@ -114,6 +111,65 @@ pkpd_ode <- function(t, state, pars) {
     list(c(dA1, dA2, dx1, dx2, dx3, dx4))
   })
 }
+
+# =============================================================================
+# 5.5 PRÉ-CALIBRATION l0, l1 DEPUIS LE GROUPE CONTRÔLE
+#     dose = 0  →  C1 = 0  →  croissance pure  →  l0, l1 identifiables seuls
+# =============================================================================
+
+obj_growth <- function(logpar) {
+  l0_t <- unname(exp(logpar[1]))
+  l1_t <- unname(exp(logpar[2]))
+  pars <- c(as.list(PK), l0 = l0_t, l1 = l1_t, p = p, k1 = 1, k2 = 0)
+  state0 <- c(A1 = 0, A2 = 0, x1 = w0, x2 = 0, x3 = 0, x4 = 0)
+  out <- tryCatch(
+    as.data.frame(lsoda(state0, sort(unique(c(0, dat_ctrl$t))), pkpd_ode, pars,
+                        rtol = 1e-6, atol = 1e-8)),
+    error = function(e) NULL
+  )
+  if (is.null(out)) return(1e10)
+  w_vec <- with(out, x1 + x2 + x3 + x4)
+  if (any(!is.finite(w_vec))) return(1e10)
+  pc  <- approx(out$time, pmax(w_vec, 1e-9), xout = dat_ctrl$t, rule = 2)$y
+  val <- mean((log(dat_ctrl$w) - log(pc))^2)
+  if (!is.finite(val)) 1e10 else val
+}
+
+# Bornes : l0 ∈ [0.001, 0.5] /j, l1 ∈ [0.005, 5] g/j (en /h)
+starts_growth <- list(
+  c(l0 = 0.05/24, l1 = 0.20/24),
+  c(l0 = 0.02/24, l1 = 0.10/24),
+  c(l0 = 0.10/24, l1 = 0.50/24),
+  c(l0 = 0.03/24, l1 = 0.30/24)
+)
+
+cat("\nPré-calibration l0, l1 depuis le groupe contrôle...\n")
+best_growth_obj <- Inf;  best_growth <- NULL
+for (s in starts_growth) {
+  fit_try <- tryCatch(
+    nlminb(log(s), obj_growth,
+           lower   = c(log(0.001/24), log(0.005/24)),
+           upper   = c(log(0.5/24),   log(5/24)),
+           control = list(eval.max = 2000, iter.max = 1000, rel.tol = 1e-12)),
+    error = function(e) NULL
+  )
+  if (!is.null(fit_try) && is.finite(fit_try$objective) &&
+      fit_try$objective < best_growth_obj) {
+    best_growth_obj <- fit_try$objective
+    best_growth     <- fit_try
+  }
+}
+if (is.null(best_growth)) stop("Pas de convergence pour l0, l1")
+
+l0 <- unname(exp(best_growth$par[1]))
+l1 <- unname(exp(best_growth$par[2]))
+
+cat("  l0 =", round(l0 * 24, 4), "/j  (", round(l0, 7), "/h)\n")
+cat("  l1 =", round(l1 * 24, 4), "g/j (", round(l1, 6), "g/h)\n")
+cat("  Objectif contrôle :", round(best_growth_obj, 5), "\n")
+
+k2_ref <- l0 / C1_max_10
+cat("  Repère k2 : k2_ref ≈", formatC(k2_ref, format = "e", digits = 2), "\n")
 
 # =============================================================================
 # 6. FONCTIONS DE SIMULATION — deSolve/lsoda + pénalité si échec
