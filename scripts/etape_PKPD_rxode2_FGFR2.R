@@ -121,18 +121,20 @@ pkpd_ode <- function(t, state, pars) {
 obj_growth <- function(logpar) {
   l0_t <- unname(exp(logpar[1]))
   l1_t <- unname(exp(logpar[2]))
-  pars <- c(as.list(PK), l0 = l0_t, l1 = l1_t, p = p, k1 = 1, k2 = 0)
+  # Exclure j>35 du contrôle : censure (souris euthanasées → moyenne chute)
+  ok   <- dat_ctrl$t <= 35 * 24
+  pars   <- c(as.list(PK), l0 = l0_t, l1 = l1_t, p = p, k1 = 1, k2 = 0)
   state0 <- c(A1 = 0, A2 = 0, x1 = w0, x2 = 0, x3 = 0, x4 = 0)
   out <- tryCatch(
-    as.data.frame(lsoda(state0, sort(unique(c(0, dat_ctrl$t))), pkpd_ode, pars,
+    as.data.frame(lsoda(state0, sort(unique(c(0, dat_ctrl$t[ok]))), pkpd_ode, pars,
                         rtol = 1e-6, atol = 1e-8)),
     error = function(e) NULL
   )
   if (is.null(out)) return(1e10)
   w_vec <- with(out, x1 + x2 + x3 + x4)
   if (any(!is.finite(w_vec))) return(1e10)
-  pc  <- approx(out$time, pmax(w_vec, 1e-9), xout = dat_ctrl$t, rule = 2)$y
-  val <- mean((log(dat_ctrl$w) - log(pc))^2)
+  pc  <- approx(out$time, pmax(w_vec, 1e-9), xout = dat_ctrl$t[ok], rule = 2)$y
+  val <- mean((log(dat_ctrl$w[ok]) - log(pc))^2)
   if (!is.finite(val)) 1e10 else val
 }
 
@@ -220,6 +222,7 @@ STAB_FACTOR <- 50   # k2·C1_max autorisé jusqu'à 50·l0
 
 # ------ résidus log sécurisés ------------------------------------------------
 .residuals <- function(sim_fn, par) {
+  ok_c <- dat_ctrl$t <= 35 * 24   # exclure j>35 contrôle (censure)
   pc  <- tryCatch(sim_fn(dose0,  par, dat_ctrl$t), error = function(e) NULL)
   p3  <- tryCatch(sim_fn(dose3,  par, dat_d3$t),   error = function(e) NULL)
   p10 <- tryCatch(sim_fn(dose10, par, dat_d10$t),  error = function(e) NULL)
@@ -228,9 +231,9 @@ STAB_FACTOR <- 50   # k2·C1_max autorisé jusqu'à 50·l0
 
   if (bad(pc) || bad(p3) || bad(p10)) return(1e10)
 
-  val <- mean((log(dat_ctrl$w) - log(pc))^2)  +
-         mean((log(dat_d3$w)   - log(p3))^2)  +
-         mean((log(dat_d10$w)  - log(p10))^2)
+  val <- mean((log(dat_ctrl$w[ok_c]) - log(pc[ok_c]))^2) +
+         mean((log(dat_d3$w)         - log(p3))^2)        +
+         mean((log(dat_d10$w)        - log(p10))^2)
 
   if (!is.finite(val)) 1e10 else val
 }
