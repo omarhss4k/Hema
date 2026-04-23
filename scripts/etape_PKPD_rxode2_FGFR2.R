@@ -1,13 +1,14 @@
 # =============================================================================
-# PKPD — Fc-silent FGFR2-huBPA-LP1 — Simeoni 2004 — rxode2
+# PKPD — Fc-silent FGFR2-huBPA-LP1 — Simeoni 2004 — deSolve/lsoda
+# (rxode2 échoue silencieusement pour ce modèle → remplacé par deSolve)
 # Version corrigée :
 #   - start_grid k2 recalibré pour doses en µg/kg
-#   - approx rule=1 + vérification intégration complète
+#   - pénalité gradiente si lsoda échoue (rep(1e6) au lieu de NA)
 #   - TGI : gestion régression tumorale et dénominateur nul
 #   - Stratégie : fit global (k1, k2) puis k2 libre par scénario (k1 fixé)
 # =============================================================================
 
-library(rxode2)
+library(deSolve)
 library(ggplot2)
 library(readxl)
 
@@ -94,68 +95,66 @@ w0 <- mean(c(
 cat("\nw0 :", round(w0, 4), "g\n")
 
 # =============================================================================
-# 5. MODÈLE PKPD rxode2 — Simeoni 2004
+# 5. MODÈLE PKPD — Simeoni 2004 — ODE deSolve
 # =============================================================================
 
-pkpd_model <- suppressMessages(rxode2({
-  C1       <- A1 / V1
-  d/dt(A1) <- -(CL/V1 + Q/V1) * A1 + (Q/V2) * A2
-  d/dt(A2) <-  (Q/V1) * A1 - (Q/V2) * A2
+pkpd_ode <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    C1     <- A1 / V1
+    w      <- x1 + x2 + x3 + x4
+    growth <- l0 * x1 / (1 + (l0/l1 * w)^p)^(1/p)
 
-  w      <- x1 + x2 + x3 + x4
-  growth <- l0 * x1 / (1 + (l0/l1 * w)^p)^(1/p)
+    dA1 <- -(CL/V1 + Q/V1) * A1 + (Q/V2) * A2
+    dA2 <-  (Q/V1) * A1 - (Q/V2) * A2
+    dx1 <- growth - k2 * C1 * x1
+    dx2 <- k2 * C1 * x1 - k1 * x2
+    dx3 <- k1 * (x2 - x3)
+    dx4 <- k1 * (x3 - x4)
 
-  d/dt(x1) <- growth - k2 * C1 * x1
-  d/dt(x2) <- k2 * C1 * x1 - k1 * x2
-  d/dt(x3) <- k1 * (x2 - x3)
-  d/dt(x4) <- k1 * (x3 - x4)
-}))
+    list(c(dA1, dA2, dx1, dx2, dx3, dx4))
+  })
+}
 
 # =============================================================================
-# 6. FONCTIONS DE SIMULATION — rule=1 + vérification intégration complète
+# 6. FONCTIONS DE SIMULATION — deSolve/lsoda + pénalité si échec
 # =============================================================================
 
-inits_base <- c(A1 = 0, A2 = 0, x1 = w0, x2 = 0, x3 = 0, x4 = 0)
+.PENALTY <- 1e6   # renvoyé si lsoda échoue → pénalité avec gradient
 
-# Grille interne fixe : évite de passer des centaines de sampling points à rxode2
-# (cause principale des NA silencieux quand obs_times est dense)
-.INT_BY <- 12   # un point toutes les 12h → ~98 pts sur 49j, stable et précis
-
-.PENALTY <- 1e6   # valeur renvoyée si rxSolve échoue (pénalité gradiente)
-
-.sim <- function(ev, params, obs_times) {
+.sim <- function(state0, pars_list, obs_times, events_df = NULL) {
+  times <- sort(unique(c(0, obs_times)))
   out <- tryCatch(
-    rxSolve(pkpd_model, as.list(params), ev, inits = inits_base),
+    as.data.frame(lsoda(state0, times, pkpd_ode, pars_list,
+                        events = if (!is.null(events_df)) list(data = events_df) else NULL,
+                        rtol = 1e-6, atol = 1e-8)),
     error = function(e) NULL
   )
   if (is.null(out)) return(rep(.PENALTY, length(obs_times)))
-  w_vec <- pmax(out$w, 1e-9)
-  if (any(is.na(w_vec)) || max(out$time) < max(obs_times) - 1)
+  w_vec <- with(out, x1 + x2 + x3 + x4)
+  if (any(!is.finite(w_vec)) || max(out$time) < max(obs_times) - 1)
     return(rep(.PENALTY, length(obs_times)))
-  approx(out$time, w_vec, xout = obs_times, rule = 2)$y
+  approx(out$time, pmax(w_vec, 1e-9), xout = obs_times, rule = 2)$y
 }
 
 simulate_single <- function(dose, params, obs_times, t_admin = 0) {
-  ev   <- eventTable()
-  if (dose > 0)
-    ev$add.dosing(dose = dose, nbr.doses = 1,
-                  dosing.to = 1, start.time = t_admin)
-  # Grille interne + points d'observation requis (jamais > ~150 pts)
-  grid <- sort(unique(c(seq(0, max(obs_times), by = .INT_BY), obs_times)))
-  ev$add.sampling(grid)
-  .sim(ev, params, obs_times)
+  state0    <- c(A1 = dose, A2 = 0, x1 = w0, x2 = 0, x3 = 0, x4 = 0)
+  pars_list <- as.list(params)
+  .sim(state0, pars_list, obs_times, events_df = NULL)
 }
 
 simulate_multi <- function(dose, params, obs_times,
                            t_admin = 0, n_doses = 4, interval_h = 14*24) {
-  ev <- eventTable()
-  if (dose > 0)
-    ev$add.dosing(dose = dose, nbr.doses = n_doses,
-                  dosing.interval = interval_h,
-                  dosing.to = 1, start.time = t_admin)
-  grid <- sort(unique(c(seq(0, max(obs_times), by = .INT_BY), obs_times)))
-  ev$add.sampling(grid)
-  .sim(ev, params, obs_times)
+  state0    <- c(A1 = dose, A2 = 0, x1 = w0, x2 = 0, x3 = 0, x4 = 0)
+  pars_list <- as.list(params)
+  events_df <- if (n_doses > 1)
+    data.frame(var    = "A1",
+               time   = seq(t_admin + interval_h,
+                            t_admin + (n_doses - 1) * interval_h,
+                            by = interval_h),
+               value  = dose,
+               method = "add")
+  else NULL
+  .sim(state0, pars_list, obs_times, events_df)
 }
 
 # =============================================================================
@@ -311,19 +310,18 @@ cat("  Ratio k2_multi/k2_single :", round(ratio, 3),
 # 11. GRAPHIQUES
 # =============================================================================
 
-times_sim  <- seq(0, 49 * 24, by = 6)    # grille de simulation (~197 pts, stable)
-times_full <- seq(0, 49 * 24, by = 1)    # grille d'affichage (interpolée)
+times_full <- seq(0, 49 * 24, by = 1)    # 1177 pts — deSolve gère sans problème
 lev        <- c("Contrôle", "3 mg/kg", "10 mg/kg")
 doses      <- list(dose0, dose3, dose10)
 grps       <- c("Contrôle", "3 mg/kg", "10 mg/kg")
 
 make_df_sim <- function(sim_fn, k1, k2) {
   par <- c(params_fixed, k1 = k1, k2 = k2)
-  do.call(rbind, mapply(function(d, g) {
-    w_sim  <- sim_fn(d, par, times_sim)
-    w_full <- approx(times_sim, w_sim, xout = times_full, rule = 2)$y
-    data.frame(t = times_full / 24, w = w_full, Groupe = g)
-  }, doses, grps, SIMPLIFY = FALSE))
+  do.call(rbind, mapply(function(d, g)
+    data.frame(t = times_full/24,
+               w = sim_fn(d, par, times_full),
+               Groupe = g),
+    doses, grps, SIMPLIFY = FALSE))
 }
 
 df_obs <- rbind(
