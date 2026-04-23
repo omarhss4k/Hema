@@ -3,13 +3,14 @@
 # (rxode2 échoue silencieusement pour ce modèle → remplacé par deSolve)
 # Version corrigée :
 #   - l0, l1 estimés depuis le contrôle (croissance pure, dose=0)
-#   - start_grid k2 recalibré pour doses en µg/kg
+#   - DEoptim (Évolution Différentielle) : optimiseur global, sans point de départ
 #   - pénalité gradiente si lsoda échoue (rep(1e6) au lieu de NA)
 #   - TGI : gestion régression tumorale et dénominateur nul
 #   - Stratégie : calibrer l0/l1 → fit global (k1, k2) → k2 libre par scénario
 # =============================================================================
 
 library(deSolve)
+library(DEoptim)
 library(ggplot2)
 library(readxl)
 
@@ -143,30 +144,22 @@ starts_growth <- list(
   c(l0 = 0.03/24, l1 = 0.30/24)
 )
 
-cat("\nPré-calibration l0, l1 depuis le groupe contrôle...\n")
-best_growth_obj <- Inf;  best_growth <- NULL
-for (s in starts_growth) {
-  fit_try <- tryCatch(
-    nlminb(log(s), obj_growth,
-           lower   = c(log(0.001/24), log(0.005/24)),
-           upper   = c(log(0.5/24),   log(5/24)),
-           control = list(eval.max = 2000, iter.max = 1000, rel.tol = 1e-12)),
-    error = function(e) NULL
-  )
-  if (!is.null(fit_try) && is.finite(fit_try$objective) &&
-      fit_try$objective < best_growth_obj) {
-    best_growth_obj <- fit_try$objective
-    best_growth     <- fit_try
-  }
-}
-if (is.null(best_growth)) stop("Pas de convergence pour l0, l1")
+cat("\nPré-calibration l0, l1 depuis le groupe contrôle (DEoptim)...\n")
+fit_growth <- DEoptim(
+  obj_growth,
+  lower   = c(log(0.001/24), log(0.005/24)),
+  upper   = c(log(0.5/24),   log(5/24)),
+  control = DEoptim.control(NP = 20L, itermax = 500L,
+                            F = 0.8, CR = 0.9, strategy = 2L,
+                            trace = FALSE)
+)
 
-l0 <- unname(exp(best_growth$par[1]))
-l1 <- unname(exp(best_growth$par[2]))
+l0 <- unname(exp(fit_growth$optim$bestmem[1]))
+l1 <- unname(exp(fit_growth$optim$bestmem[2]))
 
 cat("  l0 =", round(l0 * 24, 4), "/j  (", round(l0, 7), "/h)\n")
 cat("  l1 =", round(l1 * 24, 4), "g/j (", round(l1, 6), "g/h)\n")
-cat("  Objectif contrôle :", round(best_growth_obj, 5), "\n")
+cat("  Objectif contrôle :", round(fit_growth$optim$bestval, 5), "\n")
 
 k2_ref <- l0 / C1_max_10
 cat("  Repère k2 : k2_ref ≈", formatC(k2_ref, format = "e", digits = 2), "\n")
@@ -278,80 +271,63 @@ make_objective_global <- function() {
 }
 
 # =============================================================================
-# 8. GRILLES DE DÉPART — k2 recalibré pour doses en µg/kg
-#    k2_ref ≈ l0 / C1_max(10 mg/kg)  →  ordre 1e-8 à 1e-6
+# 8. OPTIMISATION — DEoptim (Évolution Différentielle)
+#    Optimiseur global : pas de point de départ, bornes directes en log-espace
 # =============================================================================
 
-# C1_max ≈ 143 000 µg/L pour V1 ≈ 0.07 L/kg
-# k2 * C1_max doit être ~ l0 (0.006/h) : k2 ≈ 4e-8
-start_grid <- list(
-  c(k1 = 0.5,  k2 = 1e-7),
-  c(k1 = 0.1,  k2 = 1e-8),
-  c(k1 = 1.0,  k2 = 5e-8),
-  c(k1 = 0.2,  k2 = 1e-6),
-  c(k1 = 0.5,  k2 = 1e-9)
-)
-
-# Bornes physiques en log-espace
-# k1 : 0.001–10 /h
-# k2 : 1e-9–0.1  (la vérif .stable_k2 écarte les valeurs > 50·l0/C1_max ≈ 2e-6)
+# Bornes en log-espace
+# k1 : [0.001, 10] /h  |  k2 : [1e-9, 0.1] (filtre .stable_k2 actif)
 LOG_LOWER_2 <- c(log(0.001), log(1e-9))
 LOG_UPPER_2 <- c(log(10),    log(0.1))
 LOG_LOWER_1 <- c(log(1e-9))    # pour fits k2 seul
 LOG_UPPER_1 <- c(log(0.1))
 
-run_optim <- function(obj_fn, starts, label,
-                      lower = LOG_LOWER_2, upper = LOG_UPPER_2) {
-  cat("\nOptimisation —", label, "...\n")
-  best_obj <- Inf;  best_fit <- NULL
-  for (s in starts) {
-    fit_try <- tryCatch(
-      nlminb(log(s), obj_fn,
-             lower   = lower,
-             upper   = upper,
-             control = list(eval.max = 3000, iter.max = 1500,
-                            rel.tol = 1e-12, x.tol = 1e-12)),
-      error = function(e) NULL
-    )
-    if (!is.null(fit_try) && is.finite(fit_try$objective) &&
-        fit_try$objective < best_obj) {
-      best_obj <- fit_try$objective;  best_fit <- fit_try
-    }
-  }
-  if (is.null(best_fit)) stop(paste("Aucune convergence pour", label))
-  best_fit
+run_optim <- function(obj_fn, lower, upper, label, NP = NULL) {
+  np  <- length(lower)
+  NP  <- if (is.null(NP)) 10L * np else as.integer(NP)
+  cat("\nDEoptim —", label, " (NP =", NP, ", itermax = 1000)...\n")
+  out <- tryCatch(
+    DEoptim(obj_fn, lower = lower, upper = upper,
+            control = DEoptim.control(NP       = NP,
+                                      itermax  = 1000L,
+                                      F        = 0.8,
+                                      CR       = 0.9,
+                                      strategy = 2L,
+                                      trace    = FALSE)),
+    error = function(e) { message("DEoptim erreur : ", e$message); NULL }
+  )
+  if (is.null(out)) stop(paste("DEoptim échoué pour", label))
+  out
 }
 
 # =============================================================================
 # 9. PHASE 1 — FIT GLOBAL (k1, k2 communs aux deux scénarios)
 # =============================================================================
 
-fit_global <- run_optim(make_objective_global(), start_grid, "Fit global")
+fit_global <- run_optim(make_objective_global(), LOG_LOWER_2, LOG_UPPER_2, "Fit global")
 
-k1_global <- unname(exp(fit_global$par[1]))
-k2_global <- unname(exp(fit_global$par[2]))
+k1_global <- unname(exp(fit_global$optim$bestmem[1]))
+k2_global <- unname(exp(fit_global$optim$bestmem[2]))
 
 cat("\n=== Fit global (k1, k2 communs) ===\n")
 cat("  k1 =", round(k1_global, 6), "/h\n")
 cat("  k2 =", formatC(k2_global, format="e", digits=3), "\n")
-cat("  Objectif :", round(fit_global$objective, 5), "\n")
+cat("  Objectif :", round(fit_global$optim$bestval, 5), "\n")
 
 # =============================================================================
 # 10. PHASE 2 — k2 LIBRE PAR SCÉNARIO (k1 = k1_global fixé)
 #     Permet de détecter résistance ou accumulation
 # =============================================================================
 
-starts_k2 <- lapply(start_grid, function(s) s["k2"])
-
 fit_k2_single <- run_optim(make_objective_k2(simulate_single, k1_global),
-                           starts_k2, "k2 dose unique (k1 fixé)",
-                           lower = LOG_LOWER_1, upper = LOG_UPPER_1)
+                           LOG_LOWER_1, LOG_UPPER_1,
+                           "k2 dose unique (k1 fixé)", NP = 10L)
 fit_k2_multi  <- run_optim(make_objective_k2(simulate_multi,  k1_global),
-                           starts_k2, "k2 doses répétées (k1 fixé)",
-                           lower = LOG_LOWER_1, upper = LOG_UPPER_1)
+                           LOG_LOWER_1, LOG_UPPER_1,
+                           "k2 doses répétées (k1 fixé)", NP = 10L)
 
-k2_single <- unname(exp(fit_k2_single$par[1]))
-k2_multi  <- unname(exp(fit_k2_multi$par[1]))
+k2_single <- unname(exp(fit_k2_single$optim$bestmem[1]))
+k2_multi  <- unname(exp(fit_k2_multi$optim$bestmem[1]))
 
 cat("\n=== Fits séparés k2 (k1 =", round(k1_global, 5), "/h fixé) ===\n")
 cat("  k2 dose unique    :", formatC(k2_single, format="e", digits=3), "\n")
