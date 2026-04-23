@@ -49,7 +49,20 @@ sem_d3   <- get_row(blk_sem,  "Group 04")
 w0_ctrl <- w_ctrl[times_d == 0]
 w0_d10  <- w_d10 [times_d == 0]
 w0_d3   <- w_d3  [times_d == 0]
-ok <- !is.na(w_ctrl) & !is.na(w_d10) & !is.na(w_d3) & times_d > 0
+
+# Points valides :
+#   - données présentes pour les 3 groupes
+#   - après j0
+#   - delta contrôle ≥ 50 mm³ (dénominateur stable, phase exponentielle engagée)
+#   - SEM contrôle > 0    (> 1 souris survivante dans le contrôle)
+delta_ctrl_all <- w_ctrl - w0_ctrl
+ok <- !is.na(w_ctrl) & !is.na(w_d10) & !is.na(w_d3) &
+      times_d > 0 &
+      !is.na(delta_ctrl_all) & delta_ctrl_all >= 50 &
+      !is.na(sem_ctrl) & sem_ctrl > 0
+
+cat(sprintf("Timepoints exclus (censure ou delta contrôle < 50 mm³) : j%s\n",
+            paste(times_d[!ok & times_d > 0], collapse=", j")))
 
 tgi_pct <- function(wt, wt0, wc, wc0)
   round((1 - (wt - wt0) / (wc - wc0)) * 100, 1)
