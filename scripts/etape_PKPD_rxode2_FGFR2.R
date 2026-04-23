@@ -271,6 +271,21 @@ make_objective_k2_global <- function(k1_val) {
   }
 }
 
+# k2 par dose (k1 fixé) — fitté sur contrôle + un seul groupe traité à la fois
+make_objective_k2_bydose <- function(sim_fn, k1_val, dose_trt, dat_trt) {
+  function(logpar_k2) {
+    k2  <- unname(exp(logpar_k2[1]))
+    if (!.stable_k2(k2)) return(1e10)
+    par <- c(params_fixed, k1 = k1_val, k2 = k2)
+    pc  <- tryCatch(sim_fn(dose0,    par, dat_ctrl$t), error = function(e) NULL)
+    pt  <- tryCatch(sim_fn(dose_trt, par, dat_trt$t),  error = function(e) NULL)
+    bad <- function(p) is.null(p) || length(p) == 0 || any(!is.finite(p) | p <= 0)
+    if (bad(pc) || bad(pt)) return(1e10)
+    mean((log(dat_ctrl$w) - log(pc))^2) +
+    mean((log(dat_trt$w)  - log(pt))^2)
+  }
+}
+
 # =============================================================================
 # 8. OPTIMISATION — DEoptim (Évolution Différentielle)
 #    Optimiseur global : pas de point de départ, bornes directes en log-espace
@@ -343,6 +358,37 @@ cat("  Ratio k2_multi/k2_single :", round(ratio, 3),
     "→ pas de dérive notable", "\n")
 
 # =============================================================================
+# 10b. PHASE 3 — k2 PAR DOSE (k1 fixé)
+#      Chaque dose fittée indépendamment : contrôle + ce groupe uniquement
+# =============================================================================
+
+fit_k2_3mg_s  <- run_optim(
+  make_objective_k2_bydose(simulate_single, k1_fixed, dose3,  dat_d3),
+  LOG_LOWER_1, LOG_UPPER_1, "k2 3mg/kg dose unique", NP = 10L)
+fit_k2_10mg_s <- run_optim(
+  make_objective_k2_bydose(simulate_single, k1_fixed, dose10, dat_d10),
+  LOG_LOWER_1, LOG_UPPER_1, "k2 10mg/kg dose unique", NP = 10L)
+fit_k2_3mg_m  <- run_optim(
+  make_objective_k2_bydose(simulate_multi, k1_fixed, dose3,  dat_d3),
+  LOG_LOWER_1, LOG_UPPER_1, "k2 3mg/kg doses répétées", NP = 10L)
+fit_k2_10mg_m <- run_optim(
+  make_objective_k2_bydose(simulate_multi, k1_fixed, dose10, dat_d10),
+  LOG_LOWER_1, LOG_UPPER_1, "k2 10mg/kg doses répétées", NP = 10L)
+
+k2_3mg_s  <- unname(exp(fit_k2_3mg_s$optim$bestmem[1]))
+k2_10mg_s <- unname(exp(fit_k2_10mg_s$optim$bestmem[1]))
+k2_3mg_m  <- unname(exp(fit_k2_3mg_m$optim$bestmem[1]))
+k2_10mg_m <- unname(exp(fit_k2_10mg_m$optim$bestmem[1]))
+
+cat("\n=== Fits k2 par dose (k1 =", round(k1_fixed * 24, 4), "/j fixé) ===\n")
+cat("  Dose unique :\n")
+cat("    k2  3 mg/kg :", formatC(k2_3mg_s,  format="e", digits=3), "\n")
+cat("    k2 10 mg/kg :", formatC(k2_10mg_s, format="e", digits=3), "\n")
+cat("  Doses répétées :\n")
+cat("    k2  3 mg/kg :", formatC(k2_3mg_m,  format="e", digits=3), "\n")
+cat("    k2 10 mg/kg :", formatC(k2_10mg_m, format="e", digits=3), "\n")
+
+# =============================================================================
 # 11. GRAPHIQUES
 # =============================================================================
 
@@ -409,6 +455,48 @@ plot_pkpd(df_sim_k2m, "Doses répétées — k2 libre",
           dose_days = c(0,14,28,42), k1_fixed, k2_multi)
 ggsave("scripts/plot_PKPD_k2sep_multi_FGFR2.png", width=9, height=5, dpi=150)
 
+# Graphiques k2 par dose
+make_df_sim_bydose <- function(sim_fn, k1, k2_3, k2_10) {
+  par_c  <- c(params_fixed, k1 = k1, k2 = k2_3)   # dose=0 → k2 sans effet
+  par_3  <- c(params_fixed, k1 = k1, k2 = k2_3)
+  par_10 <- c(params_fixed, k1 = k1, k2 = k2_10)
+  rbind(
+    data.frame(t = times_full/24, w = sim_fn(dose0,  par_c,  times_full), Groupe = "Contrôle"),
+    data.frame(t = times_full/24, w = sim_fn(dose3,  par_3,  times_full), Groupe = "3 mg/kg"),
+    data.frame(t = times_full/24, w = sim_fn(dose10, par_10, times_full), Groupe = "10 mg/kg")
+  )
+}
+
+plot_pkpd_bydose <- function(df_sim, title_suffix, dose_days, k1, k2_3, k2_10) {
+  df_sim$Groupe <- factor(df_sim$Groupe, levels = lev)
+  ggplot() +
+    geom_line(data  = df_sim, aes(x=t, y=w, color=Groupe), linewidth=1) +
+    geom_point(data = df_obs, aes(x=t, y=w, color=Groupe), size=2.5) +
+    geom_vline(xintercept = dose_days, linetype="dashed",
+               color="grey60", linewidth=0.5) +
+    annotate("text", x = dose_days, y = max(df_obs$w, na.rm=TRUE)*1.05,
+             label = paste0("j", dose_days), size=2.8,
+             color="grey40", hjust=0.5) +
+    labs(
+      title    = paste("PKPD Simeoni 2004 (rxode2) —", title_suffix),
+      subtitle = paste0("Fc-silent FGFR2-huBPA-LP1 | k1=", round(k1*24, 3), " /j",
+                        "  k2(3mg)=",  formatC(k2_3,  format="e", digits=2),
+                        "  k2(10mg)=", formatC(k2_10, format="e", digits=2)),
+      x = "Temps (jours)", y = "Volume tumoral (g)"
+    ) +
+    theme_bw(base_size = 13)
+}
+
+df_bydose_s <- make_df_sim_bydose(simulate_single, k1_fixed, k2_3mg_s, k2_10mg_s)
+plot_pkpd_bydose(df_bydose_s, "Dose unique — k2 par dose",
+                 dose_days = 0, k1_fixed, k2_3mg_s, k2_10mg_s)
+ggsave("scripts/plot_PKPD_bydose_single_FGFR2.png", width=9, height=5, dpi=150)
+
+df_bydose_m <- make_df_sim_bydose(simulate_multi, k1_fixed, k2_3mg_m, k2_10mg_m)
+plot_pkpd_bydose(df_bydose_m, "Doses répétées — k2 par dose",
+                 dose_days = c(0,14,28,42), k1_fixed, k2_3mg_m, k2_10mg_m)
+ggsave("scripts/plot_PKPD_bydose_multi_FGFR2.png", width=9, height=5, dpi=150)
+
 cat("\nGraphiques → scripts/plot_PKPD_*_FGFR2.png\n")
 
 # =============================================================================
@@ -448,11 +536,33 @@ cat("\n--- TGI k2 libre par scénario ---\n")
 calc_tgi(simulate_single, k1_fixed, k2_single, "Dose unique")
 calc_tgi(simulate_multi,  k1_fixed, k2_multi,  "Doses répétées")
 
+calc_tgi_bydose <- function(sim_fn, k1, k2_3, k2_10, label) {
+  t_seq  <- seq(0, 49*24, by = 24)
+  par_c  <- c(params_fixed, k1=k1, k2=k2_3)
+  par_3  <- c(params_fixed, k1=k1, k2=k2_3)
+  par_10 <- c(params_fixed, k1=k1, k2=k2_10)
+  wc  <- tail(sim_fn(dose0,  par_c,  t_seq), 1)
+  w3  <- tail(sim_fn(dose3,  par_3,  t_seq), 1)
+  w10 <- tail(sim_fn(dose10, par_10, t_seq), 1)
+  tgi3  <- tgi(wc, w3,  w0)
+  tgi10 <- tgi(wc, w10, w0)
+  cat("\nTGI à j49 —", label, "(k2 par dose) :\n")
+  cat("   3 mg/kg  :", if (is.na(tgi3))  "NA" else
+      if (tgi3 > 100) paste0(tgi3, "% (régression)") else paste0(tgi3, "%"), "\n")
+  cat("  10 mg/kg  :", if (is.na(tgi10)) "NA" else
+      if (tgi10 > 100) paste0(tgi10, "% (régression)") else paste0(tgi10, "%"), "\n")
+}
+
+cat("\n--- TGI k2 par dose ---\n")
+calc_tgi_bydose(simulate_single, k1_fixed, k2_3mg_s, k2_10mg_s, "Dose unique")
+calc_tgi_bydose(simulate_multi,  k1_fixed, k2_3mg_m, k2_10mg_m, "Doses répétées")
+
 # =============================================================================
 # 13. SAUVEGARDE
 # =============================================================================
 
 save(k1_fixed, k2_global, k2_single, k2_multi,
+     k2_3mg_s, k2_10mg_s, k2_3mg_m, k2_10mg_m,
      params_fixed, w0, dat_ctrl, dat_d3, dat_d10,
      file = "scripts/resultats_PKPD_rxode2_FGFR2.RData")
 cat("\nRésultats → scripts/resultats_PKPD_rxode2_FGFR2.RData\n")
