@@ -260,12 +260,12 @@ make_objective_k2 <- function(sim_fn, k1_fixed) {
   }
 }
 
-# k1 + k2 communs aux deux scénarios
-make_objective_global <- function() {
-  function(logpar) {
-    k1 <- unname(exp(logpar[1]));  k2 <- unname(exp(logpar[2]))
+# k2 global (k1 fixé) — pour la phase 1 avec k1 contraint
+make_objective_k2_global <- function(k1_val) {
+  function(logpar_k2) {
+    k2 <- unname(exp(logpar_k2[1]))
     if (!.stable_k2(k2)) return(1e10)
-    par <- c(params_fixed, k1 = k1, k2 = k2)
+    par <- c(params_fixed, k1 = k1_val, k2 = k2)
     rs  <- .residuals(simulate_single, par)
     rm  <- .residuals(simulate_multi,  par)
     if (rs >= 1e10 || rm >= 1e10) return(1e10)
@@ -304,35 +304,38 @@ run_optim <- function(obj_fn, lower, upper, label, NP = NULL) {
 }
 
 # =============================================================================
-# 9. PHASE 1 — FIT GLOBAL (k1, k2 communs aux deux scénarios)
+# 9. PHASE 1 — k2 GLOBAL (k1 fixé à la valeur de référence Simeoni 2004)
+#    k1 n'est pas identifiable depuis ces données (converge vers la borne basse)
+#    → fixé à 0.5/j = 0.0208/h (transit moyen = 4/k1 = 8 jours)
 # =============================================================================
 
-fit_global <- run_optim(make_objective_global(), LOG_LOWER_2, LOG_UPPER_2, "Fit global")
+k1_fixed <- 0.5 / 24   # /h — ajustable, valeur ref Simeoni 2004
 
-k1_global <- unname(exp(fit_global$optim$bestmem[1]))
-k2_global <- unname(exp(fit_global$optim$bestmem[2]))
+fit_global <- run_optim(make_objective_k2_global(k1_fixed),
+                        LOG_LOWER_1, LOG_UPPER_1, "Fit global k2 (k1 fixé)", NP = 10L)
 
-cat("\n=== Fit global (k1, k2 communs) ===\n")
-cat("  k1 =", round(k1_global, 6), "/h\n")
+k2_global <- unname(exp(fit_global$optim$bestmem[1]))
+
+cat("\n=== Fit global k2 (k1 =", round(k1_fixed * 24, 4), "/j fixé) ===\n")
 cat("  k2 =", formatC(k2_global, format="e", digits=3), "\n")
 cat("  Objectif :", round(fit_global$optim$bestval, 5), "\n")
 
 # =============================================================================
-# 10. PHASE 2 — k2 LIBRE PAR SCÉNARIO (k1 = k1_global fixé)
+# 10. PHASE 2 — k2 LIBRE PAR SCÉNARIO (k1 = k1_fixed fixé)
 #     Permet de détecter résistance ou accumulation
 # =============================================================================
 
-fit_k2_single <- run_optim(make_objective_k2(simulate_single, k1_global),
+fit_k2_single <- run_optim(make_objective_k2(simulate_single, k1_fixed),
                            LOG_LOWER_1, LOG_UPPER_1,
                            "k2 dose unique (k1 fixé)", NP = 10L)
-fit_k2_multi  <- run_optim(make_objective_k2(simulate_multi,  k1_global),
+fit_k2_multi  <- run_optim(make_objective_k2(simulate_multi,  k1_fixed),
                            LOG_LOWER_1, LOG_UPPER_1,
                            "k2 doses répétées (k1 fixé)", NP = 10L)
 
 k2_single <- unname(exp(fit_k2_single$optim$bestmem[1]))
 k2_multi  <- unname(exp(fit_k2_multi$optim$bestmem[1]))
 
-cat("\n=== Fits séparés k2 (k1 =", round(k1_global, 5), "/h fixé) ===\n")
+cat("\n=== Fits séparés k2 (k1 =", round(k1_fixed, 5), "/h fixé) ===\n")
 cat("  k2 dose unique    :", formatC(k2_single, format="e", digits=3), "\n")
 cat("  k2 doses répétées :", formatC(k2_multi,  format="e", digits=3), "\n")
 ratio <- k2_multi / k2_single
@@ -387,25 +390,25 @@ plot_pkpd <- function(df_sim, title_suffix, dose_days, k1, k2) {
 }
 
 # Graphique fit global
-df_sim_global_s <- make_df_sim(simulate_single, k1_global, k2_global)
+df_sim_global_s <- make_df_sim(simulate_single, k1_fixed, k2_global)
 plot_pkpd(df_sim_global_s, "Dose unique — fit global",
-          dose_days = 0, k1_global, k2_global)
+          dose_days = 0, k1_fixed, k2_global)
 ggsave("scripts/plot_PKPD_global_single_FGFR2.png", width=9, height=5, dpi=150)
 
-df_sim_global_m <- make_df_sim(simulate_multi, k1_global, k2_global)
+df_sim_global_m <- make_df_sim(simulate_multi, k1_fixed, k2_global)
 plot_pkpd(df_sim_global_m, "Doses répétées — fit global",
-          dose_days = c(0,14,28,42), k1_global, k2_global)
+          dose_days = c(0,14,28,42), k1_fixed, k2_global)
 ggsave("scripts/plot_PKPD_global_multi_FGFR2.png", width=9, height=5, dpi=150)
 
 # Graphique fits séparés k2
-df_sim_k2s <- make_df_sim(simulate_single, k1_global, k2_single)
+df_sim_k2s <- make_df_sim(simulate_single, k1_fixed, k2_single)
 plot_pkpd(df_sim_k2s, "Dose unique — k2 libre",
-          dose_days = 0, k1_global, k2_single)
+          dose_days = 0, k1_fixed, k2_single)
 ggsave("scripts/plot_PKPD_k2sep_single_FGFR2.png", width=9, height=5, dpi=150)
 
-df_sim_k2m <- make_df_sim(simulate_multi, k1_global, k2_multi)
+df_sim_k2m <- make_df_sim(simulate_multi, k1_fixed, k2_multi)
 plot_pkpd(df_sim_k2m, "Doses répétées — k2 libre",
-          dose_days = c(0,14,28,42), k1_global, k2_multi)
+          dose_days = c(0,14,28,42), k1_fixed, k2_multi)
 ggsave("scripts/plot_PKPD_k2sep_multi_FGFR2.png", width=9, height=5, dpi=150)
 
 cat("\nGraphiques → scripts/plot_PKPD_*_FGFR2.png\n")
@@ -440,18 +443,18 @@ calc_tgi <- function(sim_fn, k1, k2, label) {
 }
 
 cat("\n--- TGI fit global ---\n")
-calc_tgi(simulate_single, k1_global, k2_global, "Dose unique")
-calc_tgi(simulate_multi,  k1_global, k2_global, "Doses répétées")
+calc_tgi(simulate_single, k1_fixed, k2_global, "Dose unique")
+calc_tgi(simulate_multi,  k1_fixed, k2_global, "Doses répétées")
 
 cat("\n--- TGI k2 libre par scénario ---\n")
-calc_tgi(simulate_single, k1_global, k2_single, "Dose unique")
-calc_tgi(simulate_multi,  k1_global, k2_multi,  "Doses répétées")
+calc_tgi(simulate_single, k1_fixed, k2_single, "Dose unique")
+calc_tgi(simulate_multi,  k1_fixed, k2_multi,  "Doses répétées")
 
 # =============================================================================
 # 13. SAUVEGARDE
 # =============================================================================
 
-save(k1_global, k2_global, k2_single, k2_multi,
+save(k1_fixed, k2_global, k2_single, k2_multi,
      params_fixed, w0, dat_ctrl, dat_d3, dat_d10,
      file = "scripts/resultats_PKPD_rxode2_FGFR2.RData")
 cat("\nRésultats → scripts/resultats_PKPD_rxode2_FGFR2.RData\n")
