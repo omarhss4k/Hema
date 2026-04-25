@@ -1,0 +1,280 @@
+# =============================================================================
+# PK 2-compartiments — rxode2 + nlminb
+# Fc-silent B/C huBPA-LP1 (FGFR2)
+# IV bolus, 3 doses : 1, 5, 10 mg/kg
+# Valeurs initiales : résultats de la méthode des résidus
+# =============================================================================
+
+library(rxode2)
+library(ggplot2)
+library(readxl)
+
+# =============================================================================
+# 1. DONNÉES
+# =============================================================================
+
+raw    <- read_xlsx("data/PK souris FGFR2.xlsx")
+time_h <- as.numeric(raw[[1]])
+conc10 <- as.numeric(raw[[2]])
+conc5  <- as.numeric(raw[[3]])
+conc1  <- as.numeric(raw[[4]])
+
+dose10 <- 10 * 1000   # µg/kg
+dose5  <-  5 * 1000
+dose1  <-  1 * 1000
+
+mk <- function(t, c, d, label) {
+  ok <- !is.na(c) & c > 0
+  data.frame(t = t[ok], C = c[ok], dose = d, Dose = label)
+}
+df <- rbind(
+  mk(time_h, conc10, dose10, "10 mg/kg"),
+  mk(time_h, conc5,  dose5,  "5 mg/kg"),
+  mk(time_h, conc1,  dose1,  "1 mg/kg")
+)
+df$Dose <- factor(df$Dose, levels = c("10 mg/kg", "5 mg/kg", "1 mg/kg"))
+
+d10 <- df[df$Dose == "10 mg/kg", ]
+d5  <- df[df$Dose == "5 mg/kg",  ]
+d1  <- df[df$Dose == "1 mg/kg",  ]
+
+# =============================================================================
+# 2. MODÈLE rxode2 — 2 compartiments, IV bolus
+#
+#   A1 = quantité dans le compartiment central  (µg/kg)
+#   A2 = quantité dans le compartiment périphérique
+#   C1 = A1 / V1  (concentration observée)
+#
+#   dA1/dt = -(CL/V1 + Q/V1)*A1 + (Q/V2)*A2
+#   dA2/dt =  (Q/V1)*A1 - (Q/V2)*A2
+# =============================================================================
+
+mod2comp <- rxode2({
+  C1       <- A1 / V1
+  d/dt(A1) <- -(CL/V1 + Q/V1) * A1 + (Q/V2) * A2
+  d/dt(A2) <-  (Q/V1) * A1 - (Q/V2) * A2
+})
+
+# Simulation d'un groupe (dose unique IV bolus à t=0)
+sim_dose <- function(dose, params, times) {
+  ev <- eventTable()
+  ev$add.dosing(dose = dose, nbr.doses = 1, dosing.to = 1)
+  ev$add.sampling(sort(unique(c(0, times))))
+
+  out <- tryCatch(
+    rxSolve(mod2comp, params, ev),
+    error = function(e) NULL
+  )
+  if (is.null(out)) return(rep(NA_real_, length(times)))
+  approx(out$time, out$C1, xout = times, rule = 2)$y
+}
+
+# =============================================================================
+# 3. VALEURS INITIALES — chargées depuis la méthode des résidus
+# =============================================================================
+
+load("scripts/resultats_PK2comp_FGFR2.RData")   # → pk2comp
+
+init_params <- c(
+  CL = pk2comp$CL,
+  V1 = pk2comp$V1,
+  V2 = pk2comp$V2,
+  Q  = pk2comp$Q
+)
+
+cat("=== Valeurs initiales (méthode des résidus) ===\n")
+cat("CL =", round(init_params["CL"], 6), "L/h/kg\n")
+cat("V1 =", round(init_params["V1"], 5), "L/kg\n")
+cat("V2 =", round(init_params["V2"], 5), "L/kg\n")
+cat("Q  =", round(init_params["Q"],  6), "L/h/kg\n")
+
+# =============================================================================
+# 4. FONCTION OBJECTIVE — résidus log, poids égaux par groupe
+# =============================================================================
+
+objective <- function(logpar) {
+  par        <- exp(logpar)
+  names(par) <- c("CL", "V1", "V2", "Q")
+
+  p10 <- tryCatch(sim_dose(dose10, par, d10$t), error = function(e) NULL)
+  p5  <- tryCatch(sim_dose(dose5,  par, d5$t),  error = function(e) NULL)
+  p1  <- tryCatch(sim_dose(dose1,  par, d1$t),  error = function(e) NULL)
+
+  if (is.null(p10) || any(is.na(p10) | p10 <= 0)) return(1e10)
+  if (is.null(p5)  || any(is.na(p5)  | p5  <= 0)) return(1e10)
+  if (is.null(p1)  || any(is.na(p1)  | p1  <= 0)) return(1e10)
+
+  mean((log(d10$C) - log(p10))^2) +
+  mean((log(d5$C)  - log(p5))^2)  +
+  mean((log(d1$C)  - log(p1))^2)
+}
+
+# =============================================================================
+# 5. OPTIMISATION — nlminb en log-espace
+# =============================================================================
+
+cat("\nOptimisation nlminb en cours...\n")
+
+fit <- nlminb(
+  start     = log(init_params),
+  objective = objective,
+  control   = list(eval.max = 3000, iter.max = 1500,
+                   rel.tol = 1e-12, x.tol = 1e-12)
+)
+
+best_par        <- exp(fit$par)
+names(best_par) <- c("CL", "V1", "V2", "Q")
+
+# =============================================================================
+# 6. PARAMÈTRES DÉRIVÉS
+# =============================================================================
+
+k10 <- best_par["CL"] / best_par["V1"]
+k12 <- best_par["Q"]  / best_par["V1"]
+k21 <- best_par["Q"]  / best_par["V2"]
+Vss <- best_par["V1"] + best_par["V2"]
+
+# Valeurs propres → α (rapide) et β (lent)
+sum_k  <- k10 + k12 + k21
+disc   <- sqrt((k10 + k12 - k21)^2 + 4 * k12 * k21)
+alpha  <- (sum_k + disc) / 2
+beta   <- (sum_k - disc) / 2
+
+t_half_alpha <- log(2) / alpha
+t_half_beta  <- log(2) / beta
+
+cat("\n=== Paramètres PK 2-compartiments (rxode2 + nlminb) ===\n")
+cat("--- Paramètres macro ---\n")
+cat("CL  =", round(best_par["CL"],        6), "L/h/kg",
+    "  =", round(best_par["CL"] * 24,    4), "L/j/kg\n")
+cat("V1  =", round(best_par["V1"],        5), "L/kg   (compartiment central)\n")
+cat("V2  =", round(best_par["V2"],        5), "L/kg   (compartiment périphérique)\n")
+cat("Vss =", round(Vss,                   5), "L/kg   (volume de distribution à l'état stationnaire)\n")
+cat("Q   =", round(best_par["Q"],         6), "L/h/kg",
+    "  =", round(best_par["Q"]  * 24,    4), "L/j/kg (clairance inter-compartimentale)\n")
+cat("--- Constantes de vitesse ---\n")
+cat("k10 =", round(k10, 6), "/h  (élimination : CL/V1)\n")
+cat("k12 =", round(k12, 6), "/h  (transfert C1→C2 : Q/V1)\n")
+cat("k21 =", round(k21, 6), "/h  (transfert C2→C1 : Q/V2)\n")
+cat("--- Demi-vies ---\n")
+cat("α   =", round(alpha, 6), "/h\n")
+cat("β   =", round(beta,  7), "/h\n")
+cat("t½α =", round(t_half_alpha, 2), "h   (phase de distribution)\n")
+cat("t½β =", round(t_half_beta,  1), "h",
+    "  =", round(t_half_beta / 24, 2), "jours  (phase d'élimination)\n")
+cat("--- Ajustement ---\n")
+cat("Objectif final :", round(fit$objective, 6), "(somme résidus² log)\n")
+
+# =============================================================================
+# 7. SIMULATION FINALE ET GRAPHIQUE
+# =============================================================================
+
+times_full <- seq(0, max(df$t) * 1.05, by = 1)
+
+df_sim <- do.call(rbind, lapply(
+  list(list(dose10, "10 mg/kg"),
+       list(dose5,  "5 mg/kg"),
+       list(dose1,  "1 mg/kg")),
+  function(x) data.frame(
+    t    = times_full,
+    C    = sim_dose(x[[1]], best_par, times_full),
+    Dose = x[[2]]
+  )
+))
+df_sim$Dose <- factor(df_sim$Dose, levels = c("10 mg/kg", "5 mg/kg", "1 mg/kg"))
+
+ggplot() +
+  geom_line(data = df_sim, aes(x = t, y = C, color = Dose), linewidth = 1) +
+  geom_point(data = df,    aes(x = t, y = C, color = Dose), size = 2.5) +
+  scale_y_log10() +
+  labs(
+    title    = "PK 2-compartiments (rxode2) — Fc-silent B/C huBPA-LP1 (FGFR2)",
+    subtitle = paste0(
+      "V1 = ", round(best_par["V1"], 4), " L/kg",
+      "   V2 = ", round(best_par["V2"], 4), " L/kg",
+      "   CL = ", round(best_par["CL"] * 24, 4), " L/j/kg",
+      "   t½α = ", round(t_half_alpha, 1), " h",
+      "   t½β = ", round(t_half_beta / 24, 1), " j"
+    ),
+    x = "Temps (heures)",
+    y = "Concentration (échelle log)"
+  ) +
+  theme_bw(base_size = 13)
+
+ggsave("scripts/plot_PK2comp_rxode2_FGFR2.png", width = 8, height = 5, dpi = 150)
+cat("\nGraphique → scripts/plot_PK2comp_rxode2_FGFR2.png\n")
+
+# =============================================================================
+# 8. SAUVEGARDE
+# =============================================================================
+
+pk2comp_rxode2 <- list(
+  CL = best_par["CL"], V1 = best_par["V1"],
+  V2 = best_par["V2"], Q  = best_par["Q"],
+  k10 = k10, k12 = k12, k21 = k21, Vss = Vss,
+  alpha = alpha, beta = beta,
+  t_half_alpha = t_half_alpha, t_half_beta = t_half_beta
+)
+
+save(pk2comp_rxode2, df,
+     file = "scripts/resultats_PK2comp_rxode2_FGFR2.RData")
+cat("Résultats → scripts/resultats_PK2comp_rxode2_FGFR2.RData\n")
+
+# =============================================================================
+# 9. SIMULATION MULTI-DOSES — 49 jours, administration tous les 14 jours
+#    Doses à j0, j14, j28, j42  (4 injections IV bolus)
+#    Utilisé comme profil PK d'entrée pour le modèle PKPD
+# =============================================================================
+
+n_doses    <- 4          # nombre d'injections
+interval_h <- 14 * 24   # intervalle entre doses (heures)
+obs_end_h  <- 49 * 24   # fin d'observation (heures)
+
+sim_multidose <- function(dose, params, n, interval, t_end) {
+  ev <- eventTable()
+  ev$add.dosing(dose = dose, nbr.doses = n,
+                dosing.interval = interval,
+                dosing.to = 1, start.time = 0)
+  ev$add.sampling(seq(0, t_end, by = 1))
+
+  out <- rxSolve(mod2comp, params, ev)
+  data.frame(t_h = out$time, t_j = out$time / 24, C1 = out$C1)
+}
+
+df_multi <- do.call(rbind, lapply(
+  list(list(dose10, "10 mg/kg"),
+       list(dose1,  "1 mg/kg")),
+  function(x) {
+    s <- sim_multidose(x[[1]], best_par, n_doses, interval_h, obs_end_h)
+    s$Dose <- x[[2]]
+    s
+  }
+))
+df_multi$Dose <- factor(df_multi$Dose, levels = c("10 mg/kg", "1 mg/kg"))
+
+# Lignes verticales aux jours d'administration
+dose_days <- seq(0, (n_doses - 1) * 14, by = 14)
+
+ggplot(df_multi, aes(x = t_j, y = C1, color = Dose)) +
+  geom_line(linewidth = 1) +
+  geom_vline(xintercept = dose_days, linetype = "dashed",
+             color = "grey60", linewidth = 0.5) +
+  annotate("text", x = dose_days, y = max(df_multi$C1) * 1.05,
+           label = paste0("j", dose_days),
+           size = 3, color = "grey40", hjust = 0.5) +
+  scale_y_log10() +
+  labs(
+    title    = "PK multi-doses (rxode2) — Fc-silent B/C huBPA-LP1 (FGFR2)",
+    subtitle = paste0(
+      "4 doses IV bolus, toutes les 14 j | ",
+      "CL = ", round(best_par["CL"] * 24, 4), " L/j/kg",
+      "   V1 = ", round(best_par["V1"], 4), " L/kg",
+      "   t½β = ", round(t_half_beta / 24, 1), " j"
+    ),
+    x = "Temps (jours)",
+    y = "Concentration (échelle log)"
+  ) +
+  theme_bw(base_size = 13)
+
+ggsave("scripts/plot_PK2comp_multidose_FGFR2.png", width = 9, height = 5, dpi = 150)
+cat("Graphique multi-doses → scripts/plot_PK2comp_multidose_FGFR2.png\n")
