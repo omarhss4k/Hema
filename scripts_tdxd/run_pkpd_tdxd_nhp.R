@@ -129,7 +129,7 @@ nca_tmdd <- function(sol, fda) {
 # Poids AUC : 2× sur basses doses (AUC surestimée à 3 et 10 mg/kg)
 # Poids T½ : 2× sur 30 mg/kg (T½ sous-estimée à haute dose, problème structurel V2)
 w_AUC <- c(2, 2, 1)
-w_t12 <- c(1, 1, 2)
+w_t12 <- c(1, 1, 3)
 
 wrss_tmdd <- function(CL_lin, Vmax_MM, Km_MM) {
   total <- 0

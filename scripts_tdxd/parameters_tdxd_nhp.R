@@ -120,7 +120,7 @@ CL_fda_nhp  <- sum(CL_v^2) / sum(CL_v)   # L/h  WLS-optimal AUC
 # Le TMDD ne peut qu'accélérer l'élimination (T½ < T½_linéaire).
 # Donc T½_linéaire doit être > max T½ observé (7.12 j) pour que le TMDD
 # puisse réduire T½ de 8.5 j → 7.12 j (30 mg/kg) et → 3.90 j (3 mg/kg).
-t_half_tgt_d <- max(sapply(fda_tk_nhp, function(x) x$t_half_d)) * 1.20
+t_half_tgt_d <- max(sapply(fda_tk_nhp, function(x) x$t_half_d)) * 1.25
 beta_tgt     <- log(2) / (t_half_tgt_d * 24)    # h⁻¹
 k10_nhp      <- CL_fda_nhp  / V1_fda_nhp
 k12_nhp      <- Q_ADC_allom / V1_fda_nhp
