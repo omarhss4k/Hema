@@ -126,6 +126,9 @@ nca_tmdd <- function(sol, fda) {
   list(C0=C0, AUC=AUC, t12=t12, ok=TRUE)
 }
 
+# Poids T½ par dose : 3× pour 3 mg/kg (TMDD sature moins à basse dose → T½ sous-estimée sans repondération)
+w_t12 <- c(3, 1, 1)
+
 wrss_tmdd <- function(CL_lin, Vmax_MM, Km_MM) {
   total <- 0
   for (i in seq_along(doses_cal)) {
@@ -136,15 +139,16 @@ wrss_tmdd <- function(CL_lin, Vmax_MM, Km_MM) {
     total <- total +
       (log(nca$C0  / fda$C0_ADC))^2 +
       (log(nca$AUC / fda$AUC21d_ADC))^2 +
-      (log(nca$t12 / fda$t_half_d))^2
+      w_t12[i] * (log(nca$t12 / fda$t_half_d))^2
   }
   total
 }
 
-# Grille grossière : 9 × 6 × 7
-CL_grid <- exp(seq(log(4e-4), log(2e-3), length.out = 9))
-VM_grid <- exp(seq(log(0.02),  log(0.20),  length.out = 6))
-Km_grid <- exp(seq(log(1.0),   log(30.0),  length.out = 7))
+# Grille grossière : 9 × 7 × 9
+# Km_MM étendu à 300 µg/mL : Km doit encadrer les C0 (98–888 µg/mL) pour différencier les T½
+CL_grid <- exp(seq(log(4e-4), log(2e-3),  length.out = 9))
+VM_grid <- exp(seq(log(0.01),  log(0.50),  length.out = 7))
+Km_grid <- exp(seq(log(1.0),   log(300.0), length.out = 9))
 
 best_val <- 1e8; best_par <- c(1.115e-3, 0.060, 4.0)
 for (cl in CL_grid) for (vm in VM_grid) for (km in Km_grid) {
