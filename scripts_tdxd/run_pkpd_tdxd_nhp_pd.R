@@ -49,7 +49,12 @@ simulate_nhp_pkpd <- function(dose_mgkg, n_cycles = 5,
                                BW_kg = 4.0, Tinfu_h = 0.5,
                                dt_h = 2) {
   pars  <- make_nhp_pkpd_pars(dose_mgkg, BW_kg, Tinfu_h, n_cycles)
-  times <- seq(0, n_cycles * 21 * 24, by = dt_h)
+
+  # Inclure les discontinuités de perfusion pour éviter que lsoda
+  # ne saute par-dessus la fenêtre Tinfu_h = 0.5h avec dt = 2h
+  dose_starts <- seq(0, by = tdxd_nhp$interval_h, length.out = n_cycles)
+  disc_times  <- c(dose_starts, dose_starts + Tinfu_h + 1e-6)
+  times <- sort(unique(c(seq(0, n_cycles * 21 * 24, by = dt_h), disc_times)))
 
   sol <- tryCatch(
     suppressWarnings(as.data.frame(ode(
@@ -65,7 +70,7 @@ simulate_nhp_pkpd <- function(dose_mgkg, n_cycles = 5,
 
   sol$time_d        <- sol$time / 24
   sol$C_DXd_ngmL    <- sol$C_DXd    * 1e3
-  sol$C_DXd_ic_uM   <- sol$C_DXd_ic * 1000 / nhp_pd$IC50_DXd_uM  # ratio IC50
+  sol$C_DXd_ic_uM   <- sol$C_DXd_ic * (1000 / tdxd_nhp$MW_DXd) / nhp_pd$IC50_DXd_uM
   sol$Neut_pct      <- sol$Neut / nhp_pd$Neut0 * 100
   sol$Ret_pct       <- sol$Ret  / nhp_pd$Ret0  * 100
   sol$RBC_pct       <- sol$RBC  / nhp_pd$RBC0  * 100
