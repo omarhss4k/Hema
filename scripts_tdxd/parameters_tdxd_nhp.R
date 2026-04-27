@@ -116,9 +116,12 @@ for (i in seq_along(fda_tk_nhp)) {
 V1_fda_nhp  <- sum(V1_v^2) / sum(V1_v)   # L    WLS-optimal C0
 CL_fda_nhp  <- sum(CL_v^2) / sum(CL_v)   # L/h  WLS-optimal AUC
 
-# V2 analytically → geometric-mean terminal T½ of M+F Table 7
-t_half_geo_d <- exp(mean(log(sapply(fda_tk_nhp, function(x) x$t_half_d))))
-beta_tgt     <- log(2) / (t_half_geo_d * 24)    # h⁻¹
+# V2 analytically → T½ linéaire cible = max(T½_obs) × 1.20
+# Le TMDD ne peut qu'accélérer l'élimination (T½ < T½_linéaire).
+# Donc T½_linéaire doit être > max T½ observé (7.12 j) pour que le TMDD
+# puisse réduire T½ de 8.5 j → 7.12 j (30 mg/kg) et → 3.90 j (3 mg/kg).
+t_half_tgt_d <- max(sapply(fda_tk_nhp, function(x) x$t_half_d)) * 1.20
+beta_tgt     <- log(2) / (t_half_tgt_d * 24)    # h⁻¹
 k10_nhp      <- CL_fda_nhp  / V1_fda_nhp
 k12_nhp      <- Q_ADC_allom / V1_fda_nhp
 # Solve 2-cpt beta quadratic for k21 given target beta:
@@ -222,8 +225,8 @@ cat(sprintf("  Allométrique  : V1=%.4f L  V2=%.4f L  CL=%.4e L/h\n",
             V1_ADC_allom, V2_ADC_allom, CL_ADC_allom))
 cat(sprintf("  Calibré FDA   : V1=%.5f L  V2=%.5f L  CL_wls=%.4e L/h\n",
             tdxd_nhp$V1_ADC, tdxd_nhp$V2_ADC, tdxd_nhp$CL_ADC))
-cat(sprintf("  T½ géomoyenne : %.2f j  (obs 3.9/5.3/7.1 j)\n",
-            t_half_geo_d))
+cat(sprintf("  T½ linéaire cible : %.2f j  (max obs × 1.20)\n",
+            t_half_tgt_d))
 cat(sprintf("  Ratio FDA/allo: V1×%.2f            CL×%.2f\n\n",
             tdxd_nhp$V1_ADC / V1_ADC_allom,
             tdxd_nhp$CL_ADC / CL_ADC_allom))
@@ -231,7 +234,7 @@ cat(sprintf("  Ratio FDA/allo: V1×%.2f            CL×%.2f\n\n",
 cat("── TMDD (Michaelis-Menten) : calibration via optim() ──────────\n")
 cat(sprintf("  k_int = 0  |  CL_lin départ=CL_wls, Vmax_MM=0.060, Km_MM=4.0 (grille 1-cpt)\n"))
 cat(sprintf("  Calibration finale (C0+AUC+T½ × 3 doses) → run_pkpd_tdxd_nhp.R\n"))
-cat(sprintf("  V2 analytique → T½ géomoyenne = %.2f j\n\n", t_half_geo_d))
+cat(sprintf("  V2 analytique → T½ linéaire cible = %.2f j\n\n", t_half_tgt_d))
 
 cat("── DXd (1-cpt) : allométrie rat → NHP ─────────────────────\n")
 cat(sprintf("  CL_DXd = %.4f L/h   V_DXd = %.4f L   V_ic = %.4f L\n",
