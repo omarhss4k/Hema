@@ -1,0 +1,9 @@
+# Répertoires temporaires
+scripts_tdxd/tmp_pptx_imgs/
+
+# Fichiers R temporaires
+*.Rhistory
+.RData
+
+# Fichiers système
+.DS_Store
