@@ -122,7 +122,7 @@ p_sensitive_mep_tdxd     <- 0.33   # G2-G3 cible (inchangé)
 
 Slope_MEP_resist_tdxd    <- 0.01   # résistants MEP : quasi-nul → G0 (<0.5% chute RBC)
 Slope_MEP_light_tdxd     <- 0.18   # légers → centre G1 (ω élargi, Slope légèrement baissé)
-Slope_MEP_sensitive_tdxd <- 1.10   # sensibles → G2-G3 (calibré anémie G3-4 ~7.3% FDA pooled N=234)
+Slope_MEP_sensitive_tdxd <- 1.00   # sensibles → G2-G3 (calibré anémie G3-4 ~7.3% FDA pooled N=234)
 omega_Slope_MEP_sensitive <- 0.50  # IIV spread G2/G3
 omega_Slope_MEP_light     <- 0.20  # IIV élargi (biologique), vs 0.10 artificiellement bas
 
