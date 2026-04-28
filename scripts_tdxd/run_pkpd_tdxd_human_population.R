@@ -97,10 +97,12 @@ results <- data.frame(
   id               = 1:N_patients,
   group_cmp        = NA_character_,   # "resistant" / "moderate" / "sensitive"
   group_mep        = NA_character_,   # "resistant" / "light" / "sensitive"
+  group_plt        = NA_character_,   # "normal" / "susceptible"
   CL_ADC       = NA_real_,
   V1_ADC       = NA_real_,
   Slope_CMP    = NA_real_,
   Slope_MEP    = NA_real_,
+  Slope_Plt_direct = NA_real_,
   Cmax_ADC     = NA_real_,
   Cmax_DXd_ng  = NA_real_,
   Damage_max   = NA_real_,
@@ -145,8 +147,18 @@ for (i in 1:N_patients) {
     "sensitive"
   }
 
-  eta_SMEP_sens <- rnorm(1, 0, omega_Slope_MEP_sensitive)
+  eta_SMEP_sens  <- rnorm(1, 0, omega_Slope_MEP_sensitive)
   eta_SMEP_light <- rnorm(1, 0, omega_Slope_MEP_light)
+
+  # Mixture thrombocytopénie (tirage indépendant de CMP/MEP)
+  rand_plt   <- runif(1)
+  group_plt_i <- if (rand_plt < p_plt_susceptible) "susceptible" else "normal"
+  eta_Splt   <- rnorm(1, 0, omega_Slope_Plt_direct)
+  Slope_plt_d_i <- if (group_plt_i == "susceptible") {
+    max(0, Slope_Plt_direct_sus * exp(eta_Splt))
+  } else {
+    0
+  }
 
   pars_i <- pars_typ
   pars_i$CL_ADC  <- pars_typ$CL_ADC * exp(eta_CL)
@@ -161,6 +173,7 @@ for (i in 1:N_patients) {
     light     = Slope_MEP_light_tdxd     * exp(eta_SMEP_light),
     sensitive = Slope_MEP_sensitive_tdxd * exp(eta_SMEP_sens)
   )
+  pars_i$Slope_Plt_direct <- Slope_plt_d_i
 
   pars_i$rate_fun  <- make_tdxd_infusion(
     dose_mgkg  = 5.4, BW_kg = 70,
@@ -181,12 +194,14 @@ for (i in 1:N_patients) {
   )
 
   if (!is.null(out) && nrow(out) > 10) {
-    results$group_cmp[i] <- group_cmp_i
-    results$group_mep[i] <- group_mep_i
+    results$group_cmp[i]        <- group_cmp_i
+    results$group_mep[i]        <- group_mep_i
+    results$group_plt[i]        <- group_plt_i
     results$CL_ADC[i]           <- pars_i$CL_ADC
-    results$V1_ADC[i]       <- pars_i$V1_ADC
-    results$Slope_CMP[i]    <- pars_i$Slope_CMP
-    results$Slope_MEP[i]    <- pars_i$Slope_MEP
+    results$V1_ADC[i]           <- pars_i$V1_ADC
+    results$Slope_CMP[i]        <- pars_i$Slope_CMP
+    results$Slope_MEP[i]        <- pars_i$Slope_MEP
+    results$Slope_Plt_direct[i] <- pars_i$Slope_Plt_direct
     results$Cmax_ADC[i]    <- max(out$C_ADC1,  na.rm=TRUE)
     results$Cmax_DXd_ng[i] <- max(out$C_DXd,   na.rm=TRUE) * 1000
     results$Damage_max[i]  <- max(out$Damage,  na.rm=TRUE)

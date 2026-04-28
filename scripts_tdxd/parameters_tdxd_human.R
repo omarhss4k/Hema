@@ -122,9 +122,18 @@ p_sensitive_mep_tdxd     <- 0.33   # G2-G3 cible (inchangé)
 
 Slope_MEP_resist_tdxd    <- 0.01   # résistants MEP : quasi-nul → G0 (<0.5% chute RBC)
 Slope_MEP_light_tdxd     <- 0.18   # légers → centre G1 (ω élargi, Slope légèrement baissé)
-Slope_MEP_sensitive_tdxd <- 1.25   # sensibles → G2-G3 (inchangé)
+Slope_MEP_sensitive_tdxd <- 1.10   # sensibles → G2-G3 (calibré anémie G3-4 ~7.3% FDA pooled N=234)
 omega_Slope_MEP_sensitive <- 0.50  # IIV spread G2/G3
 omega_Slope_MEP_light     <- 0.20  # IIV élargi (biologique), vs 0.10 artificiellement bas
+
+# ── Thrombocytopénie G3-4 — sous-groupe susceptible ──────────────────────────
+# FDA BLA 761139 pooled (N=234) : G3-4 = 3.4%
+# Cause : kill direct sur Plt circulantes (HER2-expressing megakaryocytes,
+#         DXd accumulation > threshold, bystander effect)
+# → bypass du feedback f_prol_Plt (plancher ~70-100 avec mécanisme transit seul)
+p_plt_susceptible        <- 0.034  # 3.4% patients G3-4 thrombocytopénie (FDA pooled)
+Slope_Plt_direct_sus     <- 0.20   # kill direct /h sur Plt circulantes [D_kill ∈ 0-1]
+omega_Slope_Plt_direct   <- 0.30   # IIV lognormal
 
 # ── Cibles de validation clinique FDA BLA 761139 ─────────
 # 5.4 mg/kg Q3W, popPK géométrique moyen steady-state

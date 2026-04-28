@@ -171,7 +171,10 @@ pkpd_tdxd_fornari <- function(time, state, pars) {
     dT2_Plt <- k_prol_Plt * f_prol_Plt * T2_Plt - drug_plt * T2_Plt +
                a_Plt * T1_Plt - a_Plt * T2_Plt
     dT3_Plt <- a_Plt * T2_Plt - a_Plt * T3_Plt
-    dPlt    <- a_Plt * T3_Plt - k_circ_Plt * Plt
+    # Kill direct sur plaquettes circulantes (bypass feedback transit)
+    # Slope_Plt_direct > 0 pour sous-groupe susceptible (3.4% FDA pooled G3-4)
+    Slope_Plt_d <- if (!is.null(pars$Slope_Plt_direct)) pars$Slope_Plt_direct else 0
+    dPlt    <- a_Plt * T3_Plt - k_circ_Plt * Plt - Slope_Plt_d * D_kill * Plt
 
     list(c(
       # PK
