@@ -62,7 +62,9 @@ simulate_nhp_pkpd <- function(dose_mgkg, n_cycles = 5,
       times  = times,
       func   = pkpd_nhp_ode,
       parms  = pars,
-      method = "lsoda"
+      method = "lsoda",
+      hmax   = Tinfu_h / 2   # pas interne max < Tinfu_h : le solveur ne peut pas
+                              # sauter par-dessus la fenêtre de perfusion de 0.5 h
     ))),
     error = function(e) { cat("ODE error:", conditionMessage(e), "\n"); NULL }
   )
