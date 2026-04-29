@@ -381,3 +381,66 @@ for (i in seq_along(doses_tdxd)) {
 }
 cat("═══════════════════════════════════════════════════════\n")
 cat("\nFichiers générés dans results_TDXD/\n")
+
+# ════════════════════════════════════════════════════════
+# COMPTES CELLULAIRES — Jours 2, 8, 15, 22
+# ════════════════════════════════════════════════════════
+target_days  <- c(2, 8, 15, 22)
+cell_vars    <- c("Neut", "Mono", "Ret", "RBC", "Plt", "MPP", "CMP", "MEP")
+cell_units   <- c("10⁹/L","10⁹/L","10⁹/L","10⁹/L","10⁹/L","u.a.","u.a.","u.a.")
+
+# Extraire la ligne la plus proche du jour cible
+closest_row <- function(sol, day) {
+  sol[which.min(abs(sol$time_d - day)), ]
+}
+
+records <- list()
+for (i in seq_along(doses_tdxd)) {
+  s <- sims_tdxd[[i]]
+  for (d in target_days) {
+    row <- closest_row(s, d)
+    rec <- data.frame(
+      Dose_mgkg = doses_tdxd[i],
+      Jour      = d,
+      stringsAsFactors = FALSE
+    )
+    for (v in cell_vars) rec[[v]] <- round(row[[v]], 3)
+    records <- c(records, list(rec))
+  }
+}
+cell_table <- do.call(rbind, records)
+
+# ── Affichage console ──────────────────────────────────
+cat("\n════════════════════════════════════════════════════════════\n")
+cat("  COMPTES CELLULAIRES AUX JOURS 2 / 8 / 15 / 22\n")
+cat("════════════════════════════════════════════════════════════\n")
+header <- sprintf("  %-8s │ %-4s │ %8s %8s %8s %8s %8s │ %7s %7s %7s",
+                  "Dose","Jour",
+                  "Neut","Mono","Ret","RBC","Plt",
+                  "MPP","CMP","MEP")
+cat(header, "\n")
+cat("  ", paste(rep("─", nchar(header)-2), collapse=""), "\n", sep="")
+
+for (i in seq_len(nrow(cell_table))) {
+  r <- cell_table[i, ]
+  cat(sprintf("  %-8s │ J%-3d │ %8.3f %8.3f %8.1f %8.0f %8.1f │ %7.3f %7.3f %7.3f\n",
+              paste0(r$Dose_mgkg," mg/kg"), r$Jour,
+              r$Neut, r$Mono, r$Ret, r$RBC, r$Plt,
+              r$MPP,  r$CMP,  r$MEP))
+  if (i %% length(target_days) == 0)
+    cat("  ", paste(rep("─", nchar(header)-2), collapse=""), "\n", sep="")
+}
+
+cat(sprintf("  Baselines  │      │ %8.3f %8.3f %8.1f %8.0f %8.1f │ %7.3f %7.3f %7.3f\n",
+            init_pars$Neut0, init_pars$Mono0, init_pars$Ret0,
+            init_pars$RBC0,  init_pars$Plt0,
+            init_pars$MPP0,  init_pars$CMP0,  init_pars$MEP0))
+cat("  Unités     │      │",
+    sprintf("%8s", cell_units[1:5]), "│",
+    sprintf("%7s", cell_units[6:8]), "\n")
+cat("════════════════════════════════════════════════════════════\n")
+
+# ── Export CSV ─────────────────────────────────────────
+write.csv(cell_table, "results_TDXD/cell_counts_J2_J8_J15_J22.csv",
+          row.names = FALSE)
+cat("  -> results_TDXD/cell_counts_J2_J8_J15_J22.csv\n")
