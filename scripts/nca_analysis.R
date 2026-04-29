@@ -127,11 +127,15 @@ cmax_val    <- get_param(results_df, "cmax")
 auclast_val <- get_param(results_df, "auclast")
 aucinf_val  <- get_param(results_df, "aucinf.obs")
 hl_val      <- get_param(results_df, "half.life")
-cl_val      <- get_param(results_df, "cl.obs")
-vz_val      <- get_param(results_df, "vz.obs")
+
+# CL et Vz nécessitent une dose valide ; PKNCA renvoie 0 quand dose = NA,
+# on force donc NA_real_ si la dose n'est pas renseignée.
+dose_ok  <- !is.na(dose_value) && dose_value > 0
+cl_val   <- if (dose_ok) get_param(results_df, "cl.obs")  else NA_real_
+vz_val   <- if (dose_ok) get_param(results_df, "vz.obs")  else NA_real_
 
 # Cmax_D : Cmax normalisée par la dose (kg·ng/mL / mg/kg)
-cmax_d_val  <- if (!is.na(dose_value) && dose_value > 0) cmax_val / dose_value else NA_real_
+cmax_d_val  <- if (dose_ok) cmax_val / dose_value else NA_real_
 
 nca_summary <- data.frame(
   Dose_mg_kg     = dose_value,
