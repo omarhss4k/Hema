@@ -96,8 +96,15 @@ pk_data_obj <- PKNCAdata(
   data.conc  = pk_conc,
   data.dose  = pk_dose,
   intervals  = intervals,
-  # Méthode des trapèzes linéaires pour le calcul de l'AUC
-  options    = list(auc.method = "linear")
+  options    = list(
+    # Méthode des trapèzes linéaires pour le calcul de l'AUC
+    auc.method = "linear",
+    # Restreindre la régression log-linéaire (lambda_z) aux points 24-72h.
+    # Sans cette contrainte, PKNCA peut inclure le point 4h (phase de
+    # distribution) dans le fit terminal, ce qui sur-estime lambda_z
+    # et sous-estime t1/2.
+    lambda.z.time.range = c(24, 72)
+  )
 )
 
 # ── 6. Calcul des paramètres NCA ----------------------------------------------
