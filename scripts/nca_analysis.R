@@ -131,8 +131,14 @@ hl_val      <- get_param(results_df, "half.life")
 # CL et Vz nécessitent une dose valide ; PKNCA renvoie 0 quand dose = NA,
 # on force donc NA_real_ si la dose n'est pas renseignée.
 dose_ok  <- !is.na(dose_value) && dose_value > 0
-cl_val   <- if (dose_ok) get_param(results_df, "cl.obs")  else NA_real_
-vz_val   <- if (dose_ok) get_param(results_df, "vz.obs")  else NA_real_
+
+# Conversions d'unités (dose en mg/kg, concentrations en ng/mL) :
+#   CL_raw [mg/kg / h*ng/mL]  × 1e6  → mL/h/kg
+#     car 1 mg = 1e6 ng, donc mg/(kg·ng) = 1e6/kg → ×1e6 donne mL/h/kg
+#   Vz_raw [mg*mL / kg*ng]    × 1000  → mL/g
+#     car 1 kg = 1000 g
+cl_val   <- if (dose_ok) get_param(results_df, "cl.obs") * 1e6   else NA_real_
+vz_val   <- if (dose_ok) get_param(results_df, "vz.obs") * 1000  else NA_real_
 
 # Cmax_D : Cmax normalisée par la dose (kg·ng/mL / mg/kg)
 cmax_d_val  <- if (dose_ok) cmax_val / dose_value else NA_real_
