@@ -106,26 +106,26 @@ wide <- left_join(wide, dose_map, by = "subject")
 dose_ok_vec <- !is.na(wide$dose_mg_kg) & wide$dose_mg_kg > 0
 
 # Conversions d'unités (dose mg/kg, concentrations ng/mL) :
-#   CL  [mg/kg / h*ng/mL] × 1e6  → mL/h/kg  (1 mg = 1e6 ng)
-#   Vz  [mg*mL / kg*ng]   × 1000 → mL/g      (1 kg = 1000 g)
+#   CL  [mg/kg / h*ng/mL] × 1e6 → mL/h/kg  (1 mg = 1e6 ng)
+#   Vz  [mg*mL / kg*ng]   × 1e6 → mL/kg    (1 mg = 1e6 ng)
 wide <- wide %>%
   mutate(
-    cl.obs  = ifelse(dose_ok_vec, cl.obs  * 1e6,  NA_real_),
-    vz.obs  = ifelse(dose_ok_vec, vz.obs  * 1000, NA_real_),
-    Cmax_D  = ifelse(dose_ok_vec, cmax / dose_mg_kg, NA_real_)
+    cl.obs = ifelse(dose_ok_vec, cl.obs * 1e6, NA_real_),
+    vz.obs = ifelse(dose_ok_vec, vz.obs * 1e6, NA_real_),
+    Cmax_D = ifelse(dose_ok_vec, cmax / dose_mg_kg, NA_real_)
   )
 
 nca_summary <- wide %>%
   transmute(
     Dose_mg_kg      = round(dose_mg_kg, 3),
     Animal_Id       = subject,
-    Half_life_h     = round(half.life,  3),
-    Cmax_ng_mL      = round(cmax,       2),
-    Cmax_D          = round(Cmax_D,     4),
-    AUClast_h_ng_mL = round(auclast,    2),
-    AUCinf_h_ng_mL  = round(aucinf.obs, 2),
-    Vz_mL_g         = round(vz.obs,     4),
-    CL_mL_h_kg      = round(cl.obs,     4)
+    Half_life_h     = round(half.life,  1),
+    Cmax_ng_mL      = round(cmax,       0),
+    Cmax_D          = round(Cmax_D,     0),
+    AUClast_h_ng_mL = round(auclast,    0),
+    AUCinf_h_ng_mL  = round(aucinf.obs, 0),
+    Vz_mL_kg        = round(vz.obs,     0),
+    CL_mL_h_kg      = round(cl.obs,     2)
   )
 
 units_row <- data.frame(
@@ -133,10 +133,10 @@ units_row <- data.frame(
   Animal_Id       = "",
   Half_life_h     = "h",
   Cmax_ng_mL      = "ng/mL",
-  Cmax_D          = "kg*ng/mL / mg/kg",
+  Cmax_D          = "ng/mL/mg/kg",
   AUClast_h_ng_mL = "h*ng/mL",
   AUCinf_h_ng_mL  = "h*ng/mL",
-  Vz_mL_g         = "mL/g",
+  Vz_mL_kg        = "mL/kg",
   CL_mL_h_kg      = "mL/h/kg",
   stringsAsFactors = FALSE
 )
