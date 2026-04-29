@@ -110,20 +110,64 @@ pk_data_obj <- PKNCAdata(
 
 pk_results <- pk.nca(pk_data_obj)
 
-# Afficher les résultats
-cat("\n=== Résultats NCA ===\n")
+# ── 6b. Tableau de sortie formaté ---------------------------------------------
+# Colonnes : Dose | Animal_Id | Half_life | Cmax | Cmax_D | AUClast | AUCinf | Vz | CL
+# Unités   : mg/kg |           | h         | ng/mL | kg·ng/mL/mg·kg⁻¹ | h·ng/mL | h·ng/mL | mL/g | mL/h/kg
+
 results_df <- as.data.frame(pk_results$result)
-print(results_df)
 
-# Extraire les paramètres clés dans un tableau propre
-params_of_interest <- c("cmax", "tmax", "auclast", "aucinf.obs",
-                        "half.life", "cl.obs", "vz.obs")
-summary_table <- results_df %>%
-  filter(PPTESTCD %in% params_of_interest) %>%
-  select(PPTESTCD, PPORRES)
+# Fonction utilitaire : extraire une valeur PKNCA par nom de paramètre
+get_param <- function(df, param) {
+  val <- df$PPORRES[df$PPTESTCD == param]
+  if (length(val) == 0) return(NA_real_)
+  as.numeric(val)
+}
 
-cat("\n=== Paramètres PK clés ===\n")
-print(summary_table)
+cmax_val    <- get_param(results_df, "cmax")
+auclast_val <- get_param(results_df, "auclast")
+aucinf_val  <- get_param(results_df, "aucinf.obs")
+hl_val      <- get_param(results_df, "half.life")
+cl_val      <- get_param(results_df, "cl.obs")
+vz_val      <- get_param(results_df, "vz.obs")
+
+# Cmax_D : Cmax normalisée par la dose (kg·ng/mL / mg/kg)
+cmax_d_val  <- if (!is.na(dose_value) && dose_value > 0) cmax_val / dose_value else NA_real_
+
+nca_summary <- data.frame(
+  Dose_mg_kg     = dose_value,
+  Animal_Id      = pk_data$subject[1],
+  Half_life_h    = round(hl_val,    3),
+  Cmax_ng_mL     = round(cmax_val,  2),
+  Cmax_D         = round(cmax_d_val, 4),   # kg·ng/mL / mg·kg⁻¹
+  AUClast_h_ng_mL = round(auclast_val, 2),
+  AUCinf_h_ng_mL  = round(aucinf_val,  2),
+  Vz_mL_g        = round(vz_val,   4),
+  CL_mL_h_kg     = round(cl_val,   4),
+  check.names = FALSE
+)
+
+# Ligne d'unités sous les noms de colonnes
+units_row <- data.frame(
+  Dose_mg_kg      = "mg/kg",
+  Animal_Id       = "",
+  Half_life_h     = "h",
+  Cmax_ng_mL      = "ng/mL",
+  Cmax_D          = "kg*ng/mL / mg/kg",
+  AUClast_h_ng_mL = "h*ng/mL",
+  AUCinf_h_ng_mL  = "h*ng/mL",
+  Vz_mL_g         = "mL/g",
+  CL_mL_h_kg      = "mL/h/kg",
+  check.names = FALSE
+)
+
+output_table <- rbind(units_row, nca_summary)
+
+cat("\n=== Paramètres PK — tableau de sortie ===\n")
+print(output_table, row.names = FALSE)
+
+# Export CSV propre (sans la ligne d'unités dans les données)
+write.csv(nca_summary, "nca_results.csv", row.names = FALSE)
+cat("\nTableau exporté : nca_results.csv\n")
 
 # ── 7. Graphiques -------------------------------------------------------------
 # Palette et thème communs
