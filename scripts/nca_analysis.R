@@ -54,10 +54,9 @@ fit_animal <- function(animal_data) {
     p <- setNames(exp(log_p), c("CL", "V1", "Q", "V2"))
     tryCatch({
       sol  <- rxSolve(pk2cmt,
-                      params  = p,
-                      inits   = c(A1 = A1_0, A2 = 0),
-                      times   = obs$time,
-                      returnType = "data.frame")
+                      params = p,
+                      inits  = c(A1 = A1_0, A2 = 0),
+                      events = et(obs$time))
       pred <- sol$C
       if (any(!is.finite(pred) | pred <= 0)) return(1e10)
       sum((log(obs$conc) - log(pred))^2)
@@ -164,10 +163,9 @@ for (anim in animals) {
 
   times_pred <- seq(0.083, 168, length.out = 300)
   sol <- rxSolve(pk2cmt,
-                 params     = p,
-                 inits      = c(A1 = dose * 1e6, A2 = 0),
-                 times      = times_pred,
-                 returnType = "data.frame")
+                 params = p,
+                 inits  = c(A1 = dose * 1e6, A2 = 0),
+                 events = et(times_pred))
 
   pred_list[[anim]] <- data.frame(
     subject = anim, time = sol$time, conc = sol$C
