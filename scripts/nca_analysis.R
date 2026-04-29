@@ -1,91 +1,72 @@
 # =============================================================================
-# Analyse Non-Compartimentale (NCA) - Script R
+# Analyse Non-Compartimentale (NCA) — multi-animaux
 # =============================================================================
-# Ce script réalise une NCA complète avec :
-#   - Gestion des BLQ (Below Limit of Quantification)
-#   - Calcul des paramètres PK via PKNCA
-#   - Estimation de lambda_z sur les points terminaux en phase log-linéaire
-#   - Graphiques en échelle linéaire et semi-logarithmique
+# Structure : un bloc de données par animal → PKNCA calcule les paramètres
+# indépendamment pour chaque sujet → une ligne par animal dans le tableau.
 # =============================================================================
 
 # ── 1. Packages ---------------------------------------------------------------
-# Installer PKNCA si nécessaire :
-# install.packages("PKNCA")
-# install.packages("tidyverse")
-
+# install.packages(c("PKNCA", "tidyverse"))
 library(PKNCA)
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 
-# ── 2. Données brutes ---------------------------------------------------------
-# IMPORTANT : Remplacez les valeurs NA par vos concentrations réelles
-# pour les points 0.083h, 4h, 24h, 48h et 72h.
-# Les deux derniers points (96h et 168h) sont BLQ → traités comme NA
-# afin de ne pas biaiser l'estimation de la pente d'élimination (lambda_z).
+# ── 2. Données brutes — AJOUTER / MODIFIER ICI --------------------------------
+# Ajoutez autant de blocs que d'animaux.
+# BLQ terminal → NA   |   BLQ à T=0 → 0   (convention NCA)
 
-time_h <- c(0, 0.083, 4, 24, 48, 72, 96, 168)
+pk_raw <- bind_rows(
 
-conc_raw <- c(
-  0,      # T = 0    : valeur BLQ remplacée par 0 (convention NCA)
-  NA,     # T = 0.083 h → REMPLACEZ par votre valeur (ng/mL)
-  NA,     # T = 4    h → REMPLACEZ par votre valeur (ng/mL)
-  NA,     # T = 24   h → REMPLACEZ par votre valeur (ng/mL)
-  NA,     # T = 48   h → REMPLACEZ par votre valeur (ng/mL)
-  NA,     # T = 72   h → REMPLACEZ par votre valeur (ng/mL)
-  NA,     # T = 96   h : BLQ → NA (exclure de la régression terminale)
-  NA      # T = 168  h : BLQ → NA (exclure de la régression terminale)
+  # ---- Animal 1 ----
+  data.frame(
+    subject = "Animal_01",
+    dose_mg_kg = 3,          # dose de cet animal (mg/kg)
+    time = c(0,      0.083, 4,  24, 48, 72, 96, 168),
+    conc = c(0,      NA,    NA, NA, NA, NA, NA, NA )
+    #                ↑ remplacez les NA par vos concentrations (ng/mL)
+    #                                             ↑ BLQ → laisser NA
+  ),
+
+  # ---- Animal 2 ----
+  data.frame(
+    subject = "Animal_02",
+    dose_mg_kg = 3,          # dose de cet animal (mg/kg)
+    time = c(0,      0.083, 4,  24, 48, 72, 96, 168),
+    conc = c(0,      NA,    NA, NA, NA, NA, NA, NA )
+    #                ↑ remplacez les NA par vos concentrations (ng/mL)
+  )
+
+  # Pour un 3e animal, copiez-collez un bloc supplémentaire ici
 )
 
-# ── 3. Construction du dataframe ----------------------------------------------
-pk_data <- data.frame(
-  time = time_h,
-  conc = conc_raw,
-  subject = "S01"        # identifiant sujet requis par PKNCA
-)
-
-# Afficher un résumé des données (utile pour vérification)
+# ── 3. Vérification des données -----------------------------------------------
 cat("=== Données PK ===\n")
-print(pk_data)
+print(pk_raw)
 
 # ── 4. Objets PKNCA -----------------------------------------------------------
-# PKNCAconc  : objet contenant les concentrations et les temps
-# PKNCAdose  : objet contenant la dose administrée
-#              → remplacez 1 par la dose réelle (même unité que pour CL/Vz)
-
 pk_conc <- PKNCAconc(
-  data    = pk_data,
+  data    = pk_raw,
   formula = conc ~ time | subject
 )
 
-# Dose administrée (à renseigner) : si inconnu, laisser NA et CL/Vz seront NA
-dose_value <- NA_real_   # Ex. : 100  pour 100 mg (ou ng selon unité souhaitée)
-
-pk_dose_data <- data.frame(
-  time    = 0,
-  dose    = dose_value,
-  subject = "S01"
-)
+pk_dose_data <- pk_raw %>%
+  distinct(subject, dose_mg_kg) %>%
+  mutate(time = 0) %>%
+  rename(dose = dose_mg_kg)
 
 pk_dose <- PKNCAdose(
   data    = pk_dose_data,
   formula = dose ~ time | subject
 )
 
-# ── 5. Intervalles d'intérêt et paramètres à calculer ------------------------
-# AUClast  : AUC du premier au dernier point quantifiable (trapèzes linéaires)
-# AUCinf   : AUC extrapolée jusqu'à l'infini via lambda_z
-# Cmax     : concentration maximale observée
-# Tmax     : temps correspondant à Cmax
-# half.life: demi-vie terminale (t1/2 = ln2 / lambda_z)
-# cl.obs   : clairance = dose / AUCinf  (NA si dose non renseignée)
-# vz.obs   : volume de distribution terminal = dose / (lambda_z × AUCinf)
-
+# ── 5. Intervalles et paramètres ----------------------------------------------
 intervals <- data.frame(
-  start    = 0,
-  end      = 72,       # dernier point quantifiable (avant les BLQ)
-  cmax     = TRUE,
-  tmax     = TRUE,
-  auclast  = TRUE,
+  start      = 0,
+  end        = 72,   # dernier point quantifiable (avant les BLQ)
+  cmax       = TRUE,
+  tmax       = TRUE,
+  auclast    = TRUE,
   aucinf.obs = TRUE,
   half.life  = TRUE,
   cl.obs     = TRUE,
@@ -93,77 +74,60 @@ intervals <- data.frame(
 )
 
 pk_data_obj <- PKNCAdata(
-  data.conc  = pk_conc,
-  data.dose  = pk_dose,
-  intervals  = intervals,
-  options    = list(
-    # Méthode des trapèzes linéaires pour le calcul de l'AUC
+  data.conc = pk_conc,
+  data.dose = pk_dose,
+  intervals = intervals,
+  options   = list(
     auc.method = "linear",
-    # Restreindre la régression log-linéaire (lambda_z) aux points 24-72h.
-    # Sans cette contrainte, PKNCA peut inclure le point 4h (phase de
-    # distribution) dans le fit terminal, ce qui sur-estime lambda_z
-    # et sous-estime t1/2.
+    # Restreindre lambda_z aux points 24-72h (phase d'élimination terminale).
+    # Sans cette contrainte, PKNCA peut inclure le point 4h (distribution)
+    # et sur-estimer lambda_z → sous-estimer t1/2.
     lambda.z.time.range = c(24, 72)
   )
 )
 
-# ── 6. Calcul des paramètres NCA ----------------------------------------------
-# PKNCA estime automatiquement lambda_z (pente d'élimination) par régression
-# log-linéaire sur les points terminaux en phase monoexponentielle :
-#   ln(C) = ln(C0_terminal) - lambda_z × t
-# L'algorithme sélectionne le meilleur sous-ensemble de points terminaux
-# (r² ajusté maximal) en excluant Cmax et les BLQ/NA.
-# lambda_z est ensuite utilisé pour calculer t1/2, AUCinf, CL et Vz.
+# ── 6. Calcul NCA -------------------------------------------------------------
+pk_results  <- pk.nca(pk_data_obj)
+results_df  <- as.data.frame(pk_results$result)
 
-pk_results <- pk.nca(pk_data_obj)
+# ── 7. Tableau de sortie multi-animaux ----------------------------------------
+# Pivot : une ligne par sujet, une colonne par paramètre
+wide <- results_df %>%
+  filter(PPTESTCD %in% c("cmax", "tmax", "auclast", "aucinf.obs",
+                         "half.life", "cl.obs", "vz.obs")) %>%
+  select(subject, PPTESTCD, PPORRES) %>%
+  mutate(PPORRES = as.numeric(PPORRES)) %>%
+  pivot_wider(names_from = PPTESTCD, values_from = PPORRES)
 
-# ── 6b. Tableau de sortie formaté ---------------------------------------------
-# Colonnes : Dose | Animal_Id | Half_life | Cmax | Cmax_D | AUClast | AUCinf | Vz | CL
-# Unités   : mg/kg |           | h         | ng/mL | kg·ng/mL/mg·kg⁻¹ | h·ng/mL | h·ng/mL | mL/g | mL/h/kg
+# Rattacher la dose par sujet
+dose_map <- pk_raw %>% distinct(subject, dose_mg_kg)
+wide <- left_join(wide, dose_map, by = "subject")
 
-results_df <- as.data.frame(pk_results$result)
+dose_ok_vec <- !is.na(wide$dose_mg_kg) & wide$dose_mg_kg > 0
 
-# Fonction utilitaire : extraire une valeur PKNCA par nom de paramètre
-get_param <- function(df, param) {
-  val <- df$PPORRES[df$PPTESTCD == param]
-  if (length(val) == 0) return(NA_real_)
-  as.numeric(val)
-}
+# Conversions d'unités (dose mg/kg, concentrations ng/mL) :
+#   CL  [mg/kg / h*ng/mL] × 1e6  → mL/h/kg  (1 mg = 1e6 ng)
+#   Vz  [mg*mL / kg*ng]   × 1000 → mL/g      (1 kg = 1000 g)
+wide <- wide %>%
+  mutate(
+    cl.obs  = ifelse(dose_ok_vec, cl.obs  * 1e6,  NA_real_),
+    vz.obs  = ifelse(dose_ok_vec, vz.obs  * 1000, NA_real_),
+    Cmax_D  = ifelse(dose_ok_vec, cmax / dose_mg_kg, NA_real_)
+  )
 
-cmax_val    <- get_param(results_df, "cmax")
-auclast_val <- get_param(results_df, "auclast")
-aucinf_val  <- get_param(results_df, "aucinf.obs")
-hl_val      <- get_param(results_df, "half.life")
+nca_summary <- wide %>%
+  transmute(
+    Dose_mg_kg      = round(dose_mg_kg, 3),
+    Animal_Id       = subject,
+    Half_life_h     = round(half.life,  3),
+    Cmax_ng_mL      = round(cmax,       2),
+    Cmax_D          = round(Cmax_D,     4),
+    AUClast_h_ng_mL = round(auclast,    2),
+    AUCinf_h_ng_mL  = round(aucinf.obs, 2),
+    Vz_mL_g         = round(vz.obs,     4),
+    CL_mL_h_kg      = round(cl.obs,     4)
+  )
 
-# CL et Vz nécessitent une dose valide ; PKNCA renvoie 0 quand dose = NA,
-# on force donc NA_real_ si la dose n'est pas renseignée.
-dose_ok  <- !is.na(dose_value) && dose_value > 0
-
-# Conversions d'unités (dose en mg/kg, concentrations en ng/mL) :
-#   CL_raw [mg/kg / h*ng/mL]  × 1e6  → mL/h/kg
-#     car 1 mg = 1e6 ng, donc mg/(kg·ng) = 1e6/kg → ×1e6 donne mL/h/kg
-#   Vz_raw [mg*mL / kg*ng]    × 1000  → mL/g
-#     car 1 kg = 1000 g
-cl_val   <- if (dose_ok) get_param(results_df, "cl.obs") * 1e6   else NA_real_
-vz_val   <- if (dose_ok) get_param(results_df, "vz.obs") * 1000  else NA_real_
-
-# Cmax_D : Cmax normalisée par la dose (kg·ng/mL / mg/kg)
-cmax_d_val  <- if (dose_ok) cmax_val / dose_value else NA_real_
-
-nca_summary <- data.frame(
-  Dose_mg_kg     = dose_value,
-  Animal_Id      = pk_data$subject[1],
-  Half_life_h    = round(hl_val,    3),
-  Cmax_ng_mL     = round(cmax_val,  2),
-  Cmax_D         = round(cmax_d_val, 4),   # kg·ng/mL / mg·kg⁻¹
-  AUClast_h_ng_mL = round(auclast_val, 2),
-  AUCinf_h_ng_mL  = round(aucinf_val,  2),
-  Vz_mL_g        = round(vz_val,   4),
-  CL_mL_h_kg     = round(cl_val,   4),
-  check.names = FALSE
-)
-
-# Ligne d'unités sous les noms de colonnes
 units_row <- data.frame(
   Dose_mg_kg      = "mg/kg",
   Animal_Id       = "",
@@ -174,63 +138,49 @@ units_row <- data.frame(
   AUCinf_h_ng_mL  = "h*ng/mL",
   Vz_mL_g         = "mL/g",
   CL_mL_h_kg      = "mL/h/kg",
-  check.names = FALSE
+  stringsAsFactors = FALSE
 )
 
-output_table <- rbind(units_row, nca_summary)
-
 cat("\n=== Paramètres PK — tableau de sortie ===\n")
-print(output_table, row.names = FALSE)
+print(rbind(units_row, nca_summary), row.names = FALSE)
 
-# Export CSV propre (sans la ligne d'unités dans les données)
 write.csv(nca_summary, "nca_results.csv", row.names = FALSE)
 cat("\nTableau exporté : nca_results.csv\n")
 
-# ── 7. Graphiques -------------------------------------------------------------
-# Palette et thème communs
-pk_plot_data <- pk_data %>%
-  filter(!is.na(conc))   # exclure les NA pour le tracé
+# ── 8. Graphiques multi-animaux -----------------------------------------------
+pk_plot_data <- pk_raw %>% filter(!is.na(conc))
 
 theme_pk <- theme_bw(base_size = 13) +
-  theme(
-    plot.title   = element_text(face = "bold"),
-    legend.position = "none"
-  )
+  theme(plot.title = element_text(face = "bold"))
 
-# 7a. Echelle linéaire ---------------------------------------------------------
-p_linear <- ggplot(pk_plot_data, aes(x = time, y = conc)) +
-  geom_line(color = "#2c7bb6", linewidth = 0.9) +
-  geom_point(color = "#2c7bb6", size = 3) +
+# 8a. Échelle linéaire
+p_linear <- ggplot(pk_plot_data, aes(x = time, y = conc,
+                                     color = subject, group = subject)) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 3) +
   labs(
     title    = "Profil concentration-temps — Échelle linéaire",
-    subtitle = "Les points BLQ (96h, 168h) sont exclus",
-    x        = "Temps (h)",
-    y        = "Concentration (ng/mL)"
+    subtitle = "BLQ (96h, 168h) exclus",
+    x        = "Temps (h)", y = "Concentration (ng/mL)", color = "Animal"
   ) +
   theme_pk
-
 print(p_linear)
 ggsave("nca_linear.png", plot = p_linear, width = 8, height = 5, dpi = 300)
 
-# 7b. Echelle semi-logarithmique -----------------------------------------------
-# On retire les concentrations nulles (T=0) pour éviter log(0) = -Inf
-pk_semilog_data <- pk_plot_data %>%
-  filter(conc > 0)
-
-p_semilog <- ggplot(pk_semilog_data, aes(x = time, y = conc)) +
-  geom_line(color = "#d7191c", linewidth = 0.9) +
-  geom_point(color = "#d7191c", size = 3) +
+# 8b. Échelle semi-logarithmique
+p_semilog <- ggplot(pk_plot_data %>% filter(conc > 0),
+                    aes(x = time, y = conc, color = subject, group = subject)) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 3) +
   scale_y_log10() +
   labs(
     title    = "Profil concentration-temps — Échelle semi-logarithmique",
-    subtitle = "T=0 (C=0) et BLQ exclus ; la phase terminale linéaire correspond à lambda_z",
-    x        = "Temps (h)",
-    y        = "Concentration (ng/mL) — échelle log"
+    subtitle = "T=0 et BLQ exclus ; pente terminale = lambda_z (24–72h)",
+    x        = "Temps (h)", y = "Concentration (ng/mL) — log", color = "Animal"
   ) +
   theme_pk
-
 print(p_semilog)
 ggsave("nca_semilog.png", plot = p_semilog, width = 8, height = 5, dpi = 300)
 
-cat("\nGraphiques exportés : nca_linear.png et nca_semilog.png\n")
+cat("\nGraphiques exportés : nca_linear.png  nca_semilog.png\n")
 cat("Script terminé.\n")
