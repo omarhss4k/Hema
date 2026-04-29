@@ -53,15 +53,21 @@ pk_dose <- PKNCAdose(pk_dose_data, dose ~ time | subject)
 #     Animal 2 : λz = ln(2180/1020)/(168-96) = 0.01028 h⁻¹ → t½ = 67.4h
 
 intervals <- data.frame(
-  start      = 0,
-  end        = 168,
-  cmax       = TRUE,
-  tmax       = TRUE,
-  auclast    = TRUE,
-  aucinf.obs = TRUE,
-  half.life  = TRUE,
-  cl.obs     = TRUE,
-  vz.obs     = TRUE
+  start               = 0,
+  end                 = 168,
+  cmax                = TRUE,
+  tmax                = TRUE,
+  auclast             = TRUE,
+  aucinf.obs          = TRUE,
+  half.life           = TRUE,
+  cl.obs              = TRUE,
+  vz.obs              = TRUE,
+  # Restreindre lambda_z aux points 96h–168h (phase d'élimination terminale).
+  # Les colonnes lambda.z.time.first / lambda.z.time.last fixent la fenêtre de
+  # régression log-linéaire directement dans l'intervalle, contrairement à
+  # lambda.z.time.range qui n'est pas un paramètre PKNCA valide.
+  lambda.z.time.first = 96,
+  lambda.z.time.last  = 168
 )
 
 pk_data_obj <- PKNCAdata(
@@ -69,9 +75,8 @@ pk_data_obj <- PKNCAdata(
   data.dose = pk_dose,
   intervals = intervals,
   options   = list(
-    auc.method          = "linear",
-    lambda.z.time.range = c(96, 168),  # phase d'élimination terminale uniquement
-    min.hl.points       = 2            # autoriser 2 points (96h et 168h)
+    auc.method    = "linear",
+    min.hl.points = 2          # autoriser 2 points (96h et 168h)
   )
 )
 
