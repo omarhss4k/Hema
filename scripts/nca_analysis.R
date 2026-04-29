@@ -1,14 +1,20 @@
 # =============================================================================
-# Analyse Non-Compartimentale (NCA) — multi-animaux
+# Analyse PK — modèle 2 compartiments IV bolus avec rxode2
 # =============================================================================
-library(PKNCA)
+# Modèle :   d/dt(A1) = -(CL/V1 + Q/V1)*A1 + (Q/V2)*A2
+#            d/dt(A2) =   (Q/V1)*A1 - (Q/V2)*A2
+#            C = A1 / V1
+# Unités  :  A1, A2 [ng/kg]  |  V1, V2 [mL/kg]  |  CL, Q [mL/h/kg]  |  C [ng/mL]
+# =============================================================================
+
+# install.packages(c("rxode2", "dplyr", "tidyr", "ggplot2"))
+library(rxode2)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 
-# ── 2. Données brutes ---------------------------------------------------------
-# BLQ terminal (336h, 504h) → NA
-# 96h et 168h sont QUANTIFIABLES
+# ── 1. Données ----------------------------------------------------------------
+# BLQ terminaux (336h, 504h) → NA  |  96h et 168h sont quantifiables
 
 pk_raw <- bind_rows(
 
@@ -27,104 +33,112 @@ pk_raw <- bind_rows(
   )
 )
 
-cat("=== Données PK ===\n")
-print(pk_raw)
+# ── 2. Définition du modèle rxode2 --------------------------------------------
+pk2cmt <- rxode2({
+  d/dt(A1) <- -(CL / V1 + Q / V1) * A1 + (Q / V2) * A2
+  d/dt(A2) <-  (Q / V1) * A1 - (Q / V2) * A2
+  C        <- A1 / V1
+})
 
-# ── 3. Lambda_z manuel par animal ---------------------------------------------
-# On utilise les deux derniers points quantifiables (96h et 168h) qui
-# appartiennent à la phase d'élimination terminale mono-exponentielle.
-# λz = -pente de ln(C) vs t  =>  λz = ln(C1/C2) / (t2 - t1)
-# t1/2 = ln(2) / λz
+# ── 3. Ajustement par animal (moindres carrés sur log-concentrations) ---------
+# La fonction objectif minimise Σ [ln(Cobs) - ln(Cpred)]²
+# Les paramètres sont optimisés sur l'échelle log (→ contrainte de positivité).
 
-terminal_times <- c(96, 168)   # points de la phase terminale
+fit_animal <- function(animal_data) {
 
-lambda_z_df <- pk_raw %>%
-  filter(time %in% terminal_times, !is.na(conc)) %>%
-  group_by(subject) %>%
-  arrange(time) %>%
-  summarise(
-    t1      = time[1],
-    t2      = time[2],
-    c1      = conc[1],
-    c2      = conc[2],
-    lambda_z = log(c1 / c2) / (t2 - t1),
-    half_life = log(2) / lambda_z,
-    .groups = "drop"
+  dose  <- animal_data$dose_mg_kg[1]
+  A1_0  <- dose * 1e6        # mg/kg → ng/kg  (1 mg = 1e6 ng)
+  obs   <- animal_data %>% filter(time > 0, !is.na(conc))
+
+  objective <- function(log_p) {
+    p <- setNames(exp(log_p), c("CL", "V1", "Q", "V2"))
+    tryCatch({
+      sol  <- rxSolve(pk2cmt,
+                      params  = p,
+                      inits   = c(A1 = A1_0, A2 = 0),
+                      times   = obs$time,
+                      returnType = "data.frame")
+      pred <- sol$C
+      if (any(!is.finite(pred) | pred <= 0)) return(1e10)
+      sum((log(obs$conc) - log(pred))^2)
+    }, error = function(e) 1e10)
+  }
+
+  # Valeurs initiales — estimées à partir des données :
+  #   V1 ≈ dose/Cmax ≈ 3e6/70000 ≈ 43 mL/kg
+  #   CL ≈ 1.73 mL/h/kg (NCA préliminaire)
+  #   Q  ≈ 5 mL/h/kg, V2 ≈ 130 mL/kg
+  log_p0 <- log(c(CL = 1.73, V1 = 43, Q = 5, V2 = 130))
+
+  fit <- optim(log_p0, objective,
+               method  = "Nelder-Mead",
+               control = list(maxit = 20000, reltol = 1e-12))
+
+  exp(fit$par) |> setNames(c("CL", "V1", "Q", "V2"))
+}
+
+# ── 4. Paramètres dérivés (analytiques, modèle 2-cmt) -------------------------
+# Les constantes microscopiques donnent les valeurs propres alpha (rapide)
+# et beta (terminale) du système biexponentiel :
+#   C(t) = A·exp(-alpha·t) + B·exp(-beta·t)
+# La demi-vie terminale est t1/2 = ln(2) / beta.
+# Le volume de distribution terminal : Vz = CL / beta.
+
+derived_params <- function(p) {
+  k10  <- p["CL"] / p["V1"]
+  k12  <- p["Q"]  / p["V1"]
+  k21  <- p["Q"]  / p["V2"]
+  S    <- k10 + k12 + k21
+  disc <- sqrt(S^2 - 4 * k10 * k21)
+  alpha <- (S + disc) / 2
+  beta  <- (S - disc) / 2
+  list(
+    half_life_alpha = log(2) / alpha,
+    half_life_beta  = log(2) / beta,
+    Vz              = p["CL"] / beta
   )
+}
 
-cat("\n=== Lambda_z et demi-vie (régression terminale manuelle) ===\n")
-print(lambda_z_df)
+# ── 5. AUClast (trapèzes linéaires) ------------------------------------------
+auclast_animal <- function(animal_data) {
+  d <- animal_data %>% filter(!is.na(conc)) %>% arrange(time)
+  n <- nrow(d)
+  sum(diff(d$time) * (d$conc[-n] + d$conc[-1]) / 2)
+}
 
-# ── 4. PKNCA pour AUClast, Cmax, Tmax ----------------------------------------
-pk_conc <- PKNCAconc(pk_raw, conc ~ time | subject)
+# ── 6. Boucle sur les animaux -------------------------------------------------
+animals  <- unique(pk_raw$subject)
+results  <- list()
 
-pk_dose_data <- pk_raw %>%
-  distinct(subject, dose_mg_kg) %>%
-  mutate(time = 0) %>%
-  rename(dose = dose_mg_kg)
-pk_dose <- PKNCAdose(pk_dose_data, dose ~ time | subject)
+for (anim in animals) {
+  cat("\n--- Ajustement :", anim, "---\n")
+  dat   <- pk_raw %>% filter(subject == anim)
+  dose  <- dat$dose_mg_kg[1]
 
-intervals <- data.frame(
-  start   = 0,
-  end     = 168,
-  cmax    = TRUE,
-  tmax    = TRUE,
-  auclast = TRUE
-)
+  p     <- fit_animal(dat)
+  drv   <- derived_params(p)
+  aucl  <- auclast_animal(dat)
 
-pk_data_obj <- PKNCAdata(
-  data.conc = pk_conc,
-  data.dose = pk_dose,
-  intervals = intervals,
-  options   = list(auc.method = "linear")
-)
+  # AUCinf = AUClast + C_last / beta  (C_last = dernière conc quantifiable)
+  c_last <- dat %>% filter(!is.na(conc)) %>% slice_max(time, n=1) %>% pull(conc)
+  beta   <- log(2) / drv$half_life_beta
+  aucinf <- aucl + c_last / beta
 
-pk_results <- pk.nca(pk_data_obj)
-results_df <- as.data.frame(pk_results$result)
-
-# ── 5. Calculs manuels : AUCinf, CL, Vz ---------------------------------------
-# AUCinf = AUClast + C_last / λz
-# CL     = Dose / AUCinf            [mg/kg / h*ng/mL × 1e6 → mL/h/kg]
-# Vz     = CL / λz                  [mL/h/kg / h⁻¹ → mL/kg]
-
-wide <- results_df %>%
-  filter(PPTESTCD %in% c("cmax", "tmax", "auclast")) %>%
-  select(subject, PPTESTCD, PPORRES) %>%
-  mutate(PPORRES = as.numeric(PPORRES)) %>%
-  pivot_wider(names_from = PPTESTCD, values_from = PPORRES)
-
-# C_last : dernière concentration quantifiable par animal
-c_last_df <- pk_raw %>%
-  filter(!is.na(conc)) %>%
-  group_by(subject) %>%
-  slice_max(time, n = 1) %>%
-  select(subject, c_last = conc)
-
-wide <- wide %>%
-  left_join(lambda_z_df %>% select(subject, lambda_z, half_life), by = "subject") %>%
-  left_join(c_last_df, by = "subject") %>%
-  left_join(pk_raw %>% distinct(subject, dose_mg_kg), by = "subject") %>%
-  mutate(
-    aucinf   = auclast + c_last / lambda_z,
-    cl_raw   = dose_mg_kg / aucinf,
-    CL       = cl_raw * 1e6,        # mL/h/kg
-    Vz       = CL / lambda_z,       # mL/kg
-    Cmax_D   = cmax / dose_mg_kg
+  results[[anim]] <- data.frame(
+    Dose_mg_kg      = dose,
+    Animal_Id       = anim,
+    Half_life_h     = round(drv$half_life_beta, 1),
+    Cmax_ng_mL      = round(max(dat$conc, na.rm=TRUE), 0),
+    Cmax_D          = round(max(dat$conc, na.rm=TRUE) / dose, 0),
+    AUClast_h_ng_mL = round(aucl,   0),
+    AUCinf_h_ng_mL  = round(aucinf, 0),
+    Vz_mL_kg        = round(drv$Vz, 0),
+    CL_mL_h_kg      = round(p["CL"], 2)
   )
+}
 
-# ── 6. Tableau de sortie -------------------------------------------------------
-nca_summary <- wide %>%
-  transmute(
-    Dose_mg_kg      = round(dose_mg_kg, 3),
-    Animal_Id       = subject,
-    Half_life_h     = round(half_life, 1),
-    Cmax_ng_mL      = round(cmax,      0),
-    Cmax_D          = round(Cmax_D,    0),
-    AUClast_h_ng_mL = round(auclast,   0),
-    AUCinf_h_ng_mL  = round(aucinf,    0),
-    Vz_mL_kg        = round(Vz,        0),
-    CL_mL_h_kg      = round(CL,        2)
-  )
+nca_summary <- bind_rows(results)
+row.names(nca_summary) <- NULL
 
 units_row <- data.frame(
   Dose_mg_kg = "mg/kg", Animal_Id = "", Half_life_h = "h",
@@ -136,32 +150,54 @@ units_row <- data.frame(
 
 cat("\n=== Paramètres PK — tableau de sortie ===\n")
 print(rbind(units_row, nca_summary), row.names = FALSE)
-
 write.csv(nca_summary, "nca_results.csv", row.names = FALSE)
 cat("\nTableau exporté : nca_results.csv\n")
 
-# ── 7. Graphiques -------------------------------------------------------------
-pk_plot_data <- pk_raw %>% filter(!is.na(conc))
+# ── 7. Courbes ajustées + données observées -----------------------------------
+# Générer les prédictions du modèle ajusté pour chaque animal
+
+pred_list <- list()
+for (anim in animals) {
+  dat  <- pk_raw %>% filter(subject == anim)
+  dose <- dat$dose_mg_kg[1]
+  p    <- fit_animal(dat)
+
+  times_pred <- seq(0.083, 168, length.out = 300)
+  sol <- rxSolve(pk2cmt,
+                 params     = p,
+                 inits      = c(A1 = dose * 1e6, A2 = 0),
+                 times      = times_pred,
+                 returnType = "data.frame")
+
+  pred_list[[anim]] <- data.frame(
+    subject = anim, time = sol$time, conc = sol$C
+  )
+}
+pred_df <- bind_rows(pred_list)
+
+obs_df  <- pk_raw %>% filter(!is.na(conc), conc > 0)
 
 theme_pk <- theme_bw(base_size = 13) +
   theme(plot.title = element_text(face = "bold"))
 
-p_linear <- ggplot(pk_plot_data, aes(x = time, y = conc,
-                                     color = subject, group = subject)) +
-  geom_line(linewidth = 0.9) + geom_point(size = 3) +
-  labs(title = "Profil concentration-temps — Échelle linéaire",
-       subtitle = "BLQ (336h, 504h) exclus",
+# 7a. Linéaire
+p_linear <- ggplot() +
+  geom_line(data = pred_df, aes(x=time, y=conc, color=subject), linewidth=0.9) +
+  geom_point(data = obs_df, aes(x=time, y=conc, color=subject), size=3) +
+  labs(title = "Profil PK — modèle 2 compartiments (rxode2)",
+       subtitle = "Points = observations ; lignes = modèle ajusté",
        x = "Temps (h)", y = "Concentration (ng/mL)", color = "Animal") +
   theme_pk
 print(p_linear)
 ggsave("nca_linear.png", plot = p_linear, width = 8, height = 5, dpi = 300)
 
-p_semilog <- ggplot(pk_plot_data %>% filter(conc > 0),
-                    aes(x = time, y = conc, color = subject, group = subject)) +
-  geom_line(linewidth = 0.9) + geom_point(size = 3) +
+# 7b. Semi-logarithmique
+p_semilog <- ggplot() +
+  geom_line(data = pred_df, aes(x=time, y=conc, color=subject), linewidth=0.9) +
+  geom_point(data = obs_df, aes(x=time, y=conc, color=subject), size=3) +
   scale_y_log10() +
-  labs(title = "Profil concentration-temps — Échelle semi-logarithmique",
-       subtitle = "lambda_z estimé sur 96–168h (phase terminale)",
+  labs(title = "Profil PK — modèle 2 compartiments (rxode2) — échelle semi-log",
+       subtitle = "Points = observations ; lignes = modèle ajusté",
        x = "Temps (h)", y = "Concentration (ng/mL) — log", color = "Animal") +
   theme_pk
 print(p_semilog)
