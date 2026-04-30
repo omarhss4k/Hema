@@ -179,12 +179,12 @@ if (!file.exists(pk2cmt_file)) pk2cmt_file <- "pk2cmt_params.csv"
 
 if (file.exists(pk2cmt_file)) {
   pk2cmt_res    <- read.csv(pk2cmt_file, stringsAsFactors = FALSE)
-  mean_pars     <- pk2cmt_res[pk2cmt_res$Animal_Id == "Mean", ]
-  CL_carbo_mLhkg <- mean_pars$CL_mL_h_kg
-  V1_carbo_mLkg  <- mean_pars$V1_mL_kg
-  Q_carbo_mLhkg  <- mean_pars$Q_mL_h_kg
-  V2_carbo_mLkg  <- mean_pars$V2_mL_kg
-  cat(sprintf("Carboplatin PK chargés depuis %s\n", pk2cmt_file))
+  anim_pars      <- pk2cmt_res[pk2cmt_res$Animal_Id == "Animal_01", ]
+  CL_carbo_mLhkg <- anim_pars$CL_mL_h_kg
+  V1_carbo_mLkg  <- anim_pars$V1_mL_kg
+  Q_carbo_mLhkg  <- anim_pars$Q_mL_h_kg
+  V2_carbo_mLkg  <- anim_pars$V2_mL_kg
+  cat(sprintf("Carboplatin PK chargés depuis %s (Animal_01)\n", pk2cmt_file))
   cat(sprintf("  CL=%.4f  V1=%.4f  Q=%.4f  V2=%.4f  mL/h/kg ou mL/kg\n",
               CL_carbo_mLhkg, V1_carbo_mLkg, Q_carbo_mLhkg, V2_carbo_mLkg))
 } else {

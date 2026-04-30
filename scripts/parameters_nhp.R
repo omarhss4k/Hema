@@ -29,11 +29,11 @@ pk2cmt_file_nhp <- "pk2cmt_params.csv"
 
 if (file.exists(pk2cmt_file_nhp)) {
   pk2cmt_res  <- read.csv(pk2cmt_file_nhp, stringsAsFactors = FALSE)
-  mean_pars   <- pk2cmt_res[pk2cmt_res$Animal_Id == "Mean", ]
-  CL_mL_h_kg <- mean_pars$CL_mL_h_kg
-  V1_mL_kg   <- mean_pars$V1_mL_kg
-  Q_mL_h_kg  <- mean_pars$Q_mL_h_kg
-  V2_mL_kg   <- mean_pars$V2_mL_kg
+  anim_pars   <- pk2cmt_res[pk2cmt_res$Animal_Id == "Animal_01", ]
+  CL_mL_h_kg <- anim_pars$CL_mL_h_kg
+  V1_mL_kg   <- anim_pars$V1_mL_kg
+  Q_mL_h_kg  <- anim_pars$Q_mL_h_kg
+  V2_mL_kg   <- anim_pars$V2_mL_kg
 } else {
   warning("pk2cmt_params.csv introuvable — valeurs de secours. Lancez nca_analysis.R d'abord.")
   CL_mL_h_kg <- 1.73
