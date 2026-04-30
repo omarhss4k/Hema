@@ -106,8 +106,9 @@ auclast_animal <- function(animal_data) {
 }
 
 # ── 6. Boucle sur les animaux -------------------------------------------------
-animals  <- unique(pk_raw$subject)
-results  <- list()
+animals    <- unique(pk_raw$subject)
+results    <- list()
+pk2cmt_raw <- list()   # paramètres bruts du fit 2-cmt
 
 for (anim in animals) {
   cat("\n--- Ajustement :", anim, "---\n")
@@ -134,6 +135,17 @@ for (anim in animals) {
     Vz_mL_kg        = round(drv$Vz, 0),
     CL_mL_h_kg      = round(p["CL"], 2)
   )
+
+  # Stocker les 4 paramètres du modèle 2-cmt (unités : mL/h/kg et mL/kg)
+  pk2cmt_raw[[anim]] <- data.frame(
+    Animal_Id  = anim,
+    CL_mL_h_kg = round(p["CL"], 4),
+    V1_mL_kg   = round(p["V1"], 4),
+    Q_mL_h_kg  = round(p["Q"],  4),
+    V2_mL_kg   = round(p["V2"], 4),
+    t12_beta_h = round(drv$half_life_beta, 2),
+    Vz_mL_kg   = round(drv$Vz, 2)
+  )
 }
 
 nca_summary <- bind_rows(results)
@@ -150,6 +162,25 @@ units_row <- data.frame(
 cat("\n=== Paramètres PK — tableau de sortie ===\n")
 print(rbind(units_row, nca_summary), row.names = FALSE)
 write.csv(nca_summary, "nca_results.csv", row.names = FALSE)
+
+# ── Export paramètres 2-cmt + ligne moyenne ───────────────────────────────
+pk2cmt_df <- bind_rows(pk2cmt_raw)
+mean_row   <- data.frame(
+  Animal_Id  = "Mean",
+  CL_mL_h_kg = mean(pk2cmt_df$CL_mL_h_kg),
+  V1_mL_kg   = mean(pk2cmt_df$V1_mL_kg),
+  Q_mL_h_kg  = mean(pk2cmt_df$Q_mL_h_kg),
+  V2_mL_kg   = mean(pk2cmt_df$V2_mL_kg),
+  t12_beta_h  = mean(pk2cmt_df$t12_beta_h),
+  Vz_mL_kg   = mean(pk2cmt_df$Vz_mL_kg)
+)
+pk2cmt_df <- bind_rows(pk2cmt_df, mean_row)
+row.names(pk2cmt_df) <- NULL
+
+cat("\n=== Paramètres modèle 2-cmt (rxode2 fit) ===\n")
+print(pk2cmt_df, row.names = FALSE)
+write.csv(pk2cmt_df, "pk2cmt_params.csv", row.names = FALSE)
+cat("Tableau exporté : pk2cmt_params.csv\n")
 cat("\nTableau exporté : nca_results.csv\n")
 
 # ── 7. Courbes ajustées + données observées -----------------------------------

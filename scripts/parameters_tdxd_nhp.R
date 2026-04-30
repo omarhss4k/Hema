@@ -171,13 +171,29 @@ make_nhp_infusion <- function(dose_mgkg, BW_kg = 4.0,
 # CARBOPLATIN NHP PK — fit rxode2 (nca_analysis.R)
 # Animaux : Animal_01 / Animal_02  |  Dose : 3 mg/kg IV bolus
 # ════════════════════════════════════════════════════════
-# Paramètres moyens en mL/h/kg et mL/kg → convertis en L/h et L
-# pour BW_nhp = 4 kg (mettre à jour avec poids réels si nécessaire)
+# Paramètres lus depuis pk2cmt_params.csv (généré par nca_analysis.R)
+# Si le fichier n'existe pas, des valeurs de secours sont utilisées.
 
-CL_carbo_mLhkg <- 1.73    # mL/h/kg  (NCA : dose/AUCinf)
-V1_carbo_mLkg  <- 43.0    # mL/kg    (dose/Cmax, Cmax ≈ 70 000 ng/mL)
-Q_carbo_mLhkg  <- NA      # mL/h/kg  ← mettre à jour depuis rxode2 2-cmt fit
-V2_carbo_mLkg  <- 132.0   # mL/kg    (Vz − V1 ; Vz = CL/lambda_z)
+pk2cmt_file <- file.path(dirname(sys.frame(1)$ofile %||% "."), "pk2cmt_params.csv")
+if (!file.exists(pk2cmt_file)) pk2cmt_file <- "pk2cmt_params.csv"
+
+if (file.exists(pk2cmt_file)) {
+  pk2cmt_res    <- read.csv(pk2cmt_file, stringsAsFactors = FALSE)
+  mean_pars     <- pk2cmt_res[pk2cmt_res$Animal_Id == "Mean", ]
+  CL_carbo_mLhkg <- mean_pars$CL_mL_h_kg
+  V1_carbo_mLkg  <- mean_pars$V1_mL_kg
+  Q_carbo_mLhkg  <- mean_pars$Q_mL_h_kg
+  V2_carbo_mLkg  <- mean_pars$V2_mL_kg
+  cat(sprintf("Carboplatin PK chargés depuis %s\n", pk2cmt_file))
+  cat(sprintf("  CL=%.4f  V1=%.4f  Q=%.4f  V2=%.4f  mL/h/kg ou mL/kg\n",
+              CL_carbo_mLhkg, V1_carbo_mLkg, Q_carbo_mLhkg, V2_carbo_mLkg))
+} else {
+  warning("pk2cmt_params.csv introuvable — valeurs de secours utilisées. Lancez nca_analysis.R d'abord.")
+  CL_carbo_mLhkg <- 1.73
+  V1_carbo_mLkg  <- 43.0
+  Q_carbo_mLhkg  <- NA
+  V2_carbo_mLkg  <- 132.0
+}
 
 carbo_nhp <- list(
   CL   = CL_carbo_mLhkg * BW_nhp / 1000,   # L/h   = 0.00692

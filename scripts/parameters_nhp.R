@@ -19,23 +19,36 @@ BW_nhp <- 5.0   # kg  ← REMPLACEZ par le poids réel du NHP
 # PK CARBOPLATIN — modèle 2 compartiments IV bolus
 # ══════════════════════════════════════════════════════════
 # Source : fit rxode2 (nca_analysis.R) sur Animal_01 / Animal_02
-# Paramètres fitté en mL/h/kg et mL/kg → convertis en L/h et L
+# Paramètres lus depuis pk2cmt_params.csv (généré par nca_analysis.R).
+# Si le fichier est absent, des valeurs de secours sont utilisées.
 #
 # IMPORTANT : ces concentrations mesurent le PLATINE TOTAL.
 # Si le modèle PD utilise le platine libre, ajustez fu0/fu_inf/k_bind.
-#
-# Valeurs moyennes issues du fit (mises à jour après exécution de nca_analysis.R) :
-CL_mL_h_kg <- 1.73   # ← remplacez par la valeur fittée
-V1_mL_kg   <- 43.0   # ← remplacez par la valeur fittée
-Q_mL_h_kg  <- NA     # ← remplacez par la valeur fittée (Q du modèle 2-cmt)
-V2_mL_kg   <- 132.0  # ← remplacez par la valeur fittée  (Vz - V1)
+
+pk2cmt_file_nhp <- "pk2cmt_params.csv"
+
+if (file.exists(pk2cmt_file_nhp)) {
+  pk2cmt_res  <- read.csv(pk2cmt_file_nhp, stringsAsFactors = FALSE)
+  mean_pars   <- pk2cmt_res[pk2cmt_res$Animal_Id == "Mean", ]
+  CL_mL_h_kg <- mean_pars$CL_mL_h_kg
+  V1_mL_kg   <- mean_pars$V1_mL_kg
+  Q_mL_h_kg  <- mean_pars$Q_mL_h_kg
+  V2_mL_kg   <- mean_pars$V2_mL_kg
+} else {
+  warning("pk2cmt_params.csv introuvable — valeurs de secours. Lancez nca_analysis.R d'abord.")
+  CL_mL_h_kg <- 1.73
+  V1_mL_kg   <- 43.0
+  Q_mL_h_kg  <- NA
+  V2_mL_kg   <- 132.0
+}
 
 init_pars$CL <- CL_mL_h_kg * BW_nhp / 1000   # L/h
 init_pars$V1 <- V1_mL_kg   * BW_nhp / 1000   # L
-init_pars$Q  <- Q_mL_h_kg  * BW_nhp / 1000   # L/h  (NA → à renseigner)
+init_pars$Q  <- Q_mL_h_kg  * BW_nhp / 1000   # L/h
 init_pars$V2 <- V2_mL_kg   * BW_nhp / 1000   # L
 
-cat(sprintf("PK NHP (BW = %.1f kg) :\n", BW_nhp))
+cat(sprintf("PK NHP (BW = %.1f kg) — source : %s\n", BW_nhp,
+            ifelse(file.exists(pk2cmt_file_nhp), "pk2cmt_params.csv (rxode2 fit)", "valeurs de secours")))
 cat(sprintf("  CL = %.4f L/h  |  V1 = %.4f L\n", init_pars$CL, init_pars$V1))
 cat(sprintf("  Q  = %.4f L/h  |  V2 = %.4f L\n", init_pars$Q,  init_pars$V2))
 cat(sprintf("  t1/2 terminal ≈ %.1f h\n\n", log(2) / (init_pars$CL / init_pars$V2)))
