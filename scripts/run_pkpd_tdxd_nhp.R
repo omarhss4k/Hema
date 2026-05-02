@@ -268,6 +268,51 @@ cat(sprintf("  %-8s │      │ %8.3f %8.3f %8.1f %8.0f %8.1f │ %7.3f %7.3f %
             init_pars$RBC0, init_pars$Plt0,
             init_pars$MPP0, init_pars$CMP0, init_pars$MEP0))
 
-write.csv(cell_table, "results_TDXD/cell_counts_J2_J8_J15_J22.csv", row.names = FALSE)
+# ════════════════════════════════════════════════════════
+# NADIRS — valeur minimale + jour sur toute la simulation
+# ════════════════════════════════════════════════════════
+cat("\n════════════════════════════════════════════════════════════\n")
+cat("  NADIRS (valeur min + jour) sur 3 cycles Q3W\n")
+cat("════════════════════════════════════════════════════════════\n")
+cat(sprintf("  %-8s │ %14s %14s %14s %14s %14s\n",
+            "Dose", "Neut", "Mono", "Ret", "RBC", "Plt"))
+cat(sprintf("  %-8s │ %14s %14s %14s %14s %14s\n",
+            "", "val  (jour)", "val  (jour)", "val  (jour)", "val  (jour)", "val  (jour)"))
+cat(sprintf("  %s\n", paste(rep("─", 85), collapse="")))
+
+nadir_records <- list()
+for (i in seq_along(doses_tdxd)) {
+  s   <- sims_tdxd[[i]]
+  rec <- data.frame(Dose_mgkg = doses_tdxd[i])
+  row_parts <- c()
+  for (v in c("Neut", "Mono", "Ret", "RBC", "Plt")) {
+    idx      <- which.min(s[[v]])
+    val      <- s[[v]][idx]
+    day      <- s$time_d[idx]
+    pct      <- round((val / init_pars[[paste0(v,"0")]] - 1) * 100, 1)
+    rec[[paste0(v,"_nadir")]]    <- round(val, 3)
+    rec[[paste0(v,"_nadir_day")]] <- round(day, 1)
+    rec[[paste0(v,"_pct")]]      <- pct
+    row_parts <- c(row_parts, sprintf("%6.2f (J%4.1f)", val, day))
+  }
+  nadir_records <- c(nadir_records, list(rec))
+  cat(sprintf("  %-8s │ %14s %14s %14s %14s %14s\n",
+              paste0(doses_tdxd[i]," mg/kg"),
+              row_parts[1], row_parts[2], row_parts[3],
+              row_parts[4], row_parts[5]))
+}
+cat(sprintf("  %s\n", paste(rep("─", 85), collapse="")))
+cat(sprintf("  %-8s │ %14s %14s %14s %14s %14s\n",
+            "Baseline",
+            sprintf("%6.1f  (J0)  ", init_pars$Neut0),
+            sprintf("%6.2f  (J0)  ", init_pars$Mono0),
+            sprintf("%6.1f  (J0)  ", init_pars$Ret0),
+            sprintf("%6.0f  (J0)  ", init_pars$RBC0),
+            sprintf("%6.1f  (J0)  ", init_pars$Plt0)))
+cat("════════════════════════════════════════════════════════════\n")
+
+nadir_table <- do.call(rbind, nadir_records)
+write.csv(cell_table,   "results_TDXD/cell_counts_J2_J8_J15_J22.csv", row.names = FALSE)
+write.csv(nadir_table,  "results_TDXD/nadirs.csv",                    row.names = FALSE)
 cat("\n  -> results_TDXD/cell_counts_J2_J8_J15_J22.csv\n")
-cat("  -> results_TDXD/\n")
+cat("  -> results_TDXD/nadirs.csv\n")
