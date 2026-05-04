@@ -32,10 +32,10 @@ build_pars <- function() {
   p
 }
 
-# ── État initial (25 états) ──────────────────────────────
+# ── État initial (23 états) ──────────────────────────────
 pd_state <- init_state[setdiff(names(init_state), c("C1", "C2", "Damage"))]
 nhp_state0 <- c(
-  C_ADC1 = 0, C_ADC2 = 0, C_DXd = 0, C_DXd_ic = 0, Damage = 0,
+  C_ADC1 = 0, C_ADC2 = 0, Damage = 0,
   pd_state
 )
 
