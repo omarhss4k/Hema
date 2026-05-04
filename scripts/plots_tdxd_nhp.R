@@ -7,6 +7,12 @@ library(ggplot2)
 library(dplyr)
 library(tidyr)
 
+# ── Auto-source si objets manquants ─────────────────────
+if (!exists("sims_tdxd") || !exists("doses_tdxd")) {
+  cat("Lancement de run_pkpd_tdxd_nhp.R...\n")
+  source("run_pkpd_tdxd_nhp.R")
+}
+
 if (!dir.exists("results_TDXD")) dir.create("results_TDXD")
 
 # ── Palette ─────────────────────────────────────────────
