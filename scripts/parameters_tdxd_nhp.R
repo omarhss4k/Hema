@@ -145,10 +145,9 @@ tdxd_nhp$krel_factor   <- 0.830
 tdxd_nhp$interval_h    <- interval_h
 tdxd_nhp$k_inD         <- 0.7
 tdxd_nhp$k_effD        <- 0.7
-tdxd_nhp$IC50_DXd_uM   <- 0.31
-tdxd_nhp$k_dam         <- 0.017
-tdxd_nhp$k_rep         <- 0.017
-tdxd_nhp$mgL_to_uM_DXd <- 1000 / tdxd_nhp$MW_DXd
+tdxd_nhp$k_dam          <- 0.017
+tdxd_nhp$k_rep          <- 0.017
+tdxd_nhp$mgL_to_uM_ADC  <- 1000 / tdxd_nhp$MW_ADC   # mg/L → µM  (MW=148000 g/mol)
 
 # ── Fonction d'administration T-DXd ─────────────────────
 make_nhp_infusion <- function(dose_mgkg, BW_kg = 4.0,

@@ -30,10 +30,11 @@ pkpd_nhp_ode <- function(time, state, pars) {
                (Q_ADC / V2_ADC) * C_ADC2
 
     # ════════════════════════════════════════════════════
-    # DOMMAGE ADN — driver : C_ADC1 (mg/L)
-    # dDamage/dt = k_dam × C_ADC1 − k_rep × Damage
+    # DOMMAGE ADN — driver : C_ADC1 en µM (Fornari-like)
+    # dDamage/dt = k_dam × C_ADC1(µM) − k_rep × Damage
     # ════════════════════════════════════════════════════
-    dDamage <- k_dam * C_ADC1 - k_rep * Damage
+    C_ADC1_uM <- C_ADC1 * mgL_to_uM_ADC   # mg/L → µM  (÷ MW_ADC × 1000)
+    dDamage   <- k_dam * C_ADC1_uM - k_rep * Damage
 
     # ════════════════════════════════════════════════════
     # PD — Modèle Fornari (kill linéaire sur Damage)
