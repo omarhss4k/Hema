@@ -131,8 +131,7 @@ simulate_nhp <- function(dose_tdxd_mgkg, n_cycles = 3,
   sol <- as.data.frame(ode(
     y = nhp_state0, times = times,
     func = pkpd_nhp_ode, parms = p, method = "lsoda"))
-  sol$time_d     <- sol$time / 24
-  sol$C_DXd_ngmL <- sol$C_DXd * 1e3
+  sol$time_d <- sol$time / 24
   sol
 }
 
@@ -149,8 +148,8 @@ sims_tdxd  <- lapply(doses_tdxd, function(d) simulate_nhp(d, n_cycles = 3))
 dose_cols <- c("#2166ac", "#4dac26", "#d6604d")
 dose_days <- c(0, 21, 42)
 
-pdf("results_TDXD/NHP_PK_validation_Table7.pdf", width = 14, height = 9)
-par(mfrow = c(2, 3), mar = c(4, 4.5, 3, 1.5))
+pdf("results_TDXD/NHP_PK_validation_Table7.pdf", width = 10, height = 5)
+par(mfrow = c(1, 3), mar = c(4, 4.5, 3, 1.5))
 for (i in seq_along(doses_tdxd)) {
   s <- sims_tdxd[[i]]; col <- dose_cols[i]; d <- doses_tdxd[i]
   fda <- fda_tk_nhp[[i]]
@@ -163,12 +162,6 @@ for (i in seq_along(doses_tdxd)) {
   points(0.02, fda$C0_ADC, pch=19, cex=1.5)
   legend("topright", c("Sim","C0 FDA"), col=c(col,"black"),
          lwd=c(2.5,NA), pch=c(NA,19), bty="n", cex=0.85)
-
-  plot(s$time_d, s$C_DXd_ngmL, type="l", lwd=2.5, col=col,
-       xlab="Temps (j)", ylab="DXd [ng/mL]",
-       main=sprintf("DXd — %d mg/kg Q3W", d))
-  abline(v=dose_days, lty=2, col="grey60")
-  points(0.02, fda$C0_DXd_ng, pch=17, cex=1.5)
 }
 dev.off()
 cat("  -> results_TDXD/NHP_PK_validation_Table7.pdf\n")
