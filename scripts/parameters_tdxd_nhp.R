@@ -173,8 +173,7 @@ make_nhp_infusion <- function(dose_mgkg, BW_kg = 4.0,
 # Paramètres lus depuis pk2cmt_params.csv (généré par nca_analysis.R)
 # Si le fichier n'existe pas, des valeurs de secours sont utilisées.
 
-pk2cmt_file <- file.path(dirname(sys.frame(1)$ofile %||% "."), "pk2cmt_params.csv")
-if (!file.exists(pk2cmt_file)) pk2cmt_file <- "pk2cmt_params.csv"
+pk2cmt_file <- "pk2cmt_params.csv"
 
 if (file.exists(pk2cmt_file)) {
   pk2cmt_res    <- read.csv(pk2cmt_file, stringsAsFactors = FALSE)
