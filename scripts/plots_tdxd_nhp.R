@@ -7,7 +7,7 @@
 library(ggplot2)
 library(dplyr)
 library(tidyr)
-library(patchwork)
+library(gridExtra)
 
 if (!dir.exists("results_TDXD")) dir.create("results_TDXD")
 
@@ -89,18 +89,24 @@ p_plt  <- make_panel("Plt",  "Plaquettes (10⁹/L)",   baselines["Plt"],  0.80)
 p_ret  <- make_panel("Ret",  "Réticulocytes (10⁹/L)", baselines["Ret"], 0.55)
 p_rbc  <- make_panel("RBC",  "GR (10⁹/L)",            baselines["RBC"], 0.95)
 
-# ── Assemblage patchwork ─────────────────────────────────
-fig_pd <- (p_neut + p_plt) / (p_ret + p_rbc) +
-  plot_annotation(
-    title    = "Predicted Hematological Profiles — T-DXd Q3W × 3 cycles",
-    subtitle = "Triangles ▽ = nadir  |  Dotted = baseline  |  Dashed = dose day",
-    theme    = theme(
-      plot.title    = element_text(face = "bold", size = 18),
-      plot.subtitle = element_text(size = 13, color = "grey40")
-    )
-  ) +
-  plot_layout(guides = "collect") &
-  theme(legend.position = "bottom")
+# ── Assemblage gridExtra ─────────────────────────────────
+# Légende commune extraite d'un seul panel
+get_legend <- function(p) {
+  tmp <- ggplot_gtable(ggplot_build(p))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  tmp$grobs[[leg]]
+}
+legend_common <- get_legend(p_neut)
+
+panels_noleg <- lapply(list(p_neut, p_plt, p_ret, p_rbc),
+                       function(p) p + theme(legend.position = "none"))
+
+fig_pd <- gridExtra::arrangeGrob(
+  grobs  = c(panels_noleg, list(legend_common)),
+  layout_matrix = rbind(c(1,2), c(3,4), c(5,5)),
+  heights = c(4, 4, 0.8),
+  top    = "Predicted Hematological Profiles — T-DXd Q3W × 3 cycles"
+)
 
 ggsave("results_TDXD/poster_PD_4panels.pdf",
        fig_pd, width = 14, height = 11, dpi = 300)
