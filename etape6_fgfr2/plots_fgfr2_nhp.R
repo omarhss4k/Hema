@@ -1,16 +1,16 @@
 ############################################################
-# plots_tdxd_nhp.R
+# plots_fgfr2_nhp.R
 # Graphiques publication-ready — ggplot2 uniquement
-# Prérequis : run_pkpd_tdxd_nhp.R déjà sourcé
+# Prérequis : run_fgfr2_nhp.R déjà sourcé
 ############################################################
 library(ggplot2)
 library(dplyr)
 library(tidyr)
 
 # ── Auto-source si objets manquants ─────────────────────
-if (!exists("sims_tdxd") || !exists("doses_tdxd")) {
-  cat("Lancement de run_pkpd_tdxd_nhp.R...\n")
-  source("run_pkpd_tdxd_nhp.R")
+if (!exists("sims_fgfr2") || !exists("doses_fgfr2")) {
+  cat("Lancement de run_fgfr2_nhp.R...\n")
+  source("run_fgfr2_nhp.R")
 }
 
 if (!dir.exists("results")) dir.create("results")
@@ -49,15 +49,15 @@ theme_poster <- theme_bw(base_size = 15) +
   )
 
 # ── Long format ──────────────────────────────────────────
-sim_long <- bind_rows(lapply(seq_along(doses_tdxd), function(i) {
-  sims_tdxd[[i]] %>%
+sim_long <- bind_rows(lapply(seq_along(doses_fgfr2), function(i) {
+  sims_fgfr2[[i]] %>%
     select(time_d, Neut, Plt, Ret, RBC, Damage) %>%
-    mutate(Dose = paste0(doses_tdxd[i], " mg/kg"))
+    mutate(Dose = paste0(doses_fgfr2[i], " mg/kg"))
 })) %>%
   pivot_longer(cols = c(Neut, Plt, Ret, RBC, Damage),
                names_to = "Cellule", values_to = "Valeur") %>%
   mutate(
-    Dose    = factor(Dose, levels = paste0(doses_tdxd, " mg/kg")),
+    Dose    = factor(Dose, levels = paste0(doses_fgfr2, " mg/kg")),
     Cellule = factor(Cellule, levels = c("Neut", "Plt", "Ret", "RBC", "Damage"),
                      labels = c("Neutrophiles (10⁹/L)", "Plaquettes (10⁹/L)",
                                 "Réticulocytes (10⁹/L)", "GR (10⁹/L)",
@@ -91,7 +91,7 @@ obs_long <- if (nrow(obs_data) > 0) {
     pivot_longer(cols = c(Neut, Plt, Ret, RBC),
                  names_to = "Cellule", values_to = "Valeur") %>%
     mutate(
-      Dose    = factor(Dose, levels = paste0(doses_tdxd, " mg/kg")),
+      Dose    = factor(Dose, levels = paste0(doses_fgfr2, " mg/kg")),
       Cellule = factor(Cellule,
                        levels = c("Neut", "Plt", "Ret", "RBC"),
                        labels = c("Neutrophiles (10⁹/L)", "Plaquettes (10⁹/L)",
@@ -193,9 +193,9 @@ cells_info <- list(
   list(var = "RBC",  label = "GR\n(10⁹/L)",            base = init_pars$RBC0)
 )
 
-nadir_tbl <- do.call(rbind, lapply(seq_along(doses_tdxd), function(i) {
-  s <- sims_tdxd[[i]]
-  row <- data.frame(Dose = paste0(doses_tdxd[i], " mg/kg"), stringsAsFactors = FALSE)
+nadir_tbl <- do.call(rbind, lapply(seq_along(doses_fgfr2), function(i) {
+  s <- sims_fgfr2[[i]]
+  row <- data.frame(Dose = paste0(doses_fgfr2[i], " mg/kg"), stringsAsFactors = FALSE)
   for (ci in cells_info) {
     idx <- which.min(s[[ci$var]])
     val <- round(s[[ci$var]][idx], 1)
@@ -243,8 +243,8 @@ dev.off()
 cat("  -> results_TDXD/poster_table_nadirs.png\n")
 
 # ── 2. Tableau validation PK vs FDA Table 7 ─────────────
-pk_tbl <- do.call(rbind, lapply(seq_along(doses_tdxd), function(i) {
-  s   <- sims_tdxd[[i]]
+pk_tbl <- do.call(rbind, lapply(seq_along(doses_fgfr2), function(i) {
+  s   <- sims_fgfr2[[i]]
   fda <- fda_tk_nhp[[i]]
   C0_sim  <- round(max(s$C_ADC1[s$time <= 24]), 0)
   idx_auc <- s$time <= 504
@@ -257,7 +257,7 @@ pk_tbl <- do.call(rbind, lapply(seq_along(doses_tdxd), function(i) {
   else NA_real_
 
   data.frame(
-    Dose         = paste0(doses_tdxd[i], " mg/kg"),
+    Dose         = paste0(doses_fgfr2[i], " mg/kg"),
     `C₀ obs`     = round(fda$C0_ADC, 0),
     `C₀ sim`     = C0_sim,
     `AUC₂₁ obs`  = round(fda$AUC21d_ADC, 0),

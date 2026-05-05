@@ -1,6 +1,6 @@
 ############################################################
-# run_pkpd_tdxd_nhp.R
-# Simulation PK/PD — T-DXd (DS-8201a) — SINGE CYNOMOLGUS (NHP)
+# run_fgfr2_nhp.R
+# Simulation PK/PD — FGFR2 — SINGE CYNOMOLGUS (NHP)
 #
 # Modèle (25 états) :
 #   PK  : ADC 2-cpt + TMDD | DXd plasma | DXd intracellulaire | Damage
@@ -8,16 +8,15 @@
 #         MPP → CMP → Neut / Mono
 #         MPP → MEP → Ret / RBC / Plt
 #
-# Validation : FDA BLA 761139 Table 7
-#   "3-Month Intermittent IV Dose Toxicity Study in Cynomolgus Monkeys"
-#   Doses Q3W : 3, 10, 30 mg/kg
+# !! Paramètres PK à calibrer sur données FGFR2 NHP !!
+# (structure copiée depuis T-DXd — adapter PK et slopes)
 ############################################################
 library(deSolve)
 
-source("parameters_tdxd_nhp.R")
+source("parameters_fgfr2_nhp.R")
 source("parameters_nhp.R")
 source("../shared/parameters_FORNARI_CORRECT.R")
-source("pkpd_tdxd_nhp.R")
+source("pkpd_fgfr2_nhp.R")
 
 if (!dir.exists("results")) dir.create("results")
 
@@ -26,7 +25,7 @@ if (!dir.exists("results")) dir.create("results")
 # ════════════════════════════════════════════════════════
 build_pars <- function() {
   p <- init_pars
-  for (nm in names(tdxd_nhp)) p[[nm]] <- tdxd_nhp[[nm]]
+  for (nm in names(fgfr2_nhp)) p[[nm]] <- fgfr2_nhp[[nm]]
   p$k_dam_DXd  <- 0.017
   p$rate_fun   <- NULL
   p
@@ -107,9 +106,9 @@ opt <- optim(log(best_par),
 CL_lin_cal  <- exp(opt$par[1])
 Vmax_MM_cal <- exp(opt$par[2])
 Km_MM_cal   <- exp(opt$par[3])
-tdxd_nhp$CL_lin  <- CL_lin_cal
-tdxd_nhp$Vmax_MM <- Vmax_MM_cal
-tdxd_nhp$Km_MM   <- Km_MM_cal
+fgfr2_nhp$CL_lin  <- CL_lin_cal
+fgfr2_nhp$Vmax_MM <- Vmax_MM_cal
+fgfr2_nhp$Km_MM   <- Km_MM_cal
 
 cat(sprintf("TMDD calibré : CL=%.3e  Vmax=%.4f  Km=%.1f  RMSE=%.1f%%\n",
             CL_lin_cal, Vmax_MM_cal, Km_MM_cal, 100*sqrt(opt$value/9)))
@@ -125,7 +124,7 @@ simulate_nhp <- function(dose_tdxd_mgkg, n_cycles = 3,
   p$Km_MM   <- Km_MM_cal
   p$rate_fun <- make_nhp_infusion(
     dose_mgkg = dose_tdxd_mgkg, BW_kg = BW_kg,
-    Tinfu_h = Tinfu_h, interval_h = tdxd_nhp$interval_h,
+    Tinfu_h = Tinfu_h, interval_h = fgfr2_nhp$interval_h,
     n_cycles = n_cycles)
   times <- seq(0, max(n_cycles * 21 * 24, 120 * 24), by = 1)
   sol <- as.data.frame(ode(
@@ -140,8 +139,8 @@ simulate_nhp <- function(dose_tdxd_mgkg, n_cycles = 3,
 # Simulations T-DXd Q3W × 3 cycles
 # ════════════════════════════════════════════════════════
 cat("\nSimulations T-DXd Q3W × 3 ...\n")
-doses_tdxd <- c(3, 10, 30)
-sims_tdxd  <- lapply(doses_tdxd, function(d) simulate_nhp(d, n_cycles = 3))
+doses_fgfr2 <- c(3, 10, 30)
+sims_fgfr2  <- lapply(doses_fgfr2, function(d) simulate_nhp(d, n_cycles = 3))
 
 # ════════════════════════════════════════════════════════
 # DONNÉES PK OBSERVÉES — à remplir manuellement
@@ -171,8 +170,8 @@ dose_days <- c(0, 21, 42)
 
 pdf("results/NHP_PK_validation_Table7.pdf", width = 10, height = 5)
 par(mfrow = c(1, 3), mar = c(4, 4.5, 3, 1.5))
-for (i in seq_along(doses_tdxd)) {
-  s <- sims_tdxd[[i]]; col <- dose_cols[i]; d <- doses_tdxd[i]
+for (i in seq_along(doses_fgfr2)) {
+  s <- sims_fgfr2[[i]]; col <- dose_cols[i]; d <- doses_fgfr2[i]
   fda <- fda_tk_nhp[[i]]
 
   plot(s$time_d, s$C_ADC1, type="l", lwd=2.5, col=col, log="y",
@@ -211,18 +210,18 @@ cell_info <- list(
 )
 
 for (ci in cell_info) {
-  y_vals <- lapply(sims_tdxd, function(s) s[[ci$var]])
+  y_vals <- lapply(sims_fgfr2, function(s) s[[ci$var]])
   y_max  <- max(unlist(y_vals), na.rm=TRUE) * 1.1
   y_min  <- min(unlist(y_vals), na.rm=TRUE) * 0.9
-  plot(sims_tdxd[[1]]$time_d, y_vals[[1]], type="n",
+  plot(sims_fgfr2[[1]]$time_d, y_vals[[1]], type="n",
        ylim=c(y_min, y_max), xlab="Temps (j)", ylab=ci$label,
        main=ci$label)
-  for (i in seq_along(doses_tdxd))
-    lines(sims_tdxd[[i]]$time_d, y_vals[[i]], col=dose_cols[i], lwd=2)
+  for (i in seq_along(doses_fgfr2))
+    lines(sims_fgfr2[[i]]$time_d, y_vals[[i]], col=dose_cols[i], lwd=2)
   if (!is.null(ci$base))
     abline(h=init_pars[[ci$base]], lty=2, col="grey40")
   abline(v=dose_days, lty=3, col="grey70")
-  legend("bottomright", paste0(doses_tdxd, " mg/kg"),
+  legend("bottomright", paste0(doses_fgfr2, " mg/kg"),
          col=dose_cols, lwd=2, bty="n", cex=0.85)
 }
 dev.off()
@@ -234,15 +233,15 @@ cat("  -> results_TDXD/NHP_PD_Fornari_TDXd.pdf\n")
 cat("\n═══ VALIDATION NCA FDA Table 7 ═══\n")
 cat(sprintf("  %-10s │ C0_obs  C0_sim  ratio │ AUC_obs AUC_sim ratio │ T½_obs T½_sim\n", "Dose"))
 cat(sprintf("  %s\n", paste(rep("─",75), collapse="")))
-for (i in seq_along(doses_tdxd)) {
-  s <- sims_tdxd[[i]]; fda <- fda_tk_nhp[[i]]
+for (i in seq_along(doses_fgfr2)) {
+  s <- sims_fgfr2[[i]]; fda <- fda_tk_nhp[[i]]
   C0  <- max(s$C_ADC1[s$time <= 24])
   idx <- s$time <= 504
   AUC <- sum(diff(s$time[idx])*(s$C_ADC1[idx][-sum(idx)]+s$C_ADC1[idx][-1])/2)/24
   idt <- s$time>=100 & s$time<=480 & s$C_ADC1>0
   t12 <- if(sum(idt)>5) log(2)/abs(coef(lm(log(C_ADC1)~time,data=s[idt,]))[2])/24 else NA
   cat(sprintf("  %-10s │ %6.1f  %6.1f  %5.3f │ %7.0f %7.0f %5.3f │ %6.2f %6.2f\n",
-              paste0(doses_tdxd[i]," mg/kg"),
+              paste0(doses_fgfr2[i]," mg/kg"),
               fda$C0_ADC, C0, C0/fda$C0_ADC,
               fda$AUC21d_ADC, AUC, AUC/fda$AUC21d_ADC,
               fda$t_half_d, t12))
@@ -258,11 +257,11 @@ cell_vars   <- c("Neut", "Mono", "Ret", "RBC", "Plt", "MPP", "CMP", "MEP")
 closest_row <- function(sol, day) sol[which.min(abs(sol$time_d - day)), ]
 
 records <- list()
-for (i in seq_along(doses_tdxd)) {
-  s <- sims_tdxd[[i]]
+for (i in seq_along(doses_fgfr2)) {
+  s <- sims_fgfr2[[i]]
   for (d in target_days) {
     row <- closest_row(s, d)
-    rec <- data.frame(Dose_mgkg = doses_tdxd[i], Jour = d)
+    rec <- data.frame(Dose_mgkg = doses_fgfr2[i], Jour = d)
     for (v in cell_vars) rec[[v]] <- round(row[[v]], 3)
     records <- c(records, list(rec))
   }
@@ -303,9 +302,9 @@ cat(sprintf("  %-8s │ %14s %14s %14s %14s %14s\n",
 cat(sprintf("  %s\n", paste(rep("─", 85), collapse="")))
 
 nadir_records <- list()
-for (i in seq_along(doses_tdxd)) {
-  s   <- sims_tdxd[[i]]
-  rec <- data.frame(Dose_mgkg = doses_tdxd[i])
+for (i in seq_along(doses_fgfr2)) {
+  s   <- sims_fgfr2[[i]]
+  rec <- data.frame(Dose_mgkg = doses_fgfr2[i])
   row_parts <- c()
   for (v in c("Neut", "Mono", "Ret", "RBC", "Plt")) {
     idx      <- which.min(s[[v]])
@@ -319,7 +318,7 @@ for (i in seq_along(doses_tdxd)) {
   }
   nadir_records <- c(nadir_records, list(rec))
   cat(sprintf("  %-8s │ %14s %14s %14s %14s %14s\n",
-              paste0(doses_tdxd[i]," mg/kg"),
+              paste0(doses_fgfr2[i]," mg/kg"),
               row_parts[1], row_parts[2], row_parts[3],
               row_parts[4], row_parts[5]))
 }

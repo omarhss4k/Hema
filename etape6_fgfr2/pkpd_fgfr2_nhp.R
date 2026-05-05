@@ -1,5 +1,5 @@
 ############################################################
-# pkpd_tdxd_nhp.R
+# pkpd_fgfr2_nhp.R
 # ODE PK/PD — T-DXd (DS-8201a) — SINGE CYNOMOLGUS (NHP)
 #
 # Modèle (23 états) :

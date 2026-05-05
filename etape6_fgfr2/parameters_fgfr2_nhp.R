@@ -1,5 +1,5 @@
 ############################################################
-# parameters_tdxd_nhp.R
+# parameters_fgfr2_nhp.R
 # Paramètres PK — T-DXd (DS-8201a) — SINGE CYNOMOLGUS (NHP)
 #
 # Méthode :
@@ -23,7 +23,7 @@
 # Unités : temps [h] | concentrations [mg/L = µg/mL]
 ############################################################
 
-tdxd_nhp <- list()
+fgfr2_nhp <- list()
 
 # ── Poids corporels ──────────────────────────────────────
 BW_rat   <- 0.25   # kg  (étude rat FDA Table 6)
@@ -34,10 +34,10 @@ allo_CL  <- (BW_nhp / BW_rat)^0.75   # 16^0.75 = 8.0
 allo_V   <- (BW_nhp / BW_rat)^1.0    # 16.0
 
 # ── Propriétés ADC (identiques rat/humain) ───────────────
-tdxd_nhp$DAR          <- 8
-tdxd_nhp$MW_ADC       <- 148000  # g/mol
-tdxd_nhp$MW_DXd       <- 718.8   # g/mol
-tdxd_nhp$mass_frac_DXd <- 8 * 718.8 / 148000  # ≈ 0.03885
+fgfr2_nhp$DAR          <- 8
+fgfr2_nhp$MW_ADC       <- 148000  # g/mol
+fgfr2_nhp$MW_DXd       <- 718.8   # g/mol
+fgfr2_nhp$mass_frac_DXd <- 8 * 718.8 / 148000  # ≈ 0.03885
 
 # ── Paramètres rat calibrés FDA Table 6 (point de départ) ─
 CL_rat  <- 1.01e-4    # L/h
@@ -124,18 +124,18 @@ V2_fda_nhp   <- Q_ADC_allom / k21_tgt
 k_int_nhp     <- 0
 
 # ── Consolidation des paramètres T-DXd ───────────────────
-tdxd_nhp$CL_ADC        <- CL_fda_nhp
-tdxd_nhp$CL_lin        <- CL_fda_nhp
-tdxd_nhp$Vmax_MM       <- 0.060
-tdxd_nhp$Km_MM         <- 4.0
-tdxd_nhp$V1_ADC        <- V1_fda_nhp
-tdxd_nhp$V2_ADC        <- V2_fda_nhp
-tdxd_nhp$Q_ADC         <- Q_ADC_allom
-tdxd_nhp$k_int         <- k_int_nhp
-tdxd_nhp$interval_h    <- interval_h
-tdxd_nhp$k_dam          <- 0.075
-tdxd_nhp$k_rep          <- 0.017
-tdxd_nhp$mgL_to_uM_ADC  <- 1000 / tdxd_nhp$MW_ADC   # mg/L → µM  (MW=148000 g/mol)
+fgfr2_nhp$CL_ADC        <- CL_fda_nhp
+fgfr2_nhp$CL_lin        <- CL_fda_nhp
+fgfr2_nhp$Vmax_MM       <- 0.060
+fgfr2_nhp$Km_MM         <- 4.0
+fgfr2_nhp$V1_ADC        <- V1_fda_nhp
+fgfr2_nhp$V2_ADC        <- V2_fda_nhp
+fgfr2_nhp$Q_ADC         <- Q_ADC_allom
+fgfr2_nhp$k_int         <- k_int_nhp
+fgfr2_nhp$interval_h    <- interval_h
+fgfr2_nhp$k_dam          <- 0.075
+fgfr2_nhp$k_rep          <- 0.017
+fgfr2_nhp$mgL_to_uM_ADC  <- 1000 / fgfr2_nhp$MW_ADC   # mg/L → µM  (MW=148000 g/mol)
 
 # ── Fonction d'administration T-DXd ─────────────────────
 make_nhp_infusion <- function(dose_mgkg, BW_kg = 4.0,
@@ -214,7 +214,7 @@ make_nhp_carbo_infusion <- function(dose_mgkg, BW_kg = BW_nhp,
 }
 
 # État initial — inclut les compartiments carboplatin
-tdxd_nhp_state0 <- c(
+fgfr2_nhp_state0 <- c(
   C_ADC1   = 0,
   C_ADC2   = 0,
   C_DXd    = 0,
@@ -224,7 +224,7 @@ tdxd_nhp_state0 <- c(
   Damage   = 0
 )
 
-cat("PK T-DXd NHP  : V1=", round(tdxd_nhp$V1_ADC,4), "L  CL=",
-    formatC(tdxd_nhp$CL_ADC, format="e", digits=3), "L/h\n")
+cat("PK T-DXd NHP  : V1=", round(fgfr2_nhp$V1_ADC,4), "L  CL=",
+    formatC(fgfr2_nhp$CL_ADC, format="e", digits=3), "L/h\n")
 cat("PK Carboplatin: V1=", carbo_nhp$V1, "L  CL=", carbo_nhp$CL, "L/h",
     " t½=", carbo_nhp$t_half_h, "h\n")
