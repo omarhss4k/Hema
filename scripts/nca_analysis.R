@@ -18,6 +18,7 @@ library(ggplot2)
 
 pk_raw <- bind_rows(
 
+  # ── 3 mg/kg ──────────────────────────────────────────
   data.frame(
     subject    = "Animal_01",
     dose_mg_kg = 3,
@@ -30,7 +31,23 @@ pk_raw <- bind_rows(
     dose_mg_kg = 3,
     time = c(0,     0.083, 4,     24,    48,   72,   96,   168,  336, 504),
     conc = c(0,     73200, 50200, 16600, 6370, 3680, 2180, 1020, NA,  NA )
-  )
+  ),
+
+  # ── 10 mg/kg — à remplir ─────────────────────────────
+  # data.frame(
+  #   subject    = "Animal_03",
+  #   dose_mg_kg = 10,
+  #   time = c(),   # heures depuis la dose
+  #   conc = c()    # ng/mL  (NA pour BLQ)
+  # ),
+
+  # ── 30 mg/kg — à remplir ─────────────────────────────
+  # data.frame(
+  #   subject    = "Animal_04",
+  #   dose_mg_kg = 30,
+  #   time = c(),
+  #   conc = c()
+  # )
 )
 
 # ── 2. Définition du modèle rxode2 --------------------------------------------
@@ -204,30 +221,42 @@ for (anim in animals) {
 }
 pred_df <- bind_rows(pred_list)
 
-obs_df  <- pk_raw %>% filter(!is.na(conc), conc > 0)
+obs_df  <- pk_raw %>% filter(!is.na(conc), conc > 0) %>%
+  mutate(Dose = paste0(dose_mg_kg, " mg/kg"))
+pred_df <- pred_df %>%
+  left_join(pk_raw %>% select(subject, dose_mg_kg) %>% distinct(), by = "subject") %>%
+  mutate(Dose = paste0(dose_mg_kg, " mg/kg"))
+
+dose_cols_nca <- c("3 mg/kg"  = "#2166ac",
+                   "10 mg/kg" = "#4dac26",
+                   "30 mg/kg" = "#d6604d")
 
 theme_pk <- theme_bw(base_size = 13) +
   theme(plot.title = element_text(face = "bold"))
 
 # 7a. Linéaire
 p_linear <- ggplot() +
-  geom_line(data = pred_df, aes(x=time, y=conc, color=subject), linewidth=0.9) +
-  geom_point(data = obs_df, aes(x=time, y=conc, color=subject), size=3) +
-  labs(title = "Profil PK — modèle 2 compartiments (rxode2)",
+  geom_line(data  = pred_df, aes(x=time, y=conc, color=Dose, group=subject), linewidth=0.9) +
+  geom_point(data = obs_df,  aes(x=time, y=conc, color=Dose, shape=subject), size=3) +
+  scale_color_manual(values = dose_cols_nca) +
+  labs(title    = "Profil PK — modèle 2 compartiments (rxode2)",
        subtitle = "Points = observations ; lignes = modèle ajusté",
-       x = "Temps (h)", y = "Concentration (ng/mL)", color = "Animal") +
+       x = "Temps (h)", y = "Concentration (ng/mL)",
+       color = "Dose", shape = "Animal") +
   theme_pk
 print(p_linear)
 ggsave("nca_linear.png", plot = p_linear, width = 8, height = 5, dpi = 300)
 
 # 7b. Semi-logarithmique
 p_semilog <- ggplot() +
-  geom_line(data = pred_df, aes(x=time, y=conc, color=subject), linewidth=0.9) +
-  geom_point(data = obs_df, aes(x=time, y=conc, color=subject), size=3) +
+  geom_line(data  = pred_df, aes(x=time, y=conc, color=Dose, group=subject), linewidth=0.9) +
+  geom_point(data = obs_df,  aes(x=time, y=conc, color=Dose, shape=subject), size=3) +
+  scale_color_manual(values = dose_cols_nca) +
   scale_y_log10() +
-  labs(title = "Profil PK — modèle 2 compartiments (rxode2) — échelle semi-log",
+  labs(title    = "Profil PK — modèle 2 compartiments (rxode2) — échelle semi-log",
        subtitle = "Points = observations ; lignes = modèle ajusté",
-       x = "Temps (h)", y = "Concentration (ng/mL) — log", color = "Animal") +
+       x = "Temps (h)", y = "Concentration (ng/mL) — log",
+       color = "Dose", shape = "Animal") +
   theme_pk
 print(p_semilog)
 ggsave("nca_semilog.png", plot = p_semilog, width = 8, height = 5, dpi = 300)
