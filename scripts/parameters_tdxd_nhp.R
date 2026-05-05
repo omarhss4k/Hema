@@ -45,10 +45,6 @@ V1_rat  <- 0.01105    # L
 V2_rat  <- 0.01803    # L
 Q_rat   <- (0.174 / 24) * ((BW_rat / 70)^0.75)  # L/h
 
-CL_DXd_rat <- 19.2 * ((BW_rat / 70)^0.75)   # L/h
-V_DXd_rat  <- 29.41 * (BW_rat / 70)          # L
-krel_rat   <- 1.19e-3   # h⁻¹
-
 # ── Allométrie rat → NHP ─────────────────────────────────
 CL_ADC_allom  <- CL_rat   * allo_CL
 V1_ADC_allom  <- V1_rat   * allo_V
@@ -124,20 +120,6 @@ V2_fda_nhp   <- Q_ADC_allom / k21_tgt
 
 k_int_nhp     <- 0
 
-CL_DXd_nhp <- CL_DXd_allom
-V_DXd_nhp  <- V_DXd_allom
-V_ic_nhp   <- 0.003 * (BW_nhp / BW_rat)
-
-krel_v <- numeric(3)
-for (i in seq_along(fda_tk_nhp)) {
-  d <- fda_tk_nhp[[i]]
-  C_DXd_mgL  <- d$C0_DXd_ng * 1e-3
-  C_ADC_mgL  <- d$C0_ADC
-  krel_v[i]  <- C_DXd_mgL * CL_DXd_nhp /
-                (tdxd_nhp$mass_frac_DXd * C_ADC_mgL * V1_v[i])
-}
-krel_fda_nhp <- mean(krel_v)
-
 # ── Consolidation des paramètres T-DXd ───────────────────
 tdxd_nhp$CL_ADC        <- CL_fda_nhp
 tdxd_nhp$CL_lin        <- CL_fda_nhp
@@ -147,15 +129,7 @@ tdxd_nhp$V1_ADC        <- V1_fda_nhp
 tdxd_nhp$V2_ADC        <- V2_fda_nhp
 tdxd_nhp$Q_ADC         <- Q_ADC_allom
 tdxd_nhp$k_int         <- k_int_nhp
-tdxd_nhp$CL_DXd        <- CL_DXd_nhp
-tdxd_nhp$V_DXd         <- V_DXd_nhp
-tdxd_nhp$V_ic          <- V_ic_nhp
-tdxd_nhp$k_rel_c1      <- krel_fda_nhp
-tdxd_nhp$krel_power    <- -0.137
-tdxd_nhp$krel_factor   <- 0.830
 tdxd_nhp$interval_h    <- interval_h
-tdxd_nhp$k_inD         <- 0.7
-tdxd_nhp$k_effD        <- 0.7
 tdxd_nhp$k_dam          <- 0.017
 tdxd_nhp$k_rep          <- 0.017
 tdxd_nhp$mgL_to_uM_ADC  <- 1000 / tdxd_nhp$MW_ADC   # mg/L → µM  (MW=148000 g/mol)
