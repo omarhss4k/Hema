@@ -177,3 +177,145 @@ ggsave("results_TDXD/poster_nadir_barplot.png", p_bar, width = 8, height = 5, dp
 cat("  -> results_TDXD/poster_nadir_barplot.pdf / .png\n")
 
 cat("\nTous les graphiques generes dans results_TDXD/\n")
+
+# ════════════════════════════════════════════════════════
+# TABLEAU POSTER — Nadirs & validation PK
+# Export PNG prêt à intégrer dans le poster
+# ════════════════════════════════════════════════════════
+library(gridExtra)
+library(grid)
+
+# ── 1. Tableau des nadirs ────────────────────────────────
+cells_info <- list(
+  list(var = "Neut", label = "Neutrophiles\n(10⁹/L)", base = init_pars$Neut0),
+  list(var = "Plt",  label = "Plaquettes\n(10⁹/L)",   base = init_pars$Plt0),
+  list(var = "Ret",  label = "Réticulocytes\n(10⁹/L)", base = init_pars$Ret0),
+  list(var = "RBC",  label = "GR\n(10⁹/L)",            base = init_pars$RBC0)
+)
+
+nadir_tbl <- do.call(rbind, lapply(seq_along(doses_tdxd), function(i) {
+  s <- sims_tdxd[[i]]
+  row <- data.frame(Dose = paste0(doses_tdxd[i], " mg/kg"), stringsAsFactors = FALSE)
+  for (ci in cells_info) {
+    idx <- which.min(s[[ci$var]])
+    val <- round(s[[ci$var]][idx], 1)
+    day <- round(s$time_d[idx], 0)
+    pct <- round((s[[ci$var]][idx] / ci$base - 1) * 100, 0)
+    row[[ci$label]] <- sprintf("%.1f  (J%d  |  %+d%%)", val, day, pct)
+  }
+  row
+}))
+
+# Ligne baseline
+base_row <- data.frame(Dose = "Baseline", stringsAsFactors = FALSE)
+for (ci in cells_info) base_row[[ci$label]] <- round(ci$base, 1)
+nadir_tbl <- rbind(nadir_tbl, base_row)
+
+tt_nad <- ttheme_minimal(
+  core = list(
+    fg_params  = list(cex = 0.88, col = c(rep("black", 3), "#555555")),
+    bg_params  = list(fill = c("#dce8f5", "#edf4ff", "#f5f9ff", "#f7f7f7"))
+  ),
+  colhead = list(
+    fg_params = list(cex = 0.90, fontface = "bold", col = "white"),
+    bg_params = list(fill = "#1a3a5c")
+  ),
+  rowhead = list(fg_params = list(cex = 0.88))
+)
+
+tbl_nad_grob <- tableGrob(nadir_tbl, rows = NULL, theme = tt_nad)
+
+title_nad <- textGrob(
+  "Nadirs hématologiques prédits — T-DXd NHP  (Q3W × 3 cycles)",
+  gp = gpar(fontsize = 11, fontface = "bold", col = "#1a3a5c")
+)
+note_nad <- textGrob(
+  "Format : valeur nadir  (jour du nadir  |  % vs baseline)",
+  gp = gpar(fontsize = 8.5, col = "grey45", fontface = "italic")
+)
+
+png("results_TDXD/poster_table_nadirs.png",
+    width = 1100, height = 300, res = 150)
+grid.draw(arrangeGrob(title_nad, tbl_nad_grob, note_nad,
+                      heights = c(0.13, 0.74, 0.08),
+                      padding = unit(4, "mm")))
+dev.off()
+cat("  -> results_TDXD/poster_table_nadirs.png\n")
+
+# ── 2. Tableau validation PK vs FDA Table 7 ─────────────
+pk_tbl <- do.call(rbind, lapply(seq_along(doses_tdxd), function(i) {
+  s   <- sims_tdxd[[i]]
+  fda <- fda_tk_nhp[[i]]
+  C0_sim  <- round(max(s$C_ADC1[s$time <= 24]), 0)
+  idx_auc <- s$time <= 504
+  AUC_sim <- round(sum(diff(s$time[idx_auc]) *
+                   (s$C_ADC1[idx_auc][-sum(idx_auc)] +
+                    s$C_ADC1[idx_auc][-1]) / 2) / 24, 0)
+  idt <- s$time >= 100 & s$time <= 480 & s$C_ADC1 > 0
+  t12_sim <- if (sum(idt) > 5)
+    round(log(2) / abs(coef(lm(log(C_ADC1) ~ time, data = s[idt,]))[2]) / 24, 1)
+  else NA_real_
+
+  data.frame(
+    Dose         = paste0(doses_tdxd[i], " mg/kg"),
+    `C₀ obs`     = round(fda$C0_ADC, 0),
+    `C₀ sim`     = C0_sim,
+    `AUC₂₁ obs`  = round(fda$AUC21d_ADC, 0),
+    `AUC₂₁ sim`  = AUC_sim,
+    `t½ obs (j)` = round(fda$t_half_d, 1),
+    `t½ sim (j)` = t12_sim,
+    check.names  = FALSE,
+    stringsAsFactors = FALSE
+  )
+}))
+
+tt_pk <- ttheme_minimal(
+  core = list(
+    fg_params = list(cex = 0.88),
+    bg_params = list(fill = c("#dce8f5", "#edf4ff", "#f5f9ff"))
+  ),
+  colhead = list(
+    fg_params = list(cex = 0.90, fontface = "bold", col = "white"),
+    bg_params = list(fill = "#1a3a5c")
+  )
+)
+
+tbl_pk_grob <- tableGrob(pk_tbl, rows = NULL, theme = tt_pk)
+
+title_pk <- textGrob(
+  "Validation PK T-DXd NHP — vs FDA BLA 761139 Table 7",
+  gp = gpar(fontsize = 11, fontface = "bold", col = "#1a3a5c")
+)
+note_pk <- textGrob(
+  "C₀ (µg/mL)  |  AUC₂₁ (µg·h/mL)  |  t½ (jours)   — obs = données FDA",
+  gp = gpar(fontsize = 8.5, col = "grey45", fontface = "italic")
+)
+
+png("results_TDXD/poster_table_pk_validation.png",
+    width = 900, height = 250, res = 150)
+grid.draw(arrangeGrob(title_pk, tbl_pk_grob, note_pk,
+                      heights = c(0.13, 0.74, 0.08),
+                      padding = unit(4, "mm")))
+dev.off()
+cat("  -> results_TDXD/poster_table_pk_validation.png\n")
+
+# ════════════════════════════════════════════════════════
+# CONCLUSIONS POSTER — texte révisé
+# Copier-coller dans l'outil de mise en page du poster
+# ════════════════════════════════════════════════════════
+# • A semi-mechanistic PK/PD model was developed for T-DXd in NHP by
+#   coupling a 2-compartment TMDD PK model with the Fornari 2019
+#   hematopoietic progenitor framework
+#
+# • PK parameters were calibrated and validated against FDA BLA 761139
+#   (Table 7) across 3 dose levels (3, 10, 30 mg/kg Q3W × 3 cycles)
+#
+# • The model predicts dose-dependent hematological nadirs:
+#   reticulocytes at Day ~8, neutrophils and platelets at Day ~15 post-dose
+#
+# • At 30 mg/kg, deepest suppression is predicted for reticulocytes and
+#   neutrophils — consistent with dose-limiting toxicity observed in NHP
+#
+# • This mechanistic framework provides a quantitative basis for
+#   preclinical-to-clinical translation of T-DXd hematotoxicity and
+#   supports rational dose optimization in oncology
