@@ -79,10 +79,10 @@ p_cells <- ggplot(df_cells, aes(x = time_d, y = Valeur, color = Dose)) +
   geom_point(data = nadir_df, shape = 25, size = 3,
              fill = "white", stroke = 1.5) +
   scale_color_manual(values = dose_cols) +
-  scale_x_continuous(breaks = seq(0, 63, by = 21),
-                     labels = paste0("J", seq(0, 63, by = 21))) +
+  scale_x_continuous(breaks = seq(0, 120, by = 21),
+                     labels = paste0("J", seq(0, 120, by = 21))) +
   facet_wrap(~Cellule, scales = "free_y", ncol = 2) +
-  labs(title    = "Predicted Hematological Profiles — T-DXd Q3W × 3 cycles",
+  labs(title    = "Predicted Hematological Profiles — T-DXd Q3W × 3 cycles (+ recovery)",
        subtitle = "▽ nadir  |  ··· baseline  |  --- dose day",
        x = "Temps (jours)", y = NULL) +
   theme_poster
@@ -102,8 +102,8 @@ p_damage <- ggplot(sim_long %>% filter(Cellule == "Damage (u.a.)"),
              color = "grey70", linewidth = 0.4) +
   geom_line(linewidth = 1.1) +
   scale_color_manual(values = dose_cols) +
-  scale_x_continuous(breaks = seq(0, 63, by = 21),
-                     labels = paste0("J", seq(0, 63, by = 21))) +
+  scale_x_continuous(breaks = seq(0, 120, by = 21),
+                     labels = paste0("J", seq(0, 120, by = 21))) +
   labs(title = "DNA Damage — model driver",
        x = "Temps (jours)", y = "Damage (u.a.)") +
   theme_poster

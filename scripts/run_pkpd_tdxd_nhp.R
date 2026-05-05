@@ -127,7 +127,7 @@ simulate_nhp <- function(dose_tdxd_mgkg, n_cycles = 3,
     dose_mgkg = dose_tdxd_mgkg, BW_kg = BW_kg,
     Tinfu_h = Tinfu_h, interval_h = tdxd_nhp$interval_h,
     n_cycles = n_cycles)
-  times <- seq(0, n_cycles * 21 * 24, by = 1)
+  times <- seq(0, max(n_cycles * 21 * 24, 120 * 24), by = 1)
   sol <- as.data.frame(ode(
     y = nhp_state0, times = times,
     func = pkpd_nhp_ode, parms = p, method = "lsoda"))
