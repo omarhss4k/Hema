@@ -15,6 +15,21 @@ if (!exists("sims_tdxd") || !exists("doses_tdxd")) {
 
 if (!dir.exists("results_TDXD")) dir.create("results_TDXD")
 
+# ════════════════════════════════════════════════════════
+# DONNÉES OBSERVÉES — à remplir manuellement
+# Colonnes obligatoires : dose_mgkg, jour, Neut, Plt, Ret, RBC
+# Ret = réticulocytes ABSOLUS (10⁹/L)  [= %RET/100 × RBC]
+# Mettre NA si non mesuré
+# ════════════════════════════════════════════════════════
+obs_data <- data.frame(
+  dose_mgkg = c(),   # ex: c(3, 3, 10, 10, 30, 30)
+  jour      = c(),   # ex: c(2, 8,  2,  8,  2,  8)
+  Neut      = c(),
+  Plt       = c(),
+  Ret       = c(),
+  RBC       = c()
+)
+
 # ── Palette ─────────────────────────────────────────────
 dose_cols <- c("3 mg/kg"  = "#2166ac",
                "10 mg/kg" = "#4dac26",
@@ -69,6 +84,22 @@ nadir_df <- sim_long %>%
 # ════════════════════════════════════════════════════════
 df_cells <- sim_long %>% filter(Cellule != "Damage (u.a.)")
 
+# Observed data en long format (si rempli)
+obs_long <- if (nrow(obs_data) > 0) {
+  obs_data %>%
+    mutate(Dose = paste0(dose_mgkg, " mg/kg")) %>%
+    pivot_longer(cols = c(Neut, Plt, Ret, RBC),
+                 names_to = "Cellule", values_to = "Valeur") %>%
+    mutate(
+      Dose    = factor(Dose, levels = paste0(doses_tdxd, " mg/kg")),
+      Cellule = factor(Cellule,
+                       levels = c("Neut", "Plt", "Ret", "RBC"),
+                       labels = c("Neutrophiles (10⁹/L)", "Plaquettes (10⁹/L)",
+                                  "Réticulocytes (10⁹/L)", "GR (10⁹/L)"))
+    ) %>%
+    filter(!is.na(Valeur))
+} else NULL
+
 p_cells <- ggplot(df_cells, aes(x = time_d, y = Valeur, color = Dose)) +
   geom_vline(xintercept = dose_days, linetype = "dashed",
              color = "grey70", linewidth = 0.4) +
@@ -78,6 +109,10 @@ p_cells <- ggplot(df_cells, aes(x = time_d, y = Valeur, color = Dose)) +
   geom_line(linewidth = 1.1) +
   geom_point(data = nadir_df, shape = 25, size = 3,
              fill = "white", stroke = 1.5) +
+  { if (!is.null(obs_long))
+      geom_point(data = obs_long, aes(x = jour, y = Valeur, color = Dose),
+                 shape = 16, size = 2.5, inherit.aes = FALSE)
+  } +
   scale_color_manual(values = dose_cols) +
   scale_x_continuous(breaks = seq(0, 120, by = 21),
                      labels = paste0("J", seq(0, 120, by = 21))) +
