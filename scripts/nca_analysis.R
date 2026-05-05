@@ -156,6 +156,7 @@ for (anim in animals) {
   # Stocker les 4 paramètres du modèle 2-cmt (unités : mL/h/kg et mL/kg)
   pk2cmt_raw[[anim]] <- data.frame(
     Animal_Id  = anim,
+    dose_mg_kg = dose,
     CL_mL_h_kg = round(p["CL"], 4),
     V1_mL_kg   = round(p["V1"], 4),
     Q_mL_h_kg  = round(p["Q"],  4),
@@ -184,6 +185,7 @@ write.csv(nca_summary, "nca_results.csv", row.names = FALSE)
 pk2cmt_df <- bind_rows(pk2cmt_raw)
 mean_row   <- data.frame(
   Animal_Id  = "Mean",
+  dose_mg_kg = NA,
   CL_mL_h_kg = mean(pk2cmt_df$CL_mL_h_kg),
   V1_mL_kg   = mean(pk2cmt_df$V1_mL_kg),
   Q_mL_h_kg  = mean(pk2cmt_df$Q_mL_h_kg),

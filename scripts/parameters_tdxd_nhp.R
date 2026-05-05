@@ -57,26 +57,37 @@ Q_ADC_allom   <- Q_rat    * allo_CL
 CL_DXd_allom  <- CL_DXd_rat * allo_CL
 V_DXd_allom   <- V_DXd_rat  * allo_V
 
-# ── FDA BLA 761139 Table 7 — Données TK singe (Day 1) ────
-fda_tk_nhp <- list(
-  list(dose_mgkg  = 3,
-       C0_ADC     = (101   + 95.3) / 2,
-       AUC21d_ADC = (317   + 268)  / 2,
-       t_half_d   = (3.95  + 3.85) / 2,
-       C0_DXd_ng  = (0.242 + 0.248)/ 2),
+# ── Cibles de calibration TK — données réelles NHP (pk2cmt_params.csv) ───
+# Mapping : Animal_01 = 3 mg/kg | Animal_03 = 10 mg/kg | Animal_04 = 30 mg/kg
+# Fallback : FDA BLA 761139 Table 7 si le fichier est absent
 
-  list(dose_mgkg  = 10,
-       C0_ADC     = (295   + 339)  / 2,
-       AUC21d_ADC = (1220  + 1080) / 2,
-       t_half_d   = (5.56  + 5.13) / 2,
-       C0_DXd_ng  = (0.656 + 1.02) / 2),
+pk2cmt_tk_file <- "pk2cmt_params.csv"
 
-  list(dose_mgkg  = 30,
-       C0_ADC     = (877   + 899)  / 2,
-       AUC21d_ADC = (4090  + 3770) / 2,
-       t_half_d   = (7.71  + 6.53) / 2,
-       C0_DXd_ng  = (2.71  + 3.9)  / 2)
-)
+if (file.exists(pk2cmt_tk_file)) {
+  pk2cmt_tk <- read.csv(pk2cmt_tk_file, stringsAsFactors = FALSE)
+  pk2cmt_tk <- pk2cmt_tk[!is.na(pk2cmt_tk$dose_mg_kg), ]
+
+  dose_animal_map <- list("3" = "Animal_01", "10" = "Animal_03", "30" = "Animal_04")
+
+  fda_tk_nhp <- lapply(c(3, 10, 30), function(d) {
+    row    <- pk2cmt_tk[pk2cmt_tk$Animal_Id == dose_animal_map[[as.character(d)]], ]
+    beta_h <- log(2) / row$t12_beta_h
+    C0     <- d * 1000 / row$V1_mL_kg
+    AUCinf <- d * 1000 / (row$CL_mL_h_kg * 24)
+    list(dose_mgkg  = d,
+         C0_ADC     = C0,
+         AUC21d_ADC = AUCinf * (1 - exp(-beta_h * 21 * 24)),
+         t_half_d   = row$t12_beta_h / 24)
+  })
+  cat("Cibles TK : données réelles NHP (pk2cmt_params.csv)\n")
+} else {
+  warning("pk2cmt_params.csv introuvable — fallback FDA BLA 761139 Table 7")
+  fda_tk_nhp <- list(
+    list(dose_mgkg=3,  C0_ADC=(101+95.3)/2,  AUC21d_ADC=(317+268)/2,   t_half_d=(3.95+3.85)/2),
+    list(dose_mgkg=10, C0_ADC=(295+339)/2,   AUC21d_ADC=(1220+1080)/2, t_half_d=(5.56+5.13)/2),
+    list(dose_mgkg=30, C0_ADC=(877+899)/2,   AUC21d_ADC=(4090+3770)/2, t_half_d=(7.71+6.53)/2)
+  )
+}
 
 interval_h <- 21 * 24   # 504 h = Q3W
 
