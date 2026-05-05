@@ -143,7 +143,27 @@ doses_tdxd <- c(3, 10, 30)
 sims_tdxd  <- lapply(doses_tdxd, function(d) simulate_nhp(d, n_cycles = 3))
 
 # ════════════════════════════════════════════════════════
-# Graphiques PK — validation FDA Table 7
+# DONNÉES PK OBSERVÉES — à remplir manuellement
+# time_h = temps en heures depuis la dose
+# conc   = concentration ADC mesurée (µg/mL = mg/L)
+# ════════════════════════════════════════════════════════
+pk_obs <- list(
+  "3"  = data.frame(
+    time_h = c(),   # ex: c(0.5, 1, 2, 4, 8, 24, 48, 168)
+    conc   = c()    # ex: c(98, 95, 90, ...)
+  ),
+  "10" = data.frame(
+    time_h = c(),
+    conc   = c()
+  ),
+  "30" = data.frame(
+    time_h = c(),
+    conc   = c()
+  )
+)
+
+# ════════════════════════════════════════════════════════
+# Graphiques PK — validation FDA Table 7 + données observées
 # ════════════════════════════════════════════════════════
 dose_cols <- c("#2166ac", "#4dac26", "#d6604d")
 dose_days <- c(0, 21, 42)
@@ -160,8 +180,16 @@ for (i in seq_along(doses_tdxd)) {
        ylim=c(1, max(s$C_ADC1)*2))
   abline(v=dose_days, lty=2, col="grey60")
   points(0.02, fda$C0_ADC, pch=19, cex=1.5)
-  legend("topright", c("Sim","C0 FDA"), col=c(col,"black"),
-         lwd=c(2.5,NA), pch=c(NA,19), bty="n", cex=0.85)
+  obs <- pk_obs[[as.character(d)]]
+  if (nrow(obs) > 0)
+    points(obs$time_h / 24, obs$conc, pch=17, cex=1.4, col=col)
+  has_obs <- nrow(obs) > 0
+  legend("topright",
+         c("Sim", "C0 FDA", if (has_obs) "Observé"),
+         col   = c(col, "black", if (has_obs) col),
+         lwd   = c(2.5, NA,     if (has_obs) NA),
+         pch   = c(NA,  19,     if (has_obs) 17),
+         bty   = "n", cex = 0.85)
 }
 dev.off()
 cat("  -> results_TDXD/NHP_PK_validation_Table7.pdf\n")
