@@ -127,7 +127,11 @@ simulate_nhp <- function(dose_tdxd_mgkg, n_cycles = 3,
     dose_mgkg = dose_tdxd_mgkg, BW_kg = BW_kg,
     Tinfu_h = Tinfu_h, interval_h = tdxd_nhp$interval_h,
     n_cycles = n_cycles)
-  times <- seq(0, max(n_cycles * 21 * 24, 120 * 24), by = 1)
+  max_time    <- max(n_cycles * 21 * 24, 120 * 24)
+  dose_t0s    <- seq(0, by = tdxd_nhp$interval_h, length.out = n_cycles)
+  fine_around <- unlist(lapply(dose_t0s, function(t0)
+    seq(t0, t0 + Tinfu_h + 0.5, by = 0.05)))
+  times <- sort(unique(c(seq(0, max_time, by = 1), fine_around)))
   sol <- as.data.frame(ode(
     y = nhp_state0, times = times,
     func = pkpd_nhp_ode, parms = p, method = "lsoda"))
