@@ -130,7 +130,7 @@ tdxd_nhp$V2_ADC        <- V2_fda_nhp
 tdxd_nhp$Q_ADC         <- Q_ADC_allom
 tdxd_nhp$k_int         <- k_int_nhp
 tdxd_nhp$interval_h    <- interval_h
-tdxd_nhp$k_dam          <- 0.017
+tdxd_nhp$k_dam          <- 0.075
 tdxd_nhp$k_rep          <- 0.017
 tdxd_nhp$mgL_to_uM_ADC  <- 1000 / tdxd_nhp$MW_ADC   # mg/L → µM  (MW=148000 g/mol)
 

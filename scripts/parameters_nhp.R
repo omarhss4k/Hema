@@ -66,7 +66,7 @@ init_pars$k_bind <- 0.0
 # ══════════════════════════════════════════════════════════
 # DAMAGE (ADN) — identique rat / humain (Fornari 2019 Table 1)
 # ══════════════════════════════════════════════════════════
-init_pars$k_dam <- 0.017   # formation d'adduits (h⁻¹ µM⁻¹)
+init_pars$k_dam <- 0.075   # formation d'adduits (h⁻¹ µM⁻¹) — augmenté ×4.4 pour compenser AUC réel vs FDA
 init_pars$k_rep <- 0.017   # réparation ADN (h⁻¹)
 
 # ══════════════════════════════════════════════════════════
