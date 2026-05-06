@@ -78,7 +78,7 @@ nca_tmdd <- function(sol) {
 
 wrss_tmdd <- function(CL_lin, Vmax_MM, Km_MM) {
   total <- 0
-  w_AUC <- c(2, 2, 1); w_t12 <- c(1, 1, 2)
+  w_AUC <- c(2, 2, 1, 1); w_t12 <- c(1, 1, 2, 2)
   for (i in seq_along(doses_cal)) {
     fda <- fda_tk_nhp[[i]]
     nca <- nca_tmdd(sim_one_tmdd(doses_cal[i], CL_lin, Vmax_MM, Km_MM))
