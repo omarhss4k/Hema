@@ -42,7 +42,7 @@ nhp_state0 <- c(
 # Calibration TMDD — grille + Nelder-Mead sur FDA Table 7
 # ════════════════════════════════════════════════════════
 cat("\nCalibration TMDD (grille + Nelder-Mead) ...\n")
-doses_cal <- c(3, 10, 30)
+doses_cal <- c(4, 13, 26, 39)   # doses corrigées ×1.297
 
 sim_one_tmdd <- function(dose_mgkg, CL_lin, Vmax_MM, Km_MM) {
   p <- build_pars()
@@ -139,7 +139,7 @@ simulate_nhp <- function(dose_tdxd_mgkg, n_cycles = 3,
 # Simulations FGFR2 inhibiteur Q3W × 3 cycles
 # ════════════════════════════════════════════════════════
 cat("\nSimulations FGFR2 inhibiteur Q3W × 3 ...\n")
-doses_fgfr2 <- c(3, 10, 30)
+doses_fgfr2 <- c(4, 13, 26, 39)   # doses corrigées ×1.297
 sims_fgfr2  <- lapply(doses_fgfr2, function(d) simulate_nhp(d, n_cycles = 3))
 
 # ════════════════════════════════════════════════════════
@@ -165,7 +165,7 @@ pk_obs <- list(
 # ════════════════════════════════════════════════════════
 # Graphiques PK — validation FDA Table 7 + données observées
 # ════════════════════════════════════════════════════════
-dose_cols <- c("#2166ac", "#4dac26", "#d6604d")
+dose_cols <- c("#2166ac", "#4dac26", "#f4a582", "#d6604d")
 dose_days <- c(0, 21, 42)
 
 pdf("results/NHP_PK_validation_Table7.pdf", width = 10, height = 5)

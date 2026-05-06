@@ -64,11 +64,19 @@ if (file.exists(pk2cmt_tk_file)) {
   pk2cmt_tk <- read.csv(pk2cmt_tk_file, stringsAsFactors = FALSE)
   pk2cmt_tk <- pk2cmt_tk[!is.na(pk2cmt_tk$dose_mg_kg), ]
 
-  dose_animal_map <- list("3" = "Animal_01", "10" = "Animal_03", "30" = "Animal_04")
+  # Facteur de correction dose : 1.297 (correction dose réelle vs dose nominale)
+  # Doses corrigées : 3→4 | 10→13 | 20→26 | 30→39 mg/kg
+  dose_factor <- 1.297
+  doses_nhp   <- c(4, 13, 26, 39)
+  dose_animal_map <- list("4"  = "Animal_01",
+                          "13" = "Animal_03",
+                          "26" = "Animal_02",
+                          "39" = "Animal_04")
 
-  fda_tk_nhp <- lapply(c(3, 10, 30), function(d) {
+  fda_tk_nhp <- lapply(doses_nhp, function(d) {
     row    <- pk2cmt_tk[pk2cmt_tk$Animal_Id == dose_animal_map[[as.character(d)]], ]
     beta_h <- log(2) / row$t12_beta_h
+    # C0 et AUC calculés depuis les params 2-cmt, dose corrigée
     C0     <- d * 1000 / row$V1_mL_kg
     AUCinf <- d * 1000 / (row$CL_mL_h_kg * 24)
     list(dose_mgkg  = d,
@@ -76,20 +84,23 @@ if (file.exists(pk2cmt_tk_file)) {
          AUC21d_ADC = AUCinf * (1 - exp(-beta_h * 21 * 24)),
          t_half_d   = row$t12_beta_h / 24)
   })
-  cat("Cibles TK : données réelles NHP (pk2cmt_params.csv)\n")
+  cat("Cibles TK : données réelles NHP (pk2cmt_params.csv) — doses corrigées ×1.297\n")
 } else {
-  warning("pk2cmt_params.csv introuvable — fallback FDA BLA 761139 Table 7")
+  warning("pk2cmt_params.csv introuvable — fallback valeurs corrigées ×1.297")
+  # Valeurs originales × 1.297 (dose et concentrations)
   fda_tk_nhp <- list(
-    list(dose_mgkg=3,  C0_ADC=(101+95.3)/2,  AUC21d_ADC=(317+268)/2,   t_half_d=(3.95+3.85)/2),
-    list(dose_mgkg=10, C0_ADC=(295+339)/2,   AUC21d_ADC=(1220+1080)/2, t_half_d=(5.56+5.13)/2),
-    list(dose_mgkg=30, C0_ADC=(877+899)/2,   AUC21d_ADC=(4090+3770)/2, t_half_d=(7.71+6.53)/2)
+    list(dose_mgkg=4,  C0_ADC=(101+95.3)/2  *1.297, AUC21d_ADC=(317+268)/2   *1.297, t_half_d=(3.95+3.85)/2),
+    list(dose_mgkg=13, C0_ADC=(295+339)/2   *1.297, AUC21d_ADC=(1220+1080)/2 *1.297, t_half_d=(5.56+5.13)/2),
+    list(dose_mgkg=26, C0_ADC=(586+638)/2   *1.297, AUC21d_ADC=(2655+2425)/2 *1.297, t_half_d=(6.64+5.83)/2),
+    list(dose_mgkg=39, C0_ADC=(877+899)/2   *1.297, AUC21d_ADC=(4090+3770)/2 *1.297, t_half_d=(7.71+6.53)/2)
   )
 }
 
 interval_h <- 21 * 24   # 504 h = Q3W
 
-# ── Calibration V1, CL, V2 depuis Table 7 ────────────────
-V1_v <- numeric(3); CL_v <- numeric(3); V2_v <- numeric(3)
+# ── Calibration V1, CL, V2 ───────────────────────────────
+n_doses <- length(fda_tk_nhp)
+V1_v <- numeric(n_doses); CL_v <- numeric(n_doses); V2_v <- numeric(n_doses)
 
 for (i in seq_along(fda_tk_nhp)) {
   d      <- fda_tk_nhp[[i]]

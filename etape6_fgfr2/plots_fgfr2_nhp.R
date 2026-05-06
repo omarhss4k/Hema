@@ -31,9 +31,10 @@ obs_data <- data.frame(
 )
 
 # ── Palette ─────────────────────────────────────────────
-dose_cols <- c("3 mg/kg"  = "#2166ac",
-               "10 mg/kg" = "#4dac26",
-               "30 mg/kg" = "#d6604d")
+dose_cols <- c("4 mg/kg"  = "#2166ac",
+               "13 mg/kg" = "#4dac26",
+               "26 mg/kg" = "#f4a582",
+               "39 mg/kg" = "#d6604d")
 dose_days <- c(0, 21, 42)
 
 theme_poster <- theme_bw(base_size = 15) +
