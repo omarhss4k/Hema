@@ -66,25 +66,28 @@ if (file.exists(pk2cmt_tk_file)) {
 
   # Facteur de correction dose : 1.297 (correction dose réelle vs dose nominale)
   # Doses corrigées : 3→4 | 10→13 | 20→26 | 30→39 mg/kg
+  # 2 animaux par dose — moyennés
   dose_factor <- 1.297
   doses_nhp   <- c(4, 13, 26, 39)
-  dose_animal_map <- list("4"  = "Animal_01",
-                          "13" = "Animal_03",
-                          "26" = "Animal_02",
-                          "39" = "Animal_04")
+  dose_animal_map <- list(
+    "4"  = c("Animal_01", "Animal_02"),
+    "13" = c("Animal_03", "Animal_04"),
+    "26" = c("Animal_05", "Animal_06"),
+    "39" = c("Animal_07", "Animal_08")
+  )
 
   fda_tk_nhp <- lapply(doses_nhp, function(d) {
-    row    <- pk2cmt_tk[pk2cmt_tk$Animal_Id == dose_animal_map[[as.character(d)]], ]
-    beta_h <- log(2) / row$t12_beta_h
-    # C0 et AUC calculés depuis les params 2-cmt, dose corrigée
-    C0     <- d * 1000 / row$V1_mL_kg
-    AUCinf <- d * 1000 / (row$CL_mL_h_kg * 24)
+    animals <- dose_animal_map[[as.character(d)]]
+    rows    <- pk2cmt_tk[pk2cmt_tk$Animal_Id %in% animals, ]
+    beta_h  <- mean(log(2) / rows$t12_beta_h)
+    C0      <- mean(d * 1000 / rows$V1_mL_kg)
+    AUCinf  <- mean(d * 1000 / (rows$CL_mL_h_kg * 24))
     list(dose_mgkg  = d,
          C0_ADC     = C0,
          AUC21d_ADC = AUCinf * (1 - exp(-beta_h * 21 * 24)),
-         t_half_d   = row$t12_beta_h / 24)
+         t_half_d   = mean(rows$t12_beta_h) / 24)
   })
-  cat("Cibles TK : données réelles NHP (pk2cmt_params.csv) — doses corrigées ×1.297\n")
+  cat("Cibles TK : données réelles NHP (pk2cmt_params.csv) — 2 animaux/dose, doses corrigées ×1.297\n")
 } else {
   warning("pk2cmt_params.csv introuvable — fallback valeurs corrigées ×1.297")
   # Valeurs originales × 1.297 (dose et concentrations)
