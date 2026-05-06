@@ -254,15 +254,23 @@ for (anim in animals) {
 pred_df <- bind_rows(pred_list)
 
 obs_df  <- pk_raw %>% filter(!is.na(conc), conc > 0) %>%
-  mutate(Dose = paste0(dose_mg_kg, " mg/kg"))
+  mutate(Dose = paste0(round(dose_mg_kg), " mg/kg"))
 pred_df <- pred_df %>%
   left_join(pk_raw %>% select(subject, dose_mg_kg) %>% distinct(), by = "subject") %>%
-  mutate(Dose = paste0(dose_mg_kg, " mg/kg"))
+  mutate(Dose = paste0(round(dose_mg_kg), " mg/kg"))
 
 dose_cols_nca <- c("4 mg/kg"  = "#2166ac",
                    "13 mg/kg" = "#4dac26",
                    "26 mg/kg" = "#f4a582",
                    "39 mg/kg" = "#d6604d")
+
+# Formes manuelles : même forme par dose (2 animaux/dose), plein vs creux
+animal_shapes <- c(
+  "Animal_01" = 16, "Animal_02" = 1,   # 4  mg/kg  : cercle plein / creux
+  "Animal_03" = 17, "Animal_04" = 2,   # 13 mg/kg  : triangle plein / creux
+  "Animal_05" = 15, "Animal_06" = 0,   # 26 mg/kg  : carré plein / creux
+  "Animal_07" = 18, "Animal_08" = 5    # 39 mg/kg  : losange plein / creux
+)
 
 theme_pk <- theme_bw(base_size = 13) +
   theme(plot.title = element_text(face = "bold"))
@@ -272,8 +280,9 @@ p_linear <- ggplot() +
   geom_line(data  = pred_df, aes(x=time, y=conc, color=Dose, group=subject), linewidth=0.9) +
   geom_point(data = obs_df,  aes(x=time, y=conc, color=Dose, shape=subject), size=3) +
   scale_color_manual(values = dose_cols_nca) +
+  scale_shape_manual(values = animal_shapes) +
   labs(title    = "Profil PK — modèle 2 compartiments (rxode2)",
-       subtitle = "Points = observations ; lignes = modèle ajusté",
+       subtitle = "Points = observations ; lignes = modèle ajusté | ●○ = animal 1/2 par dose",
        x = "Temps (h)", y = "Concentration (ng/mL)",
        color = "Dose", shape = "Animal") +
   theme_pk
@@ -285,9 +294,10 @@ p_semilog <- ggplot() +
   geom_line(data  = pred_df, aes(x=time, y=conc, color=Dose, group=subject), linewidth=0.9) +
   geom_point(data = obs_df,  aes(x=time, y=conc, color=Dose, shape=subject), size=3) +
   scale_color_manual(values = dose_cols_nca) +
+  scale_shape_manual(values = animal_shapes) +
   scale_y_log10() +
   labs(title    = "Profil PK — modèle 2 compartiments (rxode2) — échelle semi-log",
-       subtitle = "Points = observations ; lignes = modèle ajusté",
+       subtitle = "Points = observations ; lignes = modèle ajusté | ●○ = animal 1/2 par dose",
        x = "Temps (h)", y = "Concentration (ng/mL) — log",
        color = "Dose", shape = "Animal") +
   theme_pk
