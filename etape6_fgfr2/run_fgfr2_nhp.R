@@ -3,13 +3,13 @@
 # Simulation PK/PD — FGFR2 — SINGE CYNOMOLGUS (NHP)
 #
 # Modèle (25 états) :
-#   PK  : ADC 2-cpt + TMDD | DXd plasma | DXd intracellulaire | Damage
+#   PK  : Inhibiteur FGFR2 — 2-cpt + TMDD | Damage ADN
 #   PD  : Modèle Fornari 2019
 #         MPP → CMP → Neut / Mono
 #         MPP → MEP → Ret / RBC / Plt
 #
 # !! Paramètres PK à calibrer sur données FGFR2 NHP !!
-# (structure copiée depuis T-DXd — adapter PK et slopes)
+# (structure issue du modèle T-DXd — PK et slopes adaptés FGFR2)
 ############################################################
 library(deSolve)
 
@@ -21,7 +21,7 @@ source("pkpd_fgfr2_nhp.R")
 if (!dir.exists("results")) dir.create("results")
 
 # ════════════════════════════════════════════════════════
-# Paramètres consolidés T-DXd + Fornari NHP
+# Paramètres consolidés FGFR2 + Fornari NHP
 # ════════════════════════════════════════════════════════
 build_pars <- function() {
   p <- init_pars
@@ -136,16 +136,16 @@ simulate_nhp <- function(dose_tdxd_mgkg, n_cycles = 3,
 }
 
 # ════════════════════════════════════════════════════════
-# Simulations T-DXd Q3W × 3 cycles
+# Simulations FGFR2 inhibiteur Q3W × 3 cycles
 # ════════════════════════════════════════════════════════
-cat("\nSimulations T-DXd Q3W × 3 ...\n")
+cat("\nSimulations FGFR2 inhibiteur Q3W × 3 ...\n")
 doses_fgfr2 <- c(3, 10, 30)
 sims_fgfr2  <- lapply(doses_fgfr2, function(d) simulate_nhp(d, n_cycles = 3))
 
 # ════════════════════════════════════════════════════════
 # DONNÉES PK OBSERVÉES — à remplir manuellement
 # time_h = temps en heures depuis la dose
-# conc   = concentration ADC mesurée (µg/mL = mg/L)
+# conc   = concentration FGFR2 mesurée (µg/mL = mg/L)
 # ════════════════════════════════════════════════════════
 pk_obs <- list(
   "3"  = data.frame(
@@ -175,8 +175,8 @@ for (i in seq_along(doses_fgfr2)) {
   fda <- fda_tk_nhp[[i]]
 
   plot(s$time_d, s$C_ADC1, type="l", lwd=2.5, col=col, log="y",
-       xlab="Temps (j)", ylab="ADC [µg/mL]",
-       main=sprintf("ADC — %d mg/kg Q3W", d),
+       xlab="Temps (j)", ylab="FGFR2 inhibiteur [µg/mL]",
+       main=sprintf("FGFR2 — %d mg/kg Q3W", d),
        ylim=c(1, max(s$C_ADC1)*2))
   abline(v=dose_days, lty=2, col="grey60")
   points(0.02, fda$C0_ADC, pch=19, cex=1.5)
@@ -197,7 +197,7 @@ cat("  -> results/NHP_PK_validation_Table7.pdf\n")
 # ════════════════════════════════════════════════════════
 # Graphiques PD — Fornari
 # ════════════════════════════════════════════════════════
-pdf("results/NHP_PD_Fornari_TDXd.pdf", width = 14, height = 10)
+pdf("results/NHP_PD_Fornari_FGFR2.pdf", width = 14, height = 10)
 par(mfrow = c(2, 3), mar = c(4, 4.5, 3, 1.5))
 
 cell_info <- list(
@@ -225,7 +225,7 @@ for (ci in cell_info) {
          col=dose_cols, lwd=2, bty="n", cex=0.85)
 }
 dev.off()
-cat("  -> results_TDXD/NHP_PD_Fornari_TDXd.pdf\n")
+cat("  -> results/NHP_PD_Fornari_FGFR2.pdf\n")
 
 # ════════════════════════════════════════════════════════
 # Validation NCA — table console
@@ -335,5 +335,5 @@ cat("═════════════════════════
 nadir_table <- do.call(rbind, nadir_records)
 write.csv(cell_table,   "results/cell_counts_J2_J8_J15_J22.csv", row.names = FALSE)
 write.csv(nadir_table,  "results/nadirs.csv",                    row.names = FALSE)
-cat("\n  -> results_TDXD/cell_counts_J2_J8_J15_J22.csv\n")
-cat("  -> results_TDXD/nadirs.csv\n")
+cat("\n  -> results/cell_counts_J2_J8_J15_J22.csv\n")
+cat("  -> results/nadirs.csv\n")

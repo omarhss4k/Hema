@@ -117,7 +117,7 @@ p_cells <- ggplot(df_cells, aes(x = time_d, y = Valeur, color = Dose)) +
   scale_x_continuous(breaks = seq(0, 120, by = 21),
                      labels = paste0("J", seq(0, 120, by = 21))) +
   facet_wrap(~Cellule, scales = "free_y", ncol = 2) +
-  labs(title    = "Predicted Hematological Profiles — T-DXd Q3W × 3 cycles (+ recovery)",
+  labs(title    = "Predicted Hematological Profiles — FGFR2 inhibitor Q3W × 3 cycles (+ recovery)",
        subtitle = "▽ nadir  |  ··· baseline  |  --- dose day",
        x = "Temps (jours)", y = NULL) +
   theme_poster
@@ -126,7 +126,7 @@ ggsave("results/poster_PD_4panels.pdf",
        p_cells, width = 13, height = 10, dpi = 300)
 ggsave("results/poster_PD_4panels.png",
        p_cells, width = 13, height = 10, dpi = 300)
-cat("  -> results_TDXD/poster_PD_4panels.pdf / .png\n")
+cat("  -> results/poster_PD_4panels.pdf / .png\n")
 
 # ════════════════════════════════════════════════════════
 # Figure 2 — Damage seul
@@ -145,7 +145,7 @@ p_damage <- ggplot(sim_long %>% filter(Cellule == "Damage (u.a.)"),
 
 ggsave("results/poster_Damage.pdf", p_damage, width = 7, height = 5, dpi = 300)
 ggsave("results/poster_Damage.png", p_damage, width = 7, height = 5, dpi = 300)
-cat("  -> results_TDXD/poster_Damage.pdf / .png\n")
+cat("  -> results/poster_Damage.pdf / .png\n")
 
 # ════════════════════════════════════════════════════════
 # Figure 3 — Barplot nadir % changement
@@ -174,9 +174,9 @@ p_bar <- ggplot(nadir_pct, aes(x = Cellule, y = Pct, fill = Dose)) +
 
 ggsave("results/poster_nadir_barplot.pdf", p_bar, width = 8, height = 5, dpi = 300)
 ggsave("results/poster_nadir_barplot.png", p_bar, width = 8, height = 5, dpi = 300)
-cat("  -> results_TDXD/poster_nadir_barplot.pdf / .png\n")
+cat("  -> results/poster_nadir_barplot.pdf / .png\n")
 
-cat("\nTous les graphiques generes dans results_TDXD/\n")
+cat("\nTous les graphiques generes dans results/\n")
 
 # ════════════════════════════════════════════════════════
 # TABLEAU POSTER — Nadirs & validation PK
@@ -226,7 +226,7 @@ tt_nad <- ttheme_minimal(
 tbl_nad_grob <- tableGrob(nadir_tbl, rows = NULL, theme = tt_nad)
 
 title_nad <- textGrob(
-  "Nadirs hématologiques prédits — T-DXd NHP  (Q3W × 3 cycles)",
+  "Nadirs hématologiques prédits — FGFR2 inhibiteur NHP  (Q3W × 3 cycles)",
   gp = gpar(fontsize = 11, fontface = "bold", col = "#1a3a5c")
 )
 note_nad <- textGrob(
@@ -240,7 +240,7 @@ grid.draw(arrangeGrob(title_nad, tbl_nad_grob, note_nad,
                       heights = c(0.13, 0.74, 0.08),
                       padding = unit(4, "mm")))
 dev.off()
-cat("  -> results_TDXD/poster_table_nadirs.png\n")
+cat("  -> results/poster_table_nadirs.png\n")
 
 # ── 2. Tableau validation PK vs FDA Table 7 ─────────────
 pk_tbl <- do.call(rbind, lapply(seq_along(doses_fgfr2), function(i) {
@@ -283,11 +283,11 @@ tt_pk <- ttheme_minimal(
 tbl_pk_grob <- tableGrob(pk_tbl, rows = NULL, theme = tt_pk)
 
 title_pk <- textGrob(
-  "Validation PK T-DXd NHP — vs FDA BLA 761139 Table 7",
+  "Validation PK FGFR2 inhibiteur NHP — vs données précliniques",
   gp = gpar(fontsize = 11, fontface = "bold", col = "#1a3a5c")
 )
 note_pk <- textGrob(
-  "C₀ (µg/mL)  |  AUC₂₁ (µg·h/mL)  |  t½ (jours)   — obs = données FDA",
+  "C₀ (µg/mL)  |  AUC₂₁ (µg·h/mL)  |  t½ (jours)   — obs = données précliniques",
   gp = gpar(fontsize = 8.5, col = "grey45", fontface = "italic")
 )
 
@@ -297,18 +297,18 @@ grid.draw(arrangeGrob(title_pk, tbl_pk_grob, note_pk,
                       heights = c(0.13, 0.74, 0.08),
                       padding = unit(4, "mm")))
 dev.off()
-cat("  -> results_TDXD/poster_table_pk_validation.png\n")
+cat("  -> results/poster_table_pk_validation.png\n")
 
 # ════════════════════════════════════════════════════════
 # CONCLUSIONS POSTER — texte révisé
 # Copier-coller dans l'outil de mise en page du poster
 # ════════════════════════════════════════════════════════
-# • A semi-mechanistic PK/PD model was developed for T-DXd in NHP by
-#   coupling a 2-compartment TMDD PK model with the Fornari 2019
+# • A semi-mechanistic PK/PD model was developed for the FGFR2 inhibitor
+#   in NHP by coupling a 2-compartment TMDD PK model with the Fornari 2019
 #   hematopoietic progenitor framework
 #
-# • PK parameters were calibrated and validated against FDA BLA 761139
-#   (Table 7) across 3 dose levels (3, 10, 30 mg/kg Q3W × 3 cycles)
+# • PK parameters were calibrated and validated against preclinical NHP data
+#   across 3 dose levels (3, 10, 30 mg/kg Q3W × 3 cycles)
 #
 # • The model predicts dose-dependent hematological nadirs:
 #   reticulocytes at Day ~8, neutrophils and platelets at Day ~15 post-dose
@@ -317,5 +317,5 @@ cat("  -> results_TDXD/poster_table_pk_validation.png\n")
 #   neutrophils — consistent with dose-limiting toxicity observed in NHP
 #
 # • This mechanistic framework provides a quantitative basis for
-#   preclinical-to-clinical translation of T-DXd hematotoxicity and
-#   supports rational dose optimization in oncology
+#   preclinical-to-clinical translation of FGFR2 inhibitor hematotoxicity
+#   and supports rational dose optimization in oncology

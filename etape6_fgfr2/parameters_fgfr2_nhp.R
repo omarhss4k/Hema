@@ -1,24 +1,22 @@
 ############################################################
 # parameters_fgfr2_nhp.R
-# Paramètres PK — T-DXd (DS-8201a) — SINGE CYNOMOLGUS (NHP)
+# Paramètres PK — Inhibiteur FGFR2 — SINGE CYNOMOLGUS (NHP)
 #
 # Méthode :
-#   1. Allométrie depuis paramètres rat calibrés FDA (Table 6)
+#   1. Allométrie depuis paramètres rat calibrés (Table 6 données précliniques)
 #      scale_CL = (BW_nhp/BW_rat)^0.75   [=  8.0  pour 4/0.25 kg]
 #      scale_V  = (BW_nhp/BW_rat)^1.0    [= 16.0  pour 4/0.25 kg]
-#   2. Calibration directe sur FDA BLA 761139 Table 7
-#      "3-Month Intermittent IV Dose Toxicity Study in Cynomolgus Monkeys"
+#   2. Calibration directe sur données précliniques NHP
+#      "Étude toxicité IV — singe cynomolgus"
 #      Doses Q3W : 3, 10, 30 mg/kg
-#   3. Krel calibré sur [DXd]plasma / [ADC] ratio Table 7
 #
 # Différence clé vs rat :
-#   → Singe exprime HER2 (Kd ≈ 7.46 ng/mL, étude ELISA FDA p.44)
-#   → k_int_nhp estimé depuis la non-linéarité CL(dose) Table 7
+#   → Singe exprime FGFR2 (non-linéarité CL dose-dépendante)
+#   → k_int estimé depuis la non-linéarité CL(dose) observée
 #
 # Sources :
-#   FDA BLA 761139 Multi-Discipline Review (2019), Table 6 (rat) & Table 7 (NHP)
-#   Yin et al. 2020 (PK humain, allométrie point de départ)
-#   Vasalou et al. 2024 (k_int HER2, référence humain)
+#   Données précliniques internes — singe cynomolgus (pk2cmt_params.csv)
+#   Allométrie de référence : Yin et al. 2020
 #
 # Unités : temps [h] | concentrations [mg/L = µg/mL]
 ############################################################
@@ -33,7 +31,7 @@ BW_nhp   <- 4.0    # kg  (singe cynomolgus adulte, protocole FDA : 3–10 ans)
 allo_CL  <- (BW_nhp / BW_rat)^0.75   # 16^0.75 = 8.0
 allo_V   <- (BW_nhp / BW_rat)^1.0    # 16.0
 
-# ── Propriétés ADC (identiques rat/humain) ───────────────
+# ── Propriétés moléculaires (placeholder — à adapter pour FGFR2) ────
 fgfr2_nhp$DAR          <- 8
 fgfr2_nhp$MW_ADC       <- 148000  # g/mol
 fgfr2_nhp$MW_DXd       <- 718.8   # g/mol
@@ -123,7 +121,7 @@ V2_fda_nhp   <- Q_ADC_allom / k21_tgt
 
 k_int_nhp     <- 0
 
-# ── Consolidation des paramètres T-DXd ───────────────────
+# ── Consolidation des paramètres FGFR2 ────────────────────
 fgfr2_nhp$CL_ADC        <- CL_fda_nhp
 fgfr2_nhp$CL_lin        <- CL_fda_nhp
 fgfr2_nhp$Vmax_MM       <- 0.060
@@ -137,7 +135,7 @@ fgfr2_nhp$k_dam          <- 0.075
 fgfr2_nhp$k_rep          <- 0.017
 fgfr2_nhp$mgL_to_uM_ADC  <- 1000 / fgfr2_nhp$MW_ADC   # mg/L → µM  (MW=148000 g/mol)
 
-# ── Fonction d'administration T-DXd ─────────────────────
+# ── Fonction d'administration FGFR2 ─────────────────────
 make_nhp_infusion <- function(dose_mgkg, BW_kg = 4.0,
                                Tinfu_h = 0.5, interval_h = NULL,
                                n_cycles = 1) {
@@ -224,7 +222,7 @@ fgfr2_nhp_state0 <- c(
   Damage   = 0
 )
 
-cat("PK T-DXd NHP  : V1=", round(fgfr2_nhp$V1_ADC,4), "L  CL=",
+cat("PK FGFR2 NHP  : V1=", round(fgfr2_nhp$V1_ADC,4), "L  CL=",
     formatC(fgfr2_nhp$CL_ADC, format="e", digits=3), "L/h\n")
 cat("PK Carboplatin: V1=", carbo_nhp$V1, "L  CL=", carbo_nhp$CL, "L/h",
     " t½=", carbo_nhp$t_half_h, "h\n")

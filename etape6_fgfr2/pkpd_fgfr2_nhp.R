@@ -1,6 +1,6 @@
 ############################################################
 # pkpd_fgfr2_nhp.R
-# ODE PK/PD — T-DXd (DS-8201a) — SINGE CYNOMOLGUS (NHP)
+# ODE PK/PD — Inhibiteur FGFR2 — SINGE CYNOMOLGUS (NHP)
 #
 # Modèle (23 états) :
 #   PK (3) : ADC 2-cpt + TMDD Michaelis-Menten + Damage
@@ -8,7 +8,7 @@
 #            MPP, CMP, MEP (progéniteurs)
 #            Transit + circulants : Neut, Mono, Ret, RBC, Plt
 #
-# Driver PD : concentration ADC plasmatique (C_ADC1) → Damage
+# Driver PD : concentration plasmatique (C_ADC1) → Damage
 #   dDamage/dt = k_dam × C_ADC1 − k_rep × Damage
 ############################################################
 
@@ -19,7 +19,7 @@ pkpd_nhp_ode <- function(time, state, pars) {
     rate_in <- if (!is.null(pars$rate_fun)) pars$rate_fun(time) else 0
 
     # ════════════════════════════════════════════════════
-    # PK — ADC 2-cpt + TMDD Michaelis-Menten
+    # PK — Inhibiteur FGFR2 — 2-cpt + TMDD Michaelis-Menten
     # ════════════════════════════════════════════════════
     dC_ADC1 <- rate_in / V1_ADC +
                (Q_ADC / V2_ADC) * C_ADC2 -
@@ -30,7 +30,7 @@ pkpd_nhp_ode <- function(time, state, pars) {
                (Q_ADC / V2_ADC) * C_ADC2
 
     # ════════════════════════════════════════════════════
-    # DOMMAGE ADN — driver : C_ADC1 en µM (Fornari-like)
+    # DOMMAGE ADN — driver : C_ADC1 µM (concentration FGFR2)
     # dDamage/dt = k_dam × C_ADC1(µM) − k_rep × Damage
     # ════════════════════════════════════════════════════
     C_ADC1_uM <- C_ADC1 * mgL_to_uM_ADC   # mg/L → µM  (÷ MW_ADC × 1000)
