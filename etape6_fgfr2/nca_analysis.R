@@ -16,37 +16,67 @@ library(ggplot2)
 # ── 1. Données ----------------------------------------------------------------
 # BLQ terminaux (336h, 504h) → NA  |  96h et 168h sont quantifiables
 
+# Facteur de correction dose : 1.297 (dose réelle = dose nominale × 1.297)
+# Doses corrigées : 3→4 | 10→13 | 20→26 | 30→39 mg/kg
+# Concentrations corrigées : × 1.297
+
 pk_raw <- bind_rows(
 
-  # ── 3 mg/kg ──────────────────────────────────────────
+  # ── 4 mg/kg (nominale 3 mg/kg × 1.297) ──────────────
   data.frame(
     subject    = "Animal_01",
-    dose_mg_kg = 3,
+    dose_mg_kg = 3 * 1.297,
     time = c(0,     0.083, 4,     24,    48,   72,   96,   168,  336, 504),
-    conc = c(0,     69800, 48500, 17700, 6730, 3550, 2200, 1060, NA,  NA )
+    conc = c(0,     69800, 48500, 17700, 6730, 3550, 2200, 1060, NA,  NA ) * 1.297
   ),
 
   data.frame(
     subject    = "Animal_02",
-    dose_mg_kg = 3,
+    dose_mg_kg = 3 * 1.297,
     time = c(0,     0.083, 4,     24,    48,   72,   96,   168,  336, 504),
-    conc = c(0,     73200, 50200, 16600, 6370, 3680, 2180, 1020, NA,  NA )
+    conc = c(0,     73200, 50200, 16600, 6370, 3680, 2180, 1020, NA,  NA ) * 1.297
   ),
 
-  # ── 10 mg/kg — à remplir ─────────────────────────────
+  # ── 13 mg/kg (nominale 10 mg/kg × 1.297) — à remplir ─
   # data.frame(
   #   subject    = "Animal_03",
-  #   dose_mg_kg = 10,
+  #   dose_mg_kg = 10 * 1.297,
   #   time = c(),   # heures depuis la dose
-  #   conc = c()    # ng/mL  (NA pour BLQ)
+  #   conc = c() * 1.297
   # ),
-
-  # ── 30 mg/kg — à remplir ─────────────────────────────
   # data.frame(
   #   subject    = "Animal_04",
-  #   dose_mg_kg = 30,
+  #   dose_mg_kg = 10 * 1.297,
   #   time = c(),
-  #   conc = c()
+  #   conc = c() * 1.297
+  # ),
+
+  # ── 26 mg/kg (nominale 20 mg/kg × 1.297) — à remplir ─
+  # data.frame(
+  #   subject    = "Animal_05",
+  #   dose_mg_kg = 20 * 1.297,
+  #   time = c(),
+  #   conc = c() * 1.297
+  # ),
+  # data.frame(
+  #   subject    = "Animal_06",
+  #   dose_mg_kg = 20 * 1.297,
+  #   time = c(),
+  #   conc = c() * 1.297
+  # ),
+
+  # ── 39 mg/kg (nominale 30 mg/kg × 1.297) — à remplir ─
+  # data.frame(
+  #   subject    = "Animal_07",
+  #   dose_mg_kg = 30 * 1.297,
+  #   time = c(),
+  #   conc = c() * 1.297
+  # ),
+  # data.frame(
+  #   subject    = "Animal_08",
+  #   dose_mg_kg = 30 * 1.297,
+  #   time = c(),
+  #   conc = c() * 1.297
   # )
 )
 
@@ -229,9 +259,10 @@ pred_df <- pred_df %>%
   left_join(pk_raw %>% select(subject, dose_mg_kg) %>% distinct(), by = "subject") %>%
   mutate(Dose = paste0(dose_mg_kg, " mg/kg"))
 
-dose_cols_nca <- c("3 mg/kg"  = "#2166ac",
-                   "10 mg/kg" = "#4dac26",
-                   "30 mg/kg" = "#d6604d")
+dose_cols_nca <- c("4 mg/kg"  = "#2166ac",
+                   "13 mg/kg" = "#4dac26",
+                   "26 mg/kg" = "#f4a582",
+                   "39 mg/kg" = "#d6604d")
 
 theme_pk <- theme_bw(base_size = 13) +
   theme(plot.title = element_text(face = "bold"))
