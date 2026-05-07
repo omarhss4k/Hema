@@ -301,6 +301,158 @@ dev.off()
 cat("  -> results/poster_table_pk_validation.png\n")
 
 # ════════════════════════════════════════════════════════
+# Figure 5 — Décalage cinétique PK → hématotoxicité
+# ────────────────────────────────────────────────────────
+# 4 panneaux (un par dose) : PK normalisée (% Cmax) +
+# Neut / Plt / Ret normalisés (% baseline) sur le même axe.
+# L'œil voit directement le retard cinétique.
+# ════════════════════════════════════════════════════════
+
+norm_long <- bind_rows(lapply(seq_along(doses_fgfr2), function(i) {
+  s    <- sims_fgfr2[[i]]
+  dose <- paste0(doses_fgfr2[i], " mg/kg")
+  Cmax <- max(s$C_ADC1)
+  bind_rows(
+    data.frame(time_d = s$time_d, Dose = dose,
+               Variable = "FGFR2 inhib. (% Cmax)",
+               Valeur   = s$C_ADC1 / Cmax * 100),
+    data.frame(time_d = s$time_d, Dose = dose,
+               Variable = "Neutrophiles (% baseline)",
+               Valeur   = s$Neut / init_pars$Neut0 * 100),
+    data.frame(time_d = s$time_d, Dose = dose,
+               Variable = "Plaquettes (% baseline)",
+               Valeur   = s$Plt  / init_pars$Plt0  * 100),
+    data.frame(time_d = s$time_d, Dose = dose,
+               Variable = "Réticulocytes (% baseline)",
+               Valeur   = s$Ret  / init_pars$Ret0  * 100)
+  )
+})) %>%
+  mutate(
+    Dose = factor(Dose, levels = paste0(doses_fgfr2, " mg/kg")),
+    Variable = factor(Variable, levels = c(
+      "FGFR2 inhib. (% Cmax)",
+      "Neutrophiles (% baseline)",
+      "Plaquettes (% baseline)",
+      "Réticulocytes (% baseline)"
+    ))
+  )
+
+var_cols_kin <- c(
+  "FGFR2 inhib. (% Cmax)"     = "#333333",
+  "Neutrophiles (% baseline)"  = "#2166ac",
+  "Plaquettes (% baseline)"    = "#4dac26",
+  "Réticulocytes (% baseline)" = "#d6604d"
+)
+var_lty_kin <- c("FGFR2 inhib. (% Cmax)" = "solid",
+                 "Neutrophiles (% baseline)"  = "solid",
+                 "Plaquettes (% baseline)"    = "dashed",
+                 "Réticulocytes (% baseline)" = "dotdash")
+
+p_kinetics <- ggplot(norm_long,
+                     aes(x = time_d, y = Valeur,
+                         color = Variable, linetype = Variable)) +
+  geom_vline(xintercept = dose_days, linetype = "dashed",
+             color = "grey80", linewidth = 0.35) +
+  geom_hline(yintercept = 100, linetype = "dotted",
+             color = "grey50", linewidth = 0.55) +
+  geom_line(linewidth = 1.15) +
+  scale_color_manual(values = var_cols_kin) +
+  scale_linetype_manual(values = var_lty_kin) +
+  scale_x_continuous(breaks = seq(0, 120, by = 21),
+                     labels = paste0("J", seq(0, 120, by = 21))) +
+  scale_y_continuous(labels = function(x) paste0(x, "%"),
+                     limits = c(0, NA)) +
+  facet_wrap(~ Dose, ncol = 2) +
+  labs(
+    title    = "Décalage cinétique PK → hématotoxicité — FGFR2 inhibiteur NHP",
+    subtitle = "FGFR2 inhib. : % du Cmax  |  cellules : % de la valeur basale  |  --- jour de dose",
+    x = "Temps (jours)", y = "% (normalisé)"
+  ) +
+  theme_poster +
+  theme(legend.position = "bottom",
+        legend.title    = element_blank())
+
+ggsave("results/poster_PK_PD_kinetics.pdf",
+       p_kinetics, width = 13, height = 10, dpi = 300)
+ggsave("results/poster_PK_PD_kinetics.png",
+       p_kinetics, width = 13, height = 10, dpi = 300)
+cat("  -> results/poster_PK_PD_kinetics.pdf / .png\n")
+
+# ════════════════════════════════════════════════════════
+# Figure 6 — 2 rangées synchronisées : PK (log) / Neut (lin)
+# Vue toutes doses — montre clairement le retard de nadir
+# ════════════════════════════════════════════════════════
+pk_long_all <- bind_rows(lapply(seq_along(doses_fgfr2), function(i) {
+  sims_fgfr2[[i]] %>%
+    select(time_d, C_ADC1) %>%
+    mutate(Dose = factor(paste0(doses_fgfr2[i], " mg/kg"),
+                         levels = paste0(doses_fgfr2, " mg/kg")))
+}))
+
+neut_long_all <- bind_rows(lapply(seq_along(doses_fgfr2), function(i) {
+  sims_fgfr2[[i]] %>%
+    select(time_d, Neut, Plt, Ret) %>%
+    mutate(Dose = factor(paste0(doses_fgfr2[i], " mg/kg"),
+                         levels = paste0(doses_fgfr2, " mg/kg")))
+})) %>%
+  pivot_longer(cols = c(Neut, Plt, Ret),
+               names_to = "Cellule", values_to = "Valeur") %>%
+  mutate(Cellule = factor(Cellule,
+                          levels = c("Neut", "Plt", "Ret"),
+                          labels = c("Neutrophiles", "Plaquettes", "Réticulocytes")))
+
+xbreaks <- seq(0, 120, by = 21)
+xlabels <- paste0("J", xbreaks)
+
+p_row1 <- ggplot(pk_long_all, aes(x = time_d, y = C_ADC1, color = Dose)) +
+  geom_vline(xintercept = dose_days, linetype = "dashed",
+             color = "grey75", linewidth = 0.35) +
+  geom_line(linewidth = 1.1) +
+  scale_color_manual(values = dose_cols) +
+  scale_y_log10() +
+  scale_x_continuous(breaks = xbreaks, labels = xlabels) +
+  labs(title = "PK — FGFR2 inhibiteur (échelle log)",
+       x = NULL, y = "Concentration (µg/mL)") +
+  theme_poster +
+  theme(legend.position = "none",
+        axis.text.x  = element_blank(),
+        axis.ticks.x = element_blank(),
+        plot.margin  = margin(5, 5, 0, 5))
+
+p_row2 <- ggplot(neut_long_all,
+                 aes(x = time_d, y = Valeur, color = Dose, linetype = Cellule)) +
+  geom_vline(xintercept = dose_days, linetype = "dashed",
+             color = "grey75", linewidth = 0.35) +
+  geom_hline(data = data.frame(
+    Cellule = factor(c("Neutrophiles","Plaquettes","Réticulocytes")),
+    base    = c(init_pars$Neut0, init_pars$Plt0, init_pars$Ret0)),
+    aes(yintercept = base), color = "grey40", linetype = "dotted",
+    linewidth = 0.55, inherit.aes = FALSE) +
+  geom_line(linewidth = 1.0) +
+  scale_color_manual(values = dose_cols) +
+  scale_linetype_manual(values = c("Neutrophiles"  = "solid",
+                                   "Plaquettes"    = "dashed",
+                                   "Réticulocytes" = "dotdash")) +
+  scale_x_continuous(breaks = xbreaks, labels = xlabels) +
+  facet_wrap(~ Dose, ncol = 4) +
+  labs(title    = "Réponse hématologique (nadir retardé vs PK)",
+       subtitle = "··· baseline  |  --- jour de dose",
+       x = "Temps (jours)", y = "Cellules (10⁹/L)",
+       linetype = "Lignée") +
+  theme_poster +
+  theme(legend.position = "bottom",
+        plot.margin     = margin(0, 5, 5, 5))
+
+# Assembler avec gridExtra
+g_combined2rows <- gridExtra::arrangeGrob(p_row1, p_row2,
+                                          nrow = 2, heights = c(1, 2.2))
+ggsave("results/poster_PK_PD_2rows.pdf",
+       g_combined2rows, width = 14, height = 10, dpi = 300)
+ggsave("results/poster_PK_PD_2rows.png",
+       g_combined2rows, width = 14, height = 10, dpi = 300)
+cat("  -> results/poster_PK_PD_2rows.pdf / .png\n")
+
+# ════════════════════════════════════════════════════════
 # CONCLUSIONS POSTER — texte révisé
 # Copier-coller dans l'outil de mise en page du poster
 # ════════════════════════════════════════════════════════
