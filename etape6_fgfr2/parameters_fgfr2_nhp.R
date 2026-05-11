@@ -79,6 +79,7 @@ if (file.exists(pk2cmt_tk_file)) {
   fda_tk_nhp <- lapply(doses_nhp, function(d) {
     animals <- dose_animal_map[[as.character(d)]]
     rows    <- pk2cmt_tk[pk2cmt_tk$Animal_Id %in% animals, ]
+    if (nrow(rows) == 0) return(NULL)   # dose sans données — ignorée
     beta_h  <- mean(log(2) / rows$t12_beta_h)
     C0      <- mean(d * 1000 / rows$V1_mL_kg)
     AUCinf  <- mean(d * 1000 / (rows$CL_mL_h_kg * 24))
@@ -87,7 +88,10 @@ if (file.exists(pk2cmt_tk_file)) {
          AUC21d_ADC = AUCinf * (1 - exp(-beta_h * 21 * 24)),
          t_half_d   = mean(rows$t12_beta_h) / 24)
   })
-  cat("Cibles TK : données réelles NHP (pk2cmt_params.csv) — 2 animaux/dose, doses corrigées ×1.297\n")
+  fda_tk_nhp <- Filter(Negate(is.null), fda_tk_nhp)   # retirer les NULL
+  doses_avec_data <- sapply(fda_tk_nhp, function(x) x$dose_mgkg)
+  cat(sprintf("Cibles TK : données réelles NHP — doses disponibles : %s mg/kg\n",
+              paste(doses_avec_data, collapse = ", ")))
 } else {
   warning("pk2cmt_params.csv introuvable — fallback valeurs corrigées ×1.297")
   # Valeurs originales × 1.297 (dose et concentrations)
@@ -130,8 +134,16 @@ t_half_tgt_d <- max(sapply(fda_tk_nhp, function(x) x$t_half_d)) * 1.25
 beta_tgt     <- log(2) / (t_half_tgt_d * 24)
 k10_nhp      <- CL_fda_nhp  / V1_fda_nhp
 k12_nhp      <- Q_ADC_allom / V1_fda_nhp
-k21_tgt      <- beta_tgt * (beta_tgt - k10_nhp - k12_nhp) / (beta_tgt - k10_nhp)
-V2_fda_nhp   <- Q_ADC_allom / k21_tgt
+denom_k21    <- beta_tgt - k10_nhp
+# Si beta_tgt <= k10_nhp la formule analytique diverge : fallback allométrique
+if (is.finite(denom_k21) && abs(denom_k21) > 1e-9) {
+  k21_tgt    <- beta_tgt * (beta_tgt - k10_nhp - k12_nhp) / denom_k21
+  V2_fda_nhp <- if (is.finite(k21_tgt) && k21_tgt > 0)
+                  Q_ADC_allom / k21_tgt
+                else V2_ADC_allom
+} else {
+  V2_fda_nhp <- V2_ADC_allom   # fallback allométrique
+}
 
 # ── Consolidation des paramètres FGFR2 ────────────────────
 # PK 2-cmt linéaire — pas de TMDD :
