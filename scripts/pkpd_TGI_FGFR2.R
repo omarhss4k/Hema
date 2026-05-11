@@ -118,17 +118,19 @@ sim_ctrl_fn <- function(kg, tv0, times_out) {
   tv0 * exp(kg * times_out)
 }
 
-# Groupe traité : rxSolve avec bolus Q2W
+# Groupe traité : premier bolus dans les conditions initiales, doses 2-4 via eventTable
+# (évite l'ambiguïté rxode2 sur l'ordre dose/sampling à t=0)
 sim_treated <- function(dose_ugkg, tv0, params, times_out) {
   ev <- eventTable()
-  for (d in dose_days) {
-    ev$add.dosing(dose = dose_ugkg, dosing.to = 1,
-                  nbr.doses = 1, start.time = d)
-  }
+  ev$add.dosing(dose = dose_ugkg, dosing.to = 1,
+                nbr.doses = length(dose_days) - 1L,
+                dosing.interval = 14,
+                start.time = dose_days[2])          # j14, j28, j42
   ev$add.sampling(sort(unique(c(0, times_out))))
 
   out <- tryCatch(
-    rxSolve(mod_pkpd, params, ev, inits = c(A1 = 0, A2 = 0, TV = tv0)),
+    rxSolve(mod_pkpd, params, ev,
+            inits = c(A1 = dose_ugkg, A2 = 0, TV = tv0)),   # bolus j0 en CI
     error = function(e) NULL
   )
   if (is.null(out)) return(rep(NA_real_, length(times_out)))
@@ -184,7 +186,9 @@ lm_ctrl <- lm(log(tv_ctrl[ok_ctrl]) ~ times_d[ok_ctrl])
 kg_init <- max(coef(lm_ctrl)[2], 0.005)
 
 # EC50 : 10 % du Cmax estimé à 10 mg/kg (= dose/V1)
-EC50_init <- 10000 / pk_fixed["V1"] * 0.10
+# as.numeric() retire le nom hérité de pk_fixed["V1"] pour éviter
+# que c(..., EC50 = ...) reçoive un élément nommé "V1" au lieu de "EC50"
+EC50_init <- 10000 / as.numeric(pk_fixed["V1"]) * 0.10
 
 # ke : doit être > kg pour qu'une régression soit possible
 ke_init <- kg_init * 3
