@@ -11,6 +11,7 @@
 # =============================================================================
 
 library(rxode2)
+library(deSolve)
 library(ggplot2)
 library(readxl)
 
@@ -91,21 +92,28 @@ cat(sprintf("\nTV initiale (j0) : Ctrl=%.0f | 3mg=%.0f | 10mg=%.0f mm³\n",
             tv0_ctrl, tv0_d3, tv0_d10))
 
 # =============================================================================
-# 3. MODÈLE rxode2 — PK/PD couplé
+# 3. ÉQUATIONS DU MODÈLE PK/PD
 #
-#   A1, A2 : quantités PK (µg/kg)
-#   C1     : concentration centrale = A1/V1 (µg/L)
-#   Inh    : fraction d'inhibition via modèle Emax (Hill n=1)
-#   TV     : volume tumoral (mm³)
+#   dA1/dt = -(CL/V1 + Q/V1)·A1 + (Q/V2)·A2   [compartiment central]
+#   dA2/dt =  (Q/V1)·A1 - (Q/V2)·A2             [compartiment périphérique]
+#   C1     = A1/V1                               [concentration µg/L]
+#   dTV/dt =  kg·TV - ke·[C1/(EC50+C1)]·TV       [volume tumoral]
 # =============================================================================
 
-mod_pkpd <- rxode2({
-  C1       <- A1 / V1
-  d/dt(A1) <- -(CL/V1 + Q/V1) * A1 + (Q/V2) * A2
-  d/dt(A2) <-  (Q/V1) * A1 - (Q/V2) * A2
-  Inh      <-  C1 / (EC50 + C1)
-  d/dt(TV) <-  kg * TV - ke * Inh * TV
-})
+pkpd_rhs <- function(t, state, parms) {
+  A1 <- state["A1"]; A2 <- state["A2"]; TV <- state["TV"]
+  CL <- parms["CL"]; V1 <- parms["V1"]; V2 <- parms["V2"]; Q <- parms["Q"]
+  kg <- parms["kg"]; ke <- parms["ke"]; EC50 <- parms["EC50"]
+
+  C1  <- A1 / V1
+  Inh <- C1 / (EC50 + C1)
+
+  list(c(
+    A1 = -(CL/V1 + Q/V1)*A1 + (Q/V2)*A2,
+    A2 =  (Q/V1)*A1 - (Q/V2)*A2,
+    TV =  kg*TV - ke*Inh*TV
+  ))
+}
 
 # =============================================================================
 # 4. FONCTIONS DE SIMULATION
@@ -118,22 +126,32 @@ sim_ctrl_fn <- function(kg, tv0, times_out) {
   tv0 * exp(kg * times_out)
 }
 
-# Groupe traité : premier bolus dans les conditions initiales, doses 2-4 via eventTable
-# (évite l'ambiguïté rxode2 sur l'ordre dose/sampling à t=0)
+# Groupe traité : deSolve::lsoda avec événements de dose additifs
+# Plus fiable que rxode2 eventTable pour ce schéma multi-bolus
 sim_treated <- function(dose_ugkg, tv0, params, times_out) {
-  ev <- eventTable()
-  ev$add.dosing(dose = dose_ugkg, dosing.to = 1,
-                nbr.doses = length(dose_days) - 1L,
-                dosing.interval = 14,
-                start.time = dose_days[2])          # j14, j28, j42
-  ev$add.sampling(sort(unique(c(0, times_out))))
+  ev_doses <- data.frame(
+    var    = "A1",
+    time   = dose_days[-1],   # j14, j28, j42 (j0 dans les CI)
+    value  = dose_ugkg,
+    method = "add"
+  )
+
+  t_all <- sort(unique(c(0, times_out)))
 
   out <- tryCatch(
-    rxSolve(mod_pkpd, params, ev,
-            inits = c(A1 = dose_ugkg, A2 = 0, TV = tv0)),   # bolus j0 en CI
+    as.data.frame(lsoda(
+      y      = c(A1 = dose_ugkg, A2 = 0, TV = tv0),
+      times  = t_all,
+      func   = pkpd_rhs,
+      parms  = params,
+      events = list(data = ev_doses)
+    )),
     error = function(e) NULL
   )
-  if (is.null(out)) return(rep(NA_real_, length(times_out)))
+
+  if (is.null(out) || any(is.na(out$TV)) || any(out$TV < 0)) {
+    return(rep(NA_real_, length(times_out)))
+  }
   approx(out$time, out$TV, xout = times_out, rule = 2)$y
 }
 
