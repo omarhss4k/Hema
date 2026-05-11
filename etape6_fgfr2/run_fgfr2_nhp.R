@@ -79,18 +79,10 @@ sims_fgfr2  <- lapply(doses_fgfr2, function(d) simulate_nhp(d, n_cycles = 3))
 # conc   = concentration FGFR2 mesurée (µg/mL = mg/L)
 # ════════════════════════════════════════════════════════
 pk_obs <- list(
-  "3"  = data.frame(
-    time_h = c(),   # ex: c(0.5, 1, 2, 4, 8, 24, 48, 168)
-    conc   = c()    # ex: c(98, 95, 90, ...)
-  ),
-  "10" = data.frame(
-    time_h = c(),
-    conc   = c()
-  ),
-  "30" = data.frame(
-    time_h = c(),
-    conc   = c()
-  )
+  "4"  = data.frame(time_h = c(), conc = c()),
+  "13" = data.frame(time_h = c(), conc = c()),
+  "26" = data.frame(time_h = c(), conc = c()),
+  "39" = data.frame(time_h = c(), conc = c())
 )
 
 # ════════════════════════════════════════════════════════
@@ -99,28 +91,29 @@ pk_obs <- list(
 dose_cols <- c("#2166ac", "#4dac26", "#f4a582", "#d6604d")
 dose_days <- c(0, 21, 42)
 
-pdf("results/NHP_PK_validation_Table7.pdf", width = 10, height = 5)
-par(mfrow = c(1, 3), mar = c(4, 4.5, 3, 1.5))
+pdf("results/NHP_PK_validation_Table7.pdf", width = 13, height = 6)
+par(mfrow = c(1, 4), mar = c(4, 4.5, 3, 1.5))
 for (i in seq_along(doses_fgfr2)) {
-  s <- sims_fgfr2[[i]]; col <- dose_cols[i]; d <- doses_fgfr2[i]
-  fda <- fda_tk_nhp[[i]]
+  s   <- sims_fgfr2[[i]]; col <- dose_cols[i]; d <- doses_fgfr2[i]
+  # fda_tk_nhp peut avoir moins d'entrees que doses_fgfr2 si certaines doses
+  # n'ont pas encore de donnees — on n'affiche le C0 que si disponible
+  fda_i   <- if (i <= length(fda_tk_nhp)) fda_tk_nhp[[i]] else NULL
 
   plot(s$time_d, s$C_ADC1, type="l", lwd=2.5, col=col, log="y",
-       xlab="Temps (j)", ylab="FGFR2 inhibiteur [µg/mL]",
-       main=sprintf("FGFR2 — %d mg/kg Q3W", d),
-       ylim=c(1, max(s$C_ADC1)*2))
+       xlab="Temps (j)", ylab="FGFR2 inhibiteur [ug/mL]",
+       main=sprintf("FGFR2 - %d mg/kg Q3W", d),
+       ylim=c(max(min(s$C_ADC1[s$C_ADC1>0]), 0.01), max(s$C_ADC1)*2))
   abline(v=dose_days, lty=2, col="grey60")
-  points(0.02, fda$C0_ADC, pch=19, cex=1.5)
-  obs <- pk_obs[[as.character(d)]]
-  if (nrow(obs) > 0)
-    points(obs$time_h / 24, obs$conc, pch=17, cex=1.4, col=col)
-  has_obs <- nrow(obs) > 0
+  if (!is.null(fda_i)) points(0.02, fda_i$C0_ADC, pch=19, cex=1.5)
+  obs     <- pk_obs[[as.character(d)]]
+  has_obs <- !is.null(obs) && is.data.frame(obs) && nrow(obs) > 0
+  if (has_obs) points(obs$time_h / 24, obs$conc, pch=17, cex=1.4, col=col)
   legend("topright",
-         c("Sim", "C0 FDA", if (has_obs) "Observé"),
-         col   = c(col, "black", if (has_obs) col),
-         lwd   = c(2.5, NA,     if (has_obs) NA),
-         pch   = c(NA,  19,     if (has_obs) 17),
-         bty   = "n", cex = 0.85)
+         c("Sim", if (!is.null(fda_i)) "C0 obs", if (has_obs) "Observe"),
+         col = c(col, if (!is.null(fda_i)) "black", if (has_obs) col),
+         lwd = c(2.5, if (!is.null(fda_i)) NA,      if (has_obs) NA),
+         pch = c(NA,  if (!is.null(fda_i)) 19,      if (has_obs) 17),
+         bty = "n", cex = 0.85)
 }
 dev.off()
 cat("  -> results/NHP_PK_validation_Table7.pdf\n")
