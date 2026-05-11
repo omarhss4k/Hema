@@ -39,79 +39,13 @@ nhp_state0 <- c(
 )
 
 # ════════════════════════════════════════════════════════
-# Calibration TMDD — grille + Nelder-Mead sur FDA Table 7
+# Pas de calibration TMDD — modèle 2-cmt linéaire
+# CL_ADC, V1_ADC, V2_ADC, Q_ADC issus de pk2cmt_params.csv
+# (ajustement rxode2 sur données NCA NHP, nca_analysis.R)
 # ════════════════════════════════════════════════════════
-cat("\nCalibration TMDD (grille + Nelder-Mead) ...\n")
-doses_cal <- c(4, 13, 26, 39)   # doses corrigées ×1.297
-
-sim_one_tmdd <- function(dose_mgkg, CL_lin, Vmax_MM, Km_MM) {
-  p <- build_pars()
-  p$CL_lin  <- CL_lin
-  p$Vmax_MM <- Vmax_MM
-  p$Km_MM   <- Km_MM
-  p$rate_fun <- make_nhp_infusion(dose_mgkg = dose_mgkg, BW_kg = 4.0,
-                                   Tinfu_h = 0.5, n_cycles = 1)
-  times <- c(seq(0, 2, by = 0.1), seq(3, 504, by = 1))
-  sol <- tryCatch(
-    suppressWarnings(as.data.frame(ode(
-      y = nhp_state0, times = times, func = pkpd_nhp_ode,
-      parms = p, method = "lsoda"))),
-    error = function(e) NULL)
-  if (is.null(sol) || any(is.nan(sol$C_ADC1)) || min(sol$C_ADC1) < -1e-6)
-    return(NULL)
-  sol$C_ADC1 <- pmax(sol$C_ADC1, 1e-12)
-  sol
-}
-
-nca_tmdd <- function(sol) {
-  if (is.null(sol)) return(list(C0=NA, AUC=NA, t12=NA, ok=FALSE))
-  C0  <- max(sol$C_ADC1[sol$time <= 1])
-  idx <- sol$time <= 504
-  AUC <- sum(diff(sol$time[idx]) *
-             (sol$C_ADC1[idx][-sum(idx)] + sol$C_ADC1[idx][-1]) / 2) / 24
-  idt <- sol$time >= 100 & sol$time <= 480 & sol$C_ADC1 > 0
-  if (sum(idt) < 5) return(list(C0=C0, AUC=AUC, t12=NA, ok=FALSE))
-  lm_f <- tryCatch(lm(log(C_ADC1) ~ time, data = sol[idt, ]), error=function(e) NULL)
-  if (is.null(lm_f) || coef(lm_f)[2] >= 0) return(list(C0=C0, AUC=AUC, t12=NA, ok=FALSE))
-  list(C0=C0, AUC=AUC, t12=log(2)/(-coef(lm_f)[2])/24, ok=TRUE)
-}
-
-wrss_tmdd <- function(CL_lin, Vmax_MM, Km_MM) {
-  total <- 0
-  w_AUC <- c(2, 2, 1, 1); w_t12 <- c(1, 1, 2, 2)
-  for (i in seq_along(doses_cal)) {
-    fda <- fda_tk_nhp[[i]]
-    nca <- nca_tmdd(sim_one_tmdd(doses_cal[i], CL_lin, Vmax_MM, Km_MM))
-    if (!nca$ok || nca$C0<=0 || nca$AUC<=0 || nca$t12<=0) return(1e8)
-    total <- total +
-      (log(nca$C0/fda$C0_ADC))^2 +
-      w_AUC[i]*(log(nca$AUC/fda$AUC21d_ADC))^2 +
-      w_t12[i]*(log(nca$t12/fda$t_half_d))^2
-  }
-  total
-}
-
-CL_g <- exp(seq(log(5e-5), log(2e-3), length.out=7))
-VM_g <- exp(seq(log(0.05),  log(6.0),  length.out=7))
-Km_g <- exp(seq(log(50),    log(2000), length.out=9))
-best_val <- 1e8; best_par <- c(1e-3, 0.2, 400)
-for (cl in CL_g) for (vm in VM_g) for (km in Km_g) {
-  v <- wrss_tmdd(cl, vm, km)
-  if (v < best_val) { best_val <- v; best_par <- c(cl, vm, km) }
-}
-opt <- optim(log(best_par),
-             function(th) wrss_tmdd(exp(th[1]), exp(th[2]), exp(th[3])),
-             method = "Nelder-Mead",
-             control = list(maxit = 5000, reltol = 1e-10))
-CL_lin_cal  <- exp(opt$par[1])
-Vmax_MM_cal <- exp(opt$par[2])
-Km_MM_cal   <- exp(opt$par[3])
-fgfr2_nhp$CL_lin  <- CL_lin_cal
-fgfr2_nhp$Vmax_MM <- Vmax_MM_cal
-fgfr2_nhp$Km_MM   <- Km_MM_cal
-
-cat(sprintf("TMDD calibré : CL=%.3e  Vmax=%.4f  Km=%.1f  RMSE=%.1f%%\n",
-            CL_lin_cal, Vmax_MM_cal, Km_MM_cal, 100*sqrt(opt$value/9)))
+cat(sprintf("PK 2-cmt linéaire : CL=%.4f L/h  V1=%.4f L  Q=%.4f L/h  V2=%.4f L\n",
+            fgfr2_nhp$CL_ADC, fgfr2_nhp$V1_ADC,
+            fgfr2_nhp$Q_ADC,  fgfr2_nhp$V2_ADC))
 
 # ════════════════════════════════════════════════════════
 # Simulation helper
@@ -119,9 +53,6 @@ cat(sprintf("TMDD calibré : CL=%.3e  Vmax=%.4f  Km=%.1f  RMSE=%.1f%%\n",
 simulate_nhp <- function(dose_tdxd_mgkg, n_cycles = 3,
                           Tinfu_h = 0.5, BW_kg = 4.0) {
   p <- build_pars()
-  p$CL_lin  <- CL_lin_cal
-  p$Vmax_MM <- Vmax_MM_cal
-  p$Km_MM   <- Km_MM_cal
   p$rate_fun <- make_nhp_infusion(
     dose_mgkg = dose_tdxd_mgkg, BW_kg = BW_kg,
     Tinfu_h = Tinfu_h, interval_h = fgfr2_nhp$interval_h,

@@ -133,17 +133,15 @@ k12_nhp      <- Q_ADC_allom / V1_fda_nhp
 k21_tgt      <- beta_tgt * (beta_tgt - k10_nhp - k12_nhp) / (beta_tgt - k10_nhp)
 V2_fda_nhp   <- Q_ADC_allom / k21_tgt
 
-k_int_nhp     <- 0
-
 # ── Consolidation des paramètres FGFR2 ────────────────────
+# PK 2-cmt linéaire — pas de TMDD :
+#   FGFR2 n'est pas exprimé sur les HSC/progéniteurs hématopoïétiques.
+#   L'hématotoxicité est due au payload (effet bystander), pas à
+#   l'internalisation ADC via FGFR2.  CL calibré sur données NCA NHP.
 fgfr2_nhp$CL_ADC        <- CL_fda_nhp
-fgfr2_nhp$CL_lin        <- CL_fda_nhp
-fgfr2_nhp$Vmax_MM       <- 0.060
-fgfr2_nhp$Km_MM         <- 4.0
 fgfr2_nhp$V1_ADC        <- V1_fda_nhp
 fgfr2_nhp$V2_ADC        <- V2_fda_nhp
 fgfr2_nhp$Q_ADC         <- Q_ADC_allom
-fgfr2_nhp$k_int         <- k_int_nhp
 fgfr2_nhp$interval_h    <- interval_h
 fgfr2_nhp$k_dam          <- 0.075
 fgfr2_nhp$k_rep          <- 0.017

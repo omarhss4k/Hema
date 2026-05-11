@@ -3,13 +3,15 @@
 # ODE PK/PD — Inhibiteur FGFR2 — SINGE CYNOMOLGUS (NHP)
 #
 # Modèle (23 états) :
-#   PK (3) : ADC 2-cpt + TMDD Michaelis-Menten + Damage
+#   PK (3) : ADC 2-cpt linéaire + Damage
 #   PD (20): Modèle Fornari 2019 adapté NHP
 #            MPP, CMP, MEP (progéniteurs)
 #            Transit + circulants : Neut, Mono, Ret, RBC, Plt
 #
+# Pas de TMDD : FGFR2 n'est pas exprimé sur les HSC/progéniteurs.
+# L'hématotoxicité est due au payload (effet bystander) → CL linéaire.
 # Driver PD : concentration plasmatique (C_ADC1) → Damage
-#   dDamage/dt = k_dam × C_ADC1 − k_rep × Damage
+#   dDamage/dt = k_dam × C_ADC1(µM) − k_rep × Damage
 ############################################################
 
 pkpd_nhp_ode <- function(time, state, pars) {
@@ -19,12 +21,12 @@ pkpd_nhp_ode <- function(time, state, pars) {
     rate_in <- if (!is.null(pars$rate_fun)) pars$rate_fun(time) else 0
 
     # ════════════════════════════════════════════════════
-    # PK — Inhibiteur FGFR2 — 2-cpt + TMDD Michaelis-Menten
+    # PK — Inhibiteur FGFR2 — 2-cpt linéaire
+    # CL calibré sur données NCA NHP (pk2cmt_params.csv)
     # ════════════════════════════════════════════════════
     dC_ADC1 <- rate_in / V1_ADC +
                (Q_ADC / V2_ADC) * C_ADC2 -
-               (CL_lin / V1_ADC + Q_ADC / V1_ADC + k_int) * C_ADC1 -
-               Vmax_MM * C_ADC1 / (Km_MM + C_ADC1)
+               (CL_ADC / V1_ADC + Q_ADC / V1_ADC) * C_ADC1
 
     dC_ADC2 <- (Q_ADC / V1_ADC) * C_ADC1 -
                (Q_ADC / V2_ADC) * C_ADC2
