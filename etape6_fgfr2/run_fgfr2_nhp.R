@@ -158,19 +158,26 @@ cat("\n═══ VALIDATION NCA FDA Table 7 ═══\n")
 cat(sprintf("  %-10s │ C0_obs  C0_sim  ratio │ AUC_obs AUC_sim ratio │ T½_obs T½_sim\n", "Dose"))
 cat(sprintf("  %s\n", paste(rep("─",75), collapse="")))
 for (i in seq_along(doses_fgfr2)) {
-  s <- sims_fgfr2[[i]]; fda <- fda_tk_nhp[[i]]
+  s   <- sims_fgfr2[[i]]
+  fda <- if (i <= length(fda_tk_nhp)) fda_tk_nhp[[i]] else NULL
   C0  <- max(s$C_ADC1[s$time <= 24])
   idx <- s$time <= 504
   AUC <- sum(diff(s$time[idx])*(s$C_ADC1[idx][-sum(idx)]+s$C_ADC1[idx][-1])/2)/24
   idt <- s$time>=100 & s$time<=480 & s$C_ADC1>0
   t12 <- if(sum(idt)>5) log(2)/abs(coef(lm(log(C_ADC1)~time,data=s[idt,]))[2])/24 else NA
-  cat(sprintf("  %-10s │ %6.1f  %6.1f  %5.3f │ %7.0f %7.0f %5.3f │ %6.2f %6.2f\n",
-              paste0(doses_fgfr2[i]," mg/kg"),
-              fda$C0_ADC, C0, C0/fda$C0_ADC,
-              fda$AUC21d_ADC, AUC, AUC/fda$AUC21d_ADC,
-              fda$t_half_d, t12))
+  if (!is.null(fda)) {
+    cat(sprintf("  %-10s | %6.1f  %6.1f  %5.3f | %7.0f %7.0f %5.3f | %6.2f %6.2f\n",
+                paste0(doses_fgfr2[i]," mg/kg"),
+                fda$C0_ADC, C0, C0/fda$C0_ADC,
+                fda$AUC21d_ADC, AUC, AUC/fda$AUC21d_ADC,
+                fda$t_half_d, t12))
+  } else {
+    cat(sprintf("  %-10s | %6s  %6.1f  %5s | %7s %7.0f %5s | %6s %6.2f\n",
+                paste0(doses_fgfr2[i]," mg/kg"),
+                "N/A", C0, "-", "N/A", AUC, "-", "N/A", t12))
+  }
 }
-cat(paste(rep("═",57), collapse=""), "\n")
+cat(paste(rep("=",57), collapse=""), "\n")
 
 # ════════════════════════════════════════════════════════
 # COMPTES CELLULAIRES — Jours 2, 8, 15, 22

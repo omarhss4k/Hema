@@ -246,7 +246,7 @@ cat("  -> results/poster_table_nadirs.png\n")
 # ── 2. Tableau validation PK vs FDA Table 7 ─────────────
 pk_tbl <- do.call(rbind, lapply(seq_along(doses_fgfr2), function(i) {
   s   <- sims_fgfr2[[i]]
-  fda <- fda_tk_nhp[[i]]
+  fda <- if (i <= length(fda_tk_nhp)) fda_tk_nhp[[i]] else NULL
   C0_sim  <- round(max(s$C_ADC1[s$time <= 24]), 0)
   idx_auc <- s$time <= 504
   AUC_sim <- round(sum(diff(s$time[idx_auc]) *
@@ -259,12 +259,12 @@ pk_tbl <- do.call(rbind, lapply(seq_along(doses_fgfr2), function(i) {
 
   data.frame(
     Dose         = paste0(doses_fgfr2[i], " mg/kg"),
-    `C₀ obs`     = round(fda$C0_ADC, 0),
-    `C₀ sim`     = C0_sim,
-    `AUC₂₁ obs`  = round(fda$AUC21d_ADC, 0),
-    `AUC₂₁ sim`  = AUC_sim,
-    `t½ obs (j)` = round(fda$t_half_d, 1),
-    `t½ sim (j)` = t12_sim,
+    `C0 obs`     = if (!is.null(fda)) round(fda$C0_ADC, 0)    else NA_real_,
+    `C0 sim`     = C0_sim,
+    `AUC21 obs`  = if (!is.null(fda)) round(fda$AUC21d_ADC,0) else NA_real_,
+    `AUC21 sim`  = AUC_sim,
+    `t1/2 obs`   = if (!is.null(fda)) round(fda$t_half_d, 1)  else NA_real_,
+    `t1/2 sim`   = t12_sim,
     check.names  = FALSE,
     stringsAsFactors = FALSE
   )
