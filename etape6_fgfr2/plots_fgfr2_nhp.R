@@ -538,7 +538,7 @@ if (obs_has_data) {
       n_cycles   = 3)
     state0_pd <- attr(ip, "state0_pd")
     state0 <- c(C_ADC1=0, C_ADC2=0, Damage=0, state0_pd)
-    times  <- seq(0, max(3*21*24, 120*24), by = 1)
+    times  <- seq(0, 25*24, by = 1)
     sol <- tryCatch(
       as.data.frame(ode(y=state0, times=times,
                         func=pkpd_nhp_ode, parms=ip,
@@ -622,8 +622,9 @@ if (obs_has_data) {
                aes(x = jour, y = Pct, color = Cellule),
                shape = 19, size = 2.4, inherit.aes = FALSE) +
     scale_color_manual(values = cell_cols_ind, name = "Lignee") +
-    scale_x_continuous(breaks = seq(0, 120, by = 21),
-                       labels = paste0("J", seq(0, 120, by = 21))) +
+    scale_x_continuous(limits = c(-3, 25),
+                       breaks = c(-3, 0, 2, 8, 12, 15, 22, 25),
+                       labels = c("J-3","J0","J2","J8","J12","J15","J22","J25")) +
     scale_y_continuous(labels = function(x) paste0(x, "%")) +
     facet_wrap(~ Animal_label, ncol = 4) +
     labs(
