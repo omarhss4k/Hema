@@ -16,19 +16,10 @@ if (!exists("sims_fgfr2") || !exists("doses_fgfr2")) {
 if (!dir.exists("results")) dir.create("results")
 
 # ════════════════════════════════════════════════════════
-# DONNÉES OBSERVÉES — à remplir manuellement
-# Colonnes obligatoires : dose_mgkg, jour, Neut, Plt, Ret, RBC
-# Ret = réticulocytes ABSOLUS (10⁹/L)  [= %RET/100 × RBC]
-# Mettre NA si non mesuré
+# DONNÉES OBSERVÉES — chargées depuis nhp_hema_data.csv
+# Remplir le CSV avec les valeurs réelles (cf. data_nhp.R)
 # ════════════════════════════════════════════════════════
-obs_data <- data.frame(
-  dose_mgkg = c(),   # ex: c(3, 3, 10, 10, 30, 30)
-  jour      = c(),   # ex: c(2, 8,  2,  8,  2,  8)
-  Neut      = c(),
-  Plt       = c(),
-  Ret       = c(),
-  RBC       = c()
-)
+source("data_nhp.R")
 
 # ── Palette ─────────────────────────────────────────────
 dose_cols <- c("4 mg/kg"  = "#2166ac",
@@ -86,17 +77,21 @@ nadir_df <- sim_long %>%
 df_cells <- sim_long %>% filter(Cellule != "Damage (u.a.)")
 
 # Observed data en long format (si rempli)
-obs_long <- if (nrow(obs_data) > 0) {
+obs_has_data <- nrow(obs_data) > 0 &&
+                any(!is.na(obs_data[, c("Neut","Plt","RBC","Ret")]))
+
+obs_long <- if (obs_has_data) {
   obs_data %>%
     mutate(Dose = paste0(dose_mgkg, " mg/kg")) %>%
     pivot_longer(cols = c(Neut, Plt, Ret, RBC),
                  names_to = "Cellule", values_to = "Valeur") %>%
     mutate(
-      Dose    = factor(Dose, levels = paste0(doses_fgfr2, " mg/kg")),
-      Cellule = factor(Cellule,
-                       levels = c("Neut", "Plt", "Ret", "RBC"),
-                       labels = c("Neutrophiles (10⁹/L)", "Plaquettes (10⁹/L)",
-                                  "Réticulocytes (10⁹/L)", "GR (10⁹/L)"))
+      Dose      = factor(Dose, levels = paste0(doses_fgfr2, " mg/kg")),
+      Animal_Id = factor(Animal_Id),
+      Cellule   = factor(Cellule,
+                         levels = c("Neut", "Plt", "Ret", "RBC"),
+                         labels = c("Neutrophiles (10⁹/L)", "Plaquettes (10⁹/L)",
+                                    "Réticulocytes (10⁹/L)", "GR (10⁹/L)"))
     ) %>%
     filter(!is.na(Valeur))
 } else NULL
@@ -111,8 +106,15 @@ p_cells <- ggplot(df_cells, aes(x = time_d, y = Valeur, color = Dose)) +
   geom_point(data = nadir_df, shape = 25, size = 3,
              fill = "white", stroke = 1.5) +
   { if (!is.null(obs_long))
-      geom_point(data = obs_long, aes(x = jour, y = Valeur, color = Dose),
-                 shape = 16, size = 2.5, inherit.aes = FALSE)
+      geom_point(data = obs_long,
+                 aes(x = jour, y = Valeur, color = Dose, shape = Animal_Id),
+                 size = 2.8, stroke = 1.1, inherit.aes = FALSE)
+  } +
+  { if (!is.null(obs_long))
+      scale_shape_manual(
+        values = setNames(c(16, 17, 15, 18, 1, 2, 0, 5),
+                          levels(obs_long$Animal_Id)),
+        name = "Animal")
   } +
   scale_color_manual(values = dose_cols) +
   scale_x_continuous(breaks = seq(0, 120, by = 21),
