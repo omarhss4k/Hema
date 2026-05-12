@@ -476,9 +476,18 @@ w0 <- mean(c(
 cat("\nw0 :", round(w0, 4), "g\n")
 
 # =============================================================================
-# 13. MODÈLE PKPD — Simeoni 2004
+# 13. MODÈLES PKPD — Simeoni 2004
+#
+#  Modèle A (linéaire)  : effet = k2 * C1               — utilisé pour l0/l1
+#  Modèle B (Emax)      : effet = Emax * C1 / (EC50+C1) — modèle principal
+#
+#  Le modèle Emax capture la saturation de l'effet à forte dose :
+#   - À faible C1 : effet ≈ (Emax/EC50) * C1  (linéaire, comme k2)
+#   - À forte C1 : effet → Emax               (plafond biologique)
+#  Cela explique pourquoi un k2 unique ne peut pas ajuster 3 et 10 mg/kg.
 # =============================================================================
 
+# Modèle A — linéaire (k2), utilisé uniquement pour la calibration l0/l1
 pkpd_ode <- function(t, state, pars) {
   with(as.list(c(state, pars)), {
     C1     <- A1 / V1
@@ -489,6 +498,25 @@ pkpd_ode <- function(t, state, pars) {
     dA2 <-  (Q/V1) * A1 - (Q/V2) * A2
     dx1 <- growth - k2 * C1 * x1
     dx2 <- k2 * C1 * x1 - k1 * x2
+    dx3 <- k1 * (x2 - x3)
+    dx4 <- k1 * (x3 - x4)
+
+    list(c(dA1, dA2, dx1, dx2, dx3, dx4))
+  })
+}
+
+# Modèle B — Emax (modèle principal)
+pkpd_ode_emax <- function(t, state, pars) {
+  with(as.list(c(state, pars)), {
+    C1     <- A1 / V1
+    w      <- x1 + x2 + x3 + x4
+    growth <- l0 * x1 / (1 + (l0/l1 * w)^p)^(1/p)
+    kill   <- Emax * C1 / (EC50 + C1)   # effet saturant [/h]
+
+    dA1 <- -(CL/V1 + Q/V1) * A1 + (Q/V2) * A2
+    dA2 <-  (Q/V1) * A1 - (Q/V2) * A2
+    dx1 <- growth - kill * x1
+    dx2 <- kill * x1 - k1 * x2
     dx3 <- k1 * (x2 - x3)
     dx4 <- k1 * (x3 - x4)
 
@@ -538,18 +566,15 @@ k2_ref <- l0 / C1_max_10
 cat("  Repère k2 : k2_ref ≈", formatC(k2_ref, format = "e", digits = 2), "\n")
 
 # =============================================================================
-# 15. FONCTIONS DE SIMULATION PKPD
+# 15. FONCTIONS DE SIMULATION PKPD — Modèle Emax
 # =============================================================================
 
-.PENALTY    <- 1e6
-STAB_FACTOR <- 50   # k2·C1_max autorisé jusqu'à 50·l0
+.PENALTY <- 1e6
 
-.stable_k2 <- function(k2) k2 * C1_max_10 <= STAB_FACTOR * l0
-
-.sim_pkpd <- function(state0, pars_list, obs_times, events_df = NULL) {
+.sim_emax <- function(state0, pars_list, obs_times, events_df = NULL) {
   times <- sort(unique(c(0, obs_times)))
   out <- tryCatch(
-    as.data.frame(lsoda(state0, times, pkpd_ode, pars_list,
+    as.data.frame(lsoda(state0, times, pkpd_ode_emax, pars_list,
                         events = if (!is.null(events_df)) list(data = events_df) else NULL,
                         rtol = 1e-6, atol = 1e-8)),
     error = function(e) NULL
@@ -563,7 +588,7 @@ STAB_FACTOR <- 50   # k2·C1_max autorisé jusqu'à 50·l0
 
 simulate_single <- function(dose, params, obs_times) {
   state0 <- c(A1 = dose, A2 = 0, x1 = w0, x2 = 0, x3 = 0, x4 = 0)
-  .sim_pkpd(state0, as.list(params), obs_times)
+  .sim_emax(state0, as.list(params), obs_times)
 }
 
 simulate_multi <- function(dose, params, obs_times,
@@ -572,25 +597,27 @@ simulate_multi <- function(dose, params, obs_times,
   events_df <- if (n_doses > 1)
     data.frame(var    = "A1",
                time   = seq(interval_h, (n_doses - 1) * interval_h, by = interval_h),
-               value  = dose,
-               method = "add")
+               value  = dose, method = "add")
   else NULL
-  .sim_pkpd(state0, as.list(params), obs_times, events_df)
+  .sim_emax(state0, as.list(params), obs_times, events_df)
 }
 
 # =============================================================================
-# 16. FONCTION OBJECTIVE PKPD
-#     .residuals compare uniquement contre simulate_multi :
-#     le protocole expérimental est Q2W multi-doses.
+# 16. FONCTION OBJECTIVE — Modèle Emax
+#     Paramètres estimés : Emax (/h), EC50 (µg/L)
+#     k1 fixé (Simeoni 2004), l0/l1/p fixés (calibration contrôle)
 # =============================================================================
 
 params_fixed <- c(PK, l0 = l0, l1 = l1, p = PD_P)
 
-.residuals_multi <- function(par) {
+# k1 fixé — transit moyen = 4/k1 = 8 jours (Simeoni 2004)
+k1_fixed <- 0.5 / 24   # /h
+
+.residuals_emax <- function(par) {
   ok_c <- dat_ctrl$t <= T_CENSOR_CTRL
-  pc   <- tryCatch(simulate_multi(dose0_pd,  par, dat_ctrl$t), error = function(e) NULL)
-  p3   <- tryCatch(simulate_multi(dose3_pd,  par, dat_d3$t),   error = function(e) NULL)
-  p10  <- tryCatch(simulate_multi(dose10_pd, par, dat_d10$t),  error = function(e) NULL)
+  pc  <- tryCatch(simulate_multi(dose0_pd,  par, dat_ctrl$t), error = function(e) NULL)
+  p3  <- tryCatch(simulate_multi(dose3_pd,  par, dat_d3$t),   error = function(e) NULL)
+  p10 <- tryCatch(simulate_multi(dose10_pd, par, dat_d10$t),  error = function(e) NULL)
 
   .bad <- function(p) is.null(p) || !length(p) || any(!is.finite(p) | p <= 0)
   if (.bad(pc) || .bad(p3) || .bad(p10)) return(1e10)
@@ -602,20 +629,31 @@ params_fixed <- c(PK, l0 = l0, l1 = l1, p = PD_P)
   if (!is.finite(val)) 1e10 else val
 }
 
-make_obj_k2 <- function(k1_val) {
-  function(logpar_k2) {
-    k2 <- unname(exp(logpar_k2[1]))
-    if (!.stable_k2(k2)) return(1e10)
-    .residuals_multi(c(params_fixed, k1 = k1_val, k2 = k2))
-  }
+obj_emax <- function(logpar) {
+  Emax_t <- unname(exp(logpar[1]))
+  EC50_t <- unname(exp(logpar[2]))
+  # Garde-fou numérique : Emax ne doit pas dépasser 1000·l0
+  if (Emax_t > 1000 * l0) return(1e10)
+  par <- c(params_fixed, k1 = k1_fixed, Emax = Emax_t, EC50 = EC50_t)
+  .residuals_emax(par)
 }
 
 # =============================================================================
-# 17. OPTIMISATION PKPD — DEoptim
+# 17. OPTIMISATION EMAX — DEoptim (log-espace, 2 paramètres)
+#
+#   Emax  : taux de destruction maximal [/h]
+#           bornes : [l0 * 0.01,  l0 * 500]  — de très faible à très fort effet
+#   EC50  : concentration à effet semi-maximal [µg/L]
+#           bornes : [1,  C1_max_10 * 100]   — très sensible à très résistant
 # =============================================================================
 
-LOG_LO_K2 <- log(1e-9)
-LOG_HI_K2 <- log(0.1)
+cat("\n=== Repères pour les bornes Emax ===\n")
+cat("  l0         =", formatC(l0,         format="e", digits=2), "/h\n")
+cat("  C1_max_10  =", formatC(C1_max_10,  format="e", digits=2), "µg/L\n")
+cat("  Emax_lower =", formatC(l0*0.01,    format="e", digits=2), "/h\n")
+cat("  Emax_upper =", formatC(l0*500,     format="e", digits=2), "/h\n")
+cat("  EC50_lower = 1 µg/L\n")
+cat("  EC50_upper =", formatC(C1_max_10*100, format="e", digits=2), "µg/L\n")
 
 run_deoptim <- function(obj_fn, lower, upper, label, NP = NULL) {
   np  <- length(lower)
@@ -623,7 +661,7 @@ run_deoptim <- function(obj_fn, lower, upper, label, NP = NULL) {
   cat("\nDEoptim —", label, "(NP =", NP, ")...\n")
   out <- tryCatch(
     DEoptim(obj_fn, lower = lower, upper = upper,
-            control = DEoptim.control(NP = NP, itermax = 1000L,
+            control = DEoptim.control(NP = NP, itermax = 2000L,
                                       F = 0.8, CR = 0.9,
                                       strategy = 2L, trace = FALSE)),
     error = function(e) { message("DEoptim erreur : ", e$message); NULL }
@@ -632,34 +670,49 @@ run_deoptim <- function(obj_fn, lower, upper, label, NP = NULL) {
   out
 }
 
-# k1 fixé — valeur de référence Simeoni 2004 : transit moyen = 4/k1 = 8 jours
-k1_fixed <- 0.5 / 24   # /h
+fit_emax <- run_deoptim(
+  obj_emax,
+  lower = c(log(l0 * 0.01),  log(1)),
+  upper = c(log(l0 * 500),   log(C1_max_10 * 100)),
+  label = "Emax + EC50 (k1 fixé)"
+)
 
-fit_k2_global <- run_deoptim(make_obj_k2(k1_fixed),
-                             LOG_LO_K2, LOG_HI_K2,
-                             "k2 global multi-doses (k1 fixé)")
-k2_global <- unname(exp(fit_k2_global$optim$bestmem[1]))
+Emax_fit <- unname(exp(fit_emax$optim$bestmem[1]))
+EC50_fit <- unname(exp(fit_emax$optim$bestmem[2]))
 
-cat("\n=== k2 global (protocole Q2W) ===\n")
-cat("  k2 =", formatC(k2_global, format = "e", digits = 3), "\n")
-cat("  Objectif :", round(fit_k2_global$optim$bestval, 5), "\n")
+cat("\n=== Modèle Emax — Paramètres estimés ===\n")
+cat("  Emax =", formatC(Emax_fit, format="e", digits=3), "/h",
+    " =", round(Emax_fit*24, 4), "/j\n")
+cat("  EC50 =", round(EC50_fit, 1), "µg/L\n")
+cat("  k1   =", round(k1_fixed*24, 4), "/j  (fixé)\n")
+cat("  Objectif :", round(fit_emax$optim$bestval, 5), "\n")
+
+# Rapport Emax/l0 : indique si l'effet peut dépasser la croissance
+cat("  Emax/l0 =", round(Emax_fit/l0, 2),
+    if (Emax_fit > l0) "→ régression possible (Emax > l0)"
+    else "→ inhibition partielle seulement (Emax < l0)", "\n")
+
+# Fraction de C1_max utilisée à EC50
+cat("  EC50 / C1_max_10 =", round(EC50_fit / C1_max_10 * 100, 1),
+    "% → effet à 10 mg/kg =",
+    round(C1_max_10 / (EC50_fit + C1_max_10) * 100, 1), "% Emax\n")
 
 # =============================================================================
-# 18. GRAPHIQUES PKPD
+# 18. GRAPHIQUES PKPD — Modèle Emax
 # =============================================================================
 
-times_pd_full <- seq(0, 49 * 24, by = 4)   # pas de 4 h — suffisant pour deSolve
-lev_pd  <- c("Contrôle", "3 mg/kg", "10 mg/kg")
+times_pd_full <- seq(0, 49 * 24, by = 4)
+lev_pd   <- c("Contrôle", "3 mg/kg", "10 mg/kg")
 doses_pd <- list(dose0_pd, dose3_pd, dose10_pd)
 
-make_df_sim_pd <- function(sim_fn, k1, k2) {
-  par <- c(params_fixed, k1 = k1, k2 = k2)
-  do.call(rbind, mapply(function(d, g)
-    data.frame(t = times_pd_full / 24,
-               w = sim_fn(d, par, times_pd_full),
-               Groupe = g),
-    doses_pd, lev_pd, SIMPLIFY = FALSE))
-}
+par_emax <- c(params_fixed, k1 = k1_fixed, Emax = Emax_fit, EC50 = EC50_fit)
+
+df_sim_emax <- do.call(rbind, mapply(function(d, g)
+  data.frame(t      = times_pd_full / 24,
+             w      = simulate_multi(d, par_emax, times_pd_full),
+             Groupe = g),
+  doses_pd, lev_pd, SIMPLIFY = FALSE))
+df_sim_emax$Groupe <- factor(df_sim_emax$Groupe, levels = lev_pd)
 
 df_obs_pd <- rbind(
   data.frame(t = dat_ctrl$t/24, w = dat_ctrl$w, Groupe = "Contrôle"),
@@ -668,42 +721,101 @@ df_obs_pd <- rbind(
 )
 df_obs_pd$Groupe <- factor(df_obs_pd$Groupe, levels = lev_pd)
 
-plot_pkpd <- function(df_sim, title_suffix, dose_days, k1, k2) {
-  df_sim$Groupe <- factor(df_sim$Groupe, levels = lev_pd)
-  ggplot() +
-    geom_line(data  = df_sim, aes(x = t, y = w, color = Groupe), linewidth = 1) +
-    geom_point(data = df_obs_pd, aes(x = t, y = w, color = Groupe), size = 2.5) +
-    geom_vline(xintercept = dose_days, linetype = "dashed",
-               color = "grey60", linewidth = 0.5) +
-    annotate("text", x = dose_days,
-             y = max(df_obs_pd$w, na.rm = TRUE) * 1.05,
-             label = paste0("j", dose_days), size = 2.8,
-             color = "grey40", hjust = 0.5) +
-    labs(
-      title    = paste("PKPD Simeoni 2004 —", title_suffix),
-      subtitle = paste0("Fc-silent FGFR2-huBPA-LP1 | ",
-                        "k1=", round(k1, 4), " /h  ",
-                        "k2=", formatC(k2, format = "e", digits = 2)),
-      x = "Temps (jours)", y = "Volume tumoral (g)"
-    ) +
-    theme_bw(base_size = 13)
-}
+COLS_PD <- c("Contrôle" = "#888888", "3 mg/kg" = "#27AE60", "10 mg/kg" = "#1B4F9E")
 
-df_sim_global_m <- make_df_sim_pd(simulate_multi, k1_fixed, k2_global)
-plot_pkpd(df_sim_global_m, "Doses répétées Q2W — k2 global",
-          DOSE_DAYS, k1_fixed, k2_global)
-ggsave("scripts/plot_PKPD_global_multi_FGFR2.png", width = 9, height = 5, dpi = 150)
+# Courbe Emax prédit vs observé
+p_emax <- ggplot() +
+  geom_vline(xintercept = DOSE_DAYS, linetype = "dashed",
+             color = "grey70", linewidth = 0.4) +
+  geom_line(data  = df_sim_emax, aes(x = t, y = w * 1000, color = Groupe),
+            linewidth = 1.2) +
+  geom_point(data = df_obs_pd,   aes(x = t, y = w * 1000, color = Groupe,
+                                     shape = Groupe), size = 3) +
+  scale_color_manual(values = COLS_PD) +
+  scale_shape_manual(values = c(16, 17, 15)) +
+  annotate("text", x = DOSE_DAYS,
+           y = max(df_obs_pd$w * 1000, na.rm = TRUE) * 1.08,
+           label = paste0("j", DOSE_DAYS), size = 2.8, color = "grey40") +
+  labs(
+    title    = "PKPD Simeoni-Emax — Prédit vs Observé",
+    subtitle = paste0(
+      "Fc-silent FGFR2-huBPA-LP1  |  Protocole Q2W x4  |  ",
+      "Emax = ", formatC(Emax_fit, format="e", digits=2), " /h",
+      "   EC50 = ", round(EC50_fit, 0), " µg/L",
+      "   k1 = ", round(k1_fixed*24, 3), " /j"
+    ),
+    x = "Temps (jours)", y = "Volume tumoral (mm³)",
+    color = NULL, shape = NULL,
+    caption = "Lignes = modèle Emax   ●▲■ = données observées"
+  ) +
+  theme_bw(base_size = 13) +
+  theme(legend.position = "bottom")
 
-# Prédiction dose unique (simulation hypothétique, non ajustée)
-df_sim_global_s <- make_df_sim_pd(simulate_single, k1_fixed, k2_global)
-plot_pkpd(df_sim_global_s, "Dose unique — prédiction (k2 global)",
-          0, k1_fixed, k2_global)
-ggsave("scripts/plot_PKPD_global_single_FGFR2.png", width = 9, height = 5, dpi = 150)
+ggsave("scripts/plot_PKPD_Emax_FGFR2.png", p_emax,
+       width = 9, height = 5.5, dpi = 150)
+cat("\nGraphique → scripts/plot_PKPD_Emax_FGFR2.png\n")
 
-cat("\nGraphiques → scripts/plot_PKPD_*_FGFR2.png\n")
+# Résidus relatifs
+df_res_emax <- do.call(rbind, lapply(lev_pd, function(g) {
+  obs <- df_obs_pd[df_obs_pd$Groupe == g, ]
+  dose_g <- switch(g, "Contrôle" = dose0_pd, "3 mg/kg" = dose3_pd,
+                   "10 mg/kg" = dose10_pd)
+  w_sim <- simulate_multi(dose_g, par_emax, obs$t * 24)
+  data.frame(t = obs$t,
+             resid = (obs$w - w_sim) / w_sim * 100,
+             Groupe = g)
+}))
+df_res_emax$Groupe <- factor(df_res_emax$Groupe, levels = lev_pd)
+
+p_res <- ggplot(df_res_emax, aes(x = t, y = resid, color = Groupe)) +
+  geom_hline(yintercept = 0,      linewidth = 0.8, color = "grey40") +
+  geom_hline(yintercept = c(-30, 30), linetype = "dashed", color = "grey70") +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = COLS_PD) +
+  labs(title    = "Résidus relatifs — Modèle Emax",
+       subtitle = "(Observé − Prédit) / Prédit × 100",
+       x = "Temps (jours)", y = "Résidu (%)", color = NULL) +
+  theme_bw(base_size = 13) +
+  theme(legend.position = "none")
+
+ggsave("scripts/plot_residus_Emax_FGFR2.png", p_res,
+       width = 6, height = 4, dpi = 150)
+
+# Courbe Emax — fonction de C1 (pour comprendre l'effet à chaque dose)
+C1_seq <- seq(0, C1_max_10 * 1.1, length.out = 300)
+df_emax_curve <- data.frame(
+  C1     = C1_seq,
+  effet  = Emax_fit * C1_seq / (EC50_fit + C1_seq),
+  pct    = Emax_fit * C1_seq / (EC50_fit + C1_seq) / Emax_fit * 100
+)
+C1_d3  <- (dose3_pd  / PK["V1"])
+C1_d10 <- (dose10_pd / PK["V1"])
+
+p_ec <- ggplot(df_emax_curve, aes(x = C1, y = pct)) +
+  geom_line(linewidth = 1.2, color = "#1A5276") +
+  geom_vline(xintercept = C1_d3,  linetype = "dashed", color = "#27AE60") +
+  geom_vline(xintercept = C1_d10, linetype = "dashed", color = "#1B4F9E") +
+  annotate("text", x = C1_d3,  y = 5, label = "C1 max\n3 mg/kg",
+           hjust = -0.1, size = 3.5, color = "#27AE60") +
+  annotate("text", x = C1_d10, y = 5, label = "C1 max\n10 mg/kg",
+           hjust = -0.1, size = 3.5, color = "#1B4F9E") +
+  geom_hline(yintercept = 50, linetype = "dotted", color = "grey50") +
+  annotate("text", x = EC50_fit, y = 53, label = paste0("EC50 = ", round(EC50_fit, 0), " µg/L"),
+           hjust = 0, size = 3.5, color = "grey40") +
+  labs(
+    title    = "Courbe effet-concentration — Modèle Emax",
+    subtitle = paste0("Emax = ", formatC(Emax_fit, format="e", digits=2),
+                      " /h   EC50 = ", round(EC50_fit, 0), " µg/L"),
+    x = "C1 (µg/L)", y = "% Emax atteint"
+  ) +
+  theme_bw(base_size = 13)
+
+ggsave("scripts/plot_Emax_curve_FGFR2.png", p_ec,
+       width = 7, height = 4.5, dpi = 150)
+cat("Graphique → scripts/plot_Emax_curve_FGFR2.png\n")
 
 # =============================================================================
-# 19. TGI PRÉDIT PAR LE MODÈLE
+# 19. TGI PRÉDIT — Modèle Emax
 # =============================================================================
 
 tgi_model <- function(w_ctrl_end, w_treat_end, w0_val) {
@@ -712,34 +824,28 @@ tgi_model <- function(w_ctrl_end, w_treat_end, w0_val) {
   round((1 - (w_treat_end - w0_val) / delta_ctrl) * 100, 1)
 }
 
-calc_tgi_model <- function(k1, k2, label) {
-  par   <- c(params_fixed, k1 = k1, k2 = k2)
-  t_seq <- seq(0, 49 * 24, by = 24)
-  wc  <- tail(simulate_multi(dose0_pd,  par, t_seq), 1)
-  w3  <- tail(simulate_multi(dose3_pd,  par, t_seq), 1)
-  w10 <- tail(simulate_multi(dose10_pd, par, t_seq), 1)
+t_seq_tgi <- seq(0, 49 * 24, by = 24)
+wc_e  <- tail(simulate_multi(dose0_pd,  par_emax, t_seq_tgi), 1)
+w3_e  <- tail(simulate_multi(dose3_pd,  par_emax, t_seq_tgi), 1)
+w10_e <- tail(simulate_multi(dose10_pd, par_emax, t_seq_tgi), 1)
 
-  tgi3  <- tgi_model(wc, w3,  w0)
-  tgi10 <- tgi_model(wc, w10, w0)
+tgi3_emax  <- tgi_model(wc_e, w3_e,  w0)
+tgi10_emax <- tgi_model(wc_e, w10_e, w0)
 
-  cat("\nTGI prédit à j49 —", label, ":\n")
-  cat("   3 mg/kg  :",
-      if (is.na(tgi3))   "NA"
-      else if (tgi3 > 100) paste0(tgi3, " % (régression)")
-      else paste0(tgi3, " %"), "\n")
-  cat("  10 mg/kg  :",
-      if (is.na(tgi10))  "NA"
-      else if (tgi10 > 100) paste0(tgi10, " % (régression)")
-      else paste0(tgi10, " %"), "\n")
-}
-
-calc_tgi_model(k1_fixed, k2_global, "k2 global — protocole Q2W")
+cat("\n=== TGI prédit à j49 — Modèle Emax ===\n")
+cat("   3 mg/kg  :", ifelse(is.na(tgi3_emax),  "NA",
+    ifelse(tgi3_emax > 100,  paste0(tgi3_emax,  " % (régression)"),
+                             paste0(tgi3_emax,  " %"))), "\n")
+cat("  10 mg/kg  :", ifelse(is.na(tgi10_emax), "NA",
+    ifelse(tgi10_emax > 100, paste0(tgi10_emax, " % (régression)"),
+                             paste0(tgi10_emax, " %"))), "\n")
 
 # =============================================================================
 # 20. SAUVEGARDE PKPD
 # =============================================================================
 
-save(k1_fixed, k2_global, params_fixed, w0,
+save(k1_fixed, Emax_fit, EC50_fit, par_emax,
+     params_fixed, w0,
      dat_ctrl, dat_d3, dat_d10,
-     file = "scripts/resultats_PKPD_rxode2_FGFR2.RData")
-cat("\nRésultats → scripts/resultats_PKPD_rxode2_FGFR2.RData\n")
+     file = "scripts/resultats_PKPD_Emax_FGFR2.RData")
+cat("\nRésultats → scripts/resultats_PKPD_Emax_FGFR2.RData\n")
