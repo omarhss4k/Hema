@@ -455,6 +455,82 @@ ggsave("results/poster_PK_PD_2rows.png",
 cat("  -> results/poster_PK_PD_2rows.pdf / .png\n")
 
 # ════════════════════════════════════════════════════════
+# Figure 7 — Profils individuels (% baseline propre à chaque animal)
+# 8 panneaux (un par animal), 4 lignées, J-3 = 100%
+# ════════════════════════════════════════════════════════
+if (obs_has_data) {
+
+  # Baselines individuelles au J-3
+  baseline_ind <- obs_data %>%
+    filter(jour == -3) %>%
+    select(Animal_Id,
+           Neut_base = Neut, Plt_base = Plt,
+           RBC_base  = RBC,  Ret_base  = Ret)
+
+  # % de la baseline individuelle
+  ind_pct <- obs_data %>%
+    left_join(baseline_ind, by = "Animal_Id") %>%
+    mutate(
+      Neut_pct = Neut / Neut_base * 100,
+      Plt_pct  = Plt  / Plt_base  * 100,
+      RBC_pct  = RBC  / RBC_base  * 100,
+      Ret_pct  = Ret  / Ret_base  * 100
+    ) %>%
+    select(Animal_Id, dose_mgkg, jour,
+           Neut_pct, Plt_pct, RBC_pct, Ret_pct) %>%
+    pivot_longer(cols = c(Neut_pct, Plt_pct, RBC_pct, Ret_pct),
+                 names_to = "Cellule", values_to = "Pct") %>%
+    mutate(
+      Cellule = factor(Cellule,
+                       levels = c("Neut_pct", "Plt_pct",
+                                  "RBC_pct",  "Ret_pct"),
+                       labels = c("Neutrophiles", "Plaquettes",
+                                  "GR", "Reticulocytes")),
+      Animal_label = factor(
+        paste0(Animal_Id, " (", dose_mgkg, " mg/kg)"),
+        levels = c("1001 (4 mg/kg)",  "1002 (4 mg/kg)",
+                   "2001 (13 mg/kg)", "2002 (13 mg/kg)",
+                   "4001 (26 mg/kg)", "4002 (26 mg/kg)",
+                   "3101 (39 mg/kg)", "3002 (39 mg/kg)"))
+    ) %>%
+    filter(!is.na(Pct))
+
+  cell_cols_ind <- c("Neutrophiles"  = "#2166ac",
+                     "Plaquettes"    = "#4dac26",
+                     "GR"            = "#d6604d",
+                     "Reticulocytes" = "#984ea3")
+
+  p_ind <- ggplot(ind_pct,
+                  aes(x = jour, y = Pct,
+                      color = Cellule, group = Cellule)) +
+    geom_hline(yintercept = 100, linetype = "dashed",
+               color = "grey50", linewidth = 0.6) +
+    geom_line(linewidth = 1.1) +
+    geom_point(size = 2.5) +
+    scale_color_manual(values = cell_cols_ind, name = "Lignee") +
+    scale_x_continuous(breaks = c(-3, 2, 8, 12, 15, 22),
+                       labels = c("J-3","J2","J8","J12","J15","J22")) +
+    scale_y_continuous(labels = function(x) paste0(x, "%")) +
+    facet_wrap(~ Animal_label, ncol = 4) +
+    labs(
+      title    = "Profils hematologiques individuels — FGFR2 inhibiteur NHP",
+      subtitle = "% de la valeur pre-dose (J-3 = 100%)  |  --- baseline individuelle",
+      x = "Temps (jours)", y = "% baseline individuelle"
+    ) +
+    theme_poster +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 11))
+
+  ggsave("results/poster_PD_individual.pdf",
+         p_ind, width = 15, height = 9, dpi = 300)
+  ggsave("results/poster_PD_individual.png",
+         p_ind, width = 15, height = 9, dpi = 300)
+  cat("  -> results/poster_PD_individual.pdf / .png\n")
+
+} else {
+  cat("  [Figure 7 ignoree : nhp_hema_data.csv vide]\n")
+}
+
+# ════════════════════════════════════════════════════════
 # CONCLUSIONS POSTER — texte révisé
 # Copier-coller dans l'outil de mise en page du poster
 # ════════════════════════════════════════════════════════
