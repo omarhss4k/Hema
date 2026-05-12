@@ -44,8 +44,8 @@ THEME <- theme_bw(base_size = 13) +
 # =============================================================================
 
 load("scripts/resultats_PK2comp_rxode2_FGFR2.RData")   # pk2comp_rxode2, df_pk
-load("scripts/resultats_PKPD_rxode2_FGFR2.RData")       # k1_fixed, k2_global,
-                                                          # params_fixed, w0,
+load("scripts/resultats_PKPD_Emax_FGFR2.RData")         # k1_fixed, Emax_fit, EC50_fit,
+                                                          # par_emax, params_fixed, w0,
                                                           # dat_ctrl, dat_d3, dat_d10
 
 PK <- c(CL = unname(pk2comp_rxode2$CL),
@@ -86,16 +86,18 @@ sim_pk <- function(dose, params, times) {
   approx(out$time, out$C1, xout = times, rule = 2)$y
 }
 
-pkpd_ode <- function(t, state, pars) {
+# Modèle Emax — effet saturant Emax*C1/(EC50+C1)
+pkpd_ode_emax <- function(t, state, pars) {
   with(as.list(c(state, pars)), {
     C1     <- A1 / V1
     w      <- x1 + x2 + x3 + x4
     growth <- l0 * x1 / (1 + (l0/l1 * w)^p)^(1/p)
+    kill   <- Emax * C1 / (EC50 + C1)
     list(c(
       -(CL/V1 + Q/V1)*A1 + (Q/V2)*A2,
        (Q/V1)*A1 - (Q/V2)*A2,
-      growth - k2*C1*x1,
-      k2*C1*x1  - k1*x2,
+      growth - kill*x1,
+      kill*x1   - k1*x2,
       k1*(x2 - x3),
       k1*(x3 - x4)
     ))
@@ -111,7 +113,7 @@ sim_multi <- function(dose, params, obs_times, n_doses = 4, interval_h = 14*24) 
   else NULL
   times <- sort(unique(c(0, obs_times)))
   out <- tryCatch(
-    as.data.frame(lsoda(state0, times, pkpd_ode, as.list(params),
+    as.data.frame(lsoda(state0, times, pkpd_ode_emax, as.list(params),
                         events = if (!is.null(events_df)) list(data = events_df) else NULL,
                         rtol = 1e-6, atol = 1e-8)),
     error = function(e) NULL)
@@ -120,7 +122,7 @@ sim_multi <- function(dose, params, obs_times, n_doses = 4, interval_h = 14*24) 
   approx(out$time, pmax(w_vec, 1e-9), xout = obs_times, rule = 2)$y
 }
 
-par_pkpd <- c(params_fixed, k1 = k1_fixed, k2 = k2_global)
+par_pkpd <- par_emax   # chargé depuis resultats_PKPD_Emax_FGFR2.RData
 
 # =============================================================================
 # FIG 1 — DONNÉES PK BRUTES
@@ -438,11 +440,11 @@ p6 <- ggplot() + xlim(0,14) + ylim(0,8) +
   .lbl(6.5, 5.0, "x1", sz=5, bold=TRUE, col="#1E8449") +
   .lbl(6.5, 4.5, "Prolifération", sz=3.8, col="#2C3E50") +
   .lbl(6.5, 4.0, "l0·x1 / (1+(l0/l1·w)^p)^(1/p)", sz=2.9, col="#7F8C8D") +
-  .lbl(6.5, 3.7, "-k2·C1·x1", sz=3.1, col="#E74C3C") +
+  .lbl(6.5, 3.7, "-Emax*C1/(EC50+C1)*x1", sz=3.1, col="#E74C3C") +
 
   # flèche x1 → x2
   .seg(8.0, 4.5, 9.0, 4.5) +
-  .lbl(8.5, 4.8, "k2·C1", sz=3.2, col="#E74C3C") +
+  .lbl(8.5, 4.8, "Emax*C1/(EC50+C1)", sz=3.2, col="#E74C3C") +
 
   # ---- Transit x2 ----
   annotate("rect", xmin=9.0, xmax=10.5, ymin=3.5, ymax=5.5,
@@ -479,15 +481,16 @@ p6 <- ggplot() + xlim(0,14) + ylim(0,8) +
   # ---- Légende équations ----
   annotate("label", x=2, y=2.5,
            label=paste0(
-             "Paramètres PD :\n",
-             "  l0  = taux croissance exponentielle (/h)\n",
-             "  l1  = taux croissance linéaire (g/h)\n",
-             "  k1  = transit cellules endommagées (/h)\n",
-             "  k2  = activité cytotoxique [L/(µg·h)]\n",
-             "  p   = coeff. Hill (p=1, Simeoni 2004)"
+             "Parametres PD :\n",
+             "  l0   = taux croissance exponentielle (/h)\n",
+             "  l1   = taux croissance lineaire (g/h)\n",
+             "  k1   = transit cellules endommagees (/h)\n",
+             "  Emax = taux destruction maximal (/h)\n",
+             "  EC50 = concentration a 50% Emax (µg/L)\n",
+             "  p    = coeff. Hill (p=1, Simeoni 2004)"
            ),
            size=3.2, hjust=0, fill="#F4F6F7", color="#2C3E50",
-           label.padding=unit(0.5,"lines")) +
+           label.padding=unit(0.4,"lines")) +
 
   labs(title    = "Structure du modèle PKPD — Simeoni 2004",
        subtitle = "Croissance tumorale + compartiments de transit pour les cellules endommagées") +
@@ -541,9 +544,10 @@ p7a <- ggplot() +
   scale_color_manual(values=COLS) +
   scale_shape_manual(values=c(16,17,15)) +
   labs(title="PKPD Simeoni 2004 — Prédit vs Observé",
-       subtitle=paste0("k1=", round(k1_fixed,4), " /h  |  k2=",
-                       formatC(k2_global, format="e", digits=2),
-                       "  |  Protocole Q2W × 4 doses"),
+       subtitle=paste0("Emax=", formatC(Emax_fit, format="e", digits=2),
+                       " /h  |  EC50=", round(EC50_fit, 0), " µg/L",
+                       "  |  k1=", round(k1_fixed*24, 3), " /j",
+                       "  |  Protocole Q2W x4 doses"),
        x="Temps (jours)", y="Volume tumoral (g)",
        color=NULL, shape=NULL,
        caption="Lignes = modèle   ●▲■ = données observées") +
@@ -664,18 +668,19 @@ SAVE("08_tableau_TGI", p8,
 cat("[9/9] Tableau paramètres PKPD\n")
 
 pkpd_par_tbl <- data.frame(
-  Paramètre   = c("l0",  "l1",  "p",  "k1",   "k2",
+  Paramètre   = c("l0",  "l1",  "p",  "k1",   "Emax", "EC50",
                   "V1",  "V2",  "CL", "Q",    "w0"),
-  Type        = c("PD","PD","PD","PD","PD",
+  Type        = c("PD","PD","PD","PD","PD","PD",
                   "PK (fixé)","PK (fixé)","PK (fixé)","PK (fixé)","Initial"),
   Description = c("Taux croissance exponentielle",
-                  "Taux croissance linéaire",
+                  "Taux croissance lineaire",
                   "Coeff. Hill (Simeoni 2004)",
-                  "Transition cellules endommagées",
-                  "Activité cytotoxique",
+                  "Transition cellules endommagees",
+                  "Taux de destruction max (effet sat.)",
+                  "Concentration a effet semi-maximal",
                   "Volume compartiment central",
-                  "Volume périphérique",
-                  "Clairance systémique",
+                  "Volume peripherique",
+                  "Clairance systemique",
                   "Clairance intercompart.",
                   "Masse tumorale initiale"),
   Valeur      = c(
@@ -683,7 +688,8 @@ pkpd_par_tbl <- data.frame(
     sprintf("%.4f g/j (%.6f g/h)", params_fixed["l1"]*24, params_fixed["l1"]),
     sprintf("%.0f", params_fixed["p"]),
     sprintf("%.4f /j  (%.6f /h)", k1_fixed*24, k1_fixed),
-    formatC(k2_global, format="e", digits=3),
+    formatC(Emax_fit, format="e", digits=3),
+    sprintf("%.1f µg/L", EC50_fit),
     sprintf("%.4f L/kg", PK["V1"]),
     sprintf("%.4f L/kg", PK["V2"]),
     sprintf("%.4f L/h/kg", PK["CL"]),
