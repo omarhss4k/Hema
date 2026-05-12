@@ -455,76 +455,190 @@ ggsave("results/poster_PK_PD_2rows.png",
 cat("  -> results/poster_PK_PD_2rows.pdf / .png\n")
 
 # ════════════════════════════════════════════════════════
-# Figure 7 — Profils individuels (% baseline propre à chaque animal)
-# 8 panneaux (un par animal), 4 lignées, J-3 = 100%
+# Figure 7 — Profils PREDITS individuels (% baseline propre)
+# Une simulation par animal (baseline = valeur J-3 individuelle)
+# 8 panneaux, 4 lignees, J-3 = 100%
+# Points observes superposes
 # ════════════════════════════════════════════════════════
 if (obs_has_data) {
 
-  # Baselines individuelles au J-3
+  # ── Helper : re-derive Eq. S4 pour une baseline individuelle ──
+  derive_pars_individual <- function(ip_base, neut0, plt0, rbc0, ret0) {
+    ip <- ip_base
+    ip$Neut0 <- neut0
+    ip$Plt0  <- plt0
+    ip$RBC0  <- rbc0
+    ip$Ret0  <- ret0
+    # Eq. S4
+    ip$k_circ_Ret <- ip$k_circ_RBC * ip$RBC0  / ip$Ret0
+    ip$a_Ret      <- 3 / ip$MTT_Ret
+    ip$a_Plt      <- 3 / ip$MTT_Plt
+    ip$k_tr_Neut  <- ip$k_circ_Neut * ip$Neut0 / ip$CMP0
+    ip$k_tr_Mono  <- ip$k_circ_Mono * ip$Mono0 / ip$CMP0
+    ip$k_tr_Ret   <- ip$k_circ_Ret  * ip$Ret0  / (ip$lambda1^2 * ip$MEP0)
+    ip$k_tr_Plt   <- ip$k_circ_Plt  * ip$Plt0  / (ip$lambda2^2 * ip$MEP0)
+    ip$k_prol_Ret <- ip$a_Ret * (1 - 1/ip$lambda1)
+    ip$k_prol_Plt <- ip$a_Plt * (1 - 1/ip$lambda2)
+    ip$k_prol_CMP <- (ip$k_tr_Neut + ip$k_tr_Mono) / ip$lambda3
+    ip$k_prol_MEP <- (ip$k_tr_Ret  + ip$k_tr_Plt)  / ip$lambda4
+    ip$k_tr_CMP   <- (ip$k_tr_Neut + ip$k_tr_Mono - ip$k_prol_CMP) * ip$CMP0 / ip$MPP0
+    ip$k_tr_MEP   <- (ip$k_tr_Ret  + ip$k_tr_Plt  - ip$k_prol_MEP) * ip$MEP0 / ip$MPP0
+    ip$k_prol_MPP <- (ip$k_tr_CMP  + ip$k_tr_MEP)  / ip$lambda5
+    ip$k_stem     <- (ip$k_tr_CMP  + ip$k_tr_MEP - ip$k_prol_MPP) * ip$MPP0
+    # Transit states initiaux (Eq. S3)
+    a_Neut <- 3 / ip$MTT_Neut
+    a_Mono <- 3 / ip$MTT_Mono
+    T_Neut <- ip$k_circ_Neut * ip$Neut0 / a_Neut
+    T_Mono <- ip$k_circ_Mono * ip$Mono0 / a_Mono
+    T2_Ret <- ip$k_circ_Ret  * ip$Ret0  / ip$a_Ret
+    T1_Ret <- T2_Ret / ip$lambda1
+    T2_Plt <- ip$k_circ_Plt  * ip$Plt0  / ip$a_Plt
+    T1_Plt <- T2_Plt / ip$lambda2
+    attr(ip, "state0_pd") <- c(
+      MPP = ip$MPP0, CMP = ip$CMP0, MEP = ip$MEP0,
+      T1_Neut=T_Neut, T2_Neut=T_Neut, T3_Neut=T_Neut, Neut=ip$Neut0,
+      T1_Mono=T_Mono, T2_Mono=T_Mono, T3_Mono=T_Mono, Mono=ip$Mono0,
+      T1_Ret=T1_Ret,  T2_Ret=T2_Ret,  T3_Ret=T2_Ret,  Ret=ip$Ret0,
+      RBC=ip$RBC0,
+      T1_Plt=T1_Plt,  T2_Plt=T2_Plt,  T3_Plt=T2_Plt,  Plt=ip$Plt0
+    )
+    ip
+  }
+
+  # ── Simulation individuelle par animal ────────────────
+  animal_info <- list(
+    list(id="1001", dose=4),  list(id="1002", dose=4),
+    list(id="2001", dose=13), list(id="2002", dose=13),
+    list(id="4001", dose=26), list(id="4002", dose=26),
+    list(id="3101", dose=39), list(id="3002", dose=39)
+  )
+
+  animal_order <- c("1001 (4 mg/kg)",  "1002 (4 mg/kg)",
+                    "2001 (13 mg/kg)", "2002 (13 mg/kg)",
+                    "4001 (26 mg/kg)", "4002 (26 mg/kg)",
+                    "3101 (39 mg/kg)", "3002 (39 mg/kg)")
+
+  cat("\nSimulations individuelles (8 animaux)...\n")
+  sims_ind <- lapply(animal_info, function(a) {
+    base <- obs_data[obs_data$Animal_Id == a$id & obs_data$jour == -3, ]
+    if (nrow(base) == 0 || any(is.na(c(base$Neut, base$Plt, base$RBC, base$Ret)))) {
+      cat(sprintf("  %s : baseline J-3 manquante — ignore\n", a$id))
+      return(NULL)
+    }
+    ip <- derive_pars_individual(init_pars,
+                                 neut0 = base$Neut, plt0 = base$Plt,
+                                 rbc0  = base$RBC,  ret0 = base$Ret)
+    # Ajouter params FGFR2
+    for (nm in names(fgfr2_nhp)) ip[[nm]] <- fgfr2_nhp[[nm]]
+    ip$k_dam_DXd <- 0.017
+    ip$rate_fun  <- make_nhp_infusion(
+      dose_mgkg  = a$dose, BW_kg = 4.0,
+      Tinfu_h    = 0.5,
+      interval_h = fgfr2_nhp$interval_h,
+      n_cycles   = 3)
+    state0_pd <- attr(ip, "state0_pd")
+    state0 <- c(C_ADC1=0, C_ADC2=0, Damage=0, state0_pd)
+    times  <- seq(0, max(3*21*24, 120*24), by = 1)
+    sol <- tryCatch(
+      as.data.frame(ode(y=state0, times=times,
+                        func=pkpd_nhp_ode, parms=ip,
+                        method="lsoda", hmax=0.25)),
+      error = function(e) { cat(sprintf("  %s erreur: %s\n", a$id, e$message)); NULL }
+    )
+    if (is.null(sol)) return(NULL)
+    sol$time_d    <- sol$time / 24
+    sol$Animal_Id <- a$id
+    sol$dose_mgkg <- a$dose
+    sol$Neut_base <- base$Neut
+    sol$Plt_base  <- base$Plt
+    sol$RBC_base  <- base$RBC
+    sol$Ret_base  <- base$Ret
+    cat(sprintf("  %s (%d mg/kg) OK\n", a$id, a$dose))
+    sol
+  })
+  names(sims_ind) <- sapply(animal_info, `[[`, "id")
+
+  # ── Long format normalise ──────────────────────────────
+  ind_pred_long <- bind_rows(lapply(sims_ind, function(s) {
+    if (is.null(s)) return(NULL)
+    lbl <- paste0(s$Animal_Id[1], " (", s$dose_mgkg[1], " mg/kg)")
+    data.frame(
+      Animal_label = factor(lbl, levels = animal_order),
+      time_d  = s$time_d,
+      Neutrophiles   = s$Neut / s$Neut_base[1] * 100,
+      Plaquettes     = s$Plt  / s$Plt_base[1]  * 100,
+      GR             = s$RBC  / s$RBC_base[1]  * 100,
+      Reticulocytes  = s$Ret  / s$Ret_base[1]  * 100
+    )
+  })) %>%
+    pivot_longer(cols = c(Neutrophiles, Plaquettes, GR, Reticulocytes),
+                 names_to = "Cellule", values_to = "Pct") %>%
+    mutate(Cellule = factor(Cellule,
+                            levels = c("Neutrophiles","Plaquettes",
+                                       "GR","Reticulocytes")))
+
+  # ── Observations en % baseline individuelle ────────────
   baseline_ind <- obs_data %>%
     filter(jour == -3) %>%
-    select(Animal_Id,
-           Neut_base = Neut, Plt_base = Plt,
-           RBC_base  = RBC,  Ret_base  = Ret)
+    select(Animal_Id, Neut_base=Neut, Plt_base=Plt,
+           RBC_base=RBC, Ret_base=Ret)
 
-  # % de la baseline individuelle
-  ind_pct <- obs_data %>%
-    left_join(baseline_ind, by = "Animal_Id") %>%
+  obs_ind_pct <- obs_data %>%
+    left_join(baseline_ind, by="Animal_Id") %>%
     mutate(
-      Neut_pct = Neut / Neut_base * 100,
-      Plt_pct  = Plt  / Plt_base  * 100,
-      RBC_pct  = RBC  / RBC_base  * 100,
-      Ret_pct  = Ret  / Ret_base  * 100
-    ) %>%
-    select(Animal_Id, dose_mgkg, jour,
-           Neut_pct, Plt_pct, RBC_pct, Ret_pct) %>%
-    pivot_longer(cols = c(Neut_pct, Plt_pct, RBC_pct, Ret_pct),
-                 names_to = "Cellule", values_to = "Pct") %>%
-    mutate(
-      Cellule = factor(Cellule,
-                       levels = c("Neut_pct", "Plt_pct",
-                                  "RBC_pct",  "Ret_pct"),
-                       labels = c("Neutrophiles", "Plaquettes",
-                                  "GR", "Reticulocytes")),
-      Animal_label = factor(
+      Neutrophiles  = Neut / Neut_base * 100,
+      Plaquettes    = Plt  / Plt_base  * 100,
+      GR            = RBC  / RBC_base  * 100,
+      Reticulocytes = Ret  / Ret_base  * 100,
+      Animal_label  = factor(
         paste0(Animal_Id, " (", dose_mgkg, " mg/kg)"),
-        levels = c("1001 (4 mg/kg)",  "1002 (4 mg/kg)",
-                   "2001 (13 mg/kg)", "2002 (13 mg/kg)",
-                   "4001 (26 mg/kg)", "4002 (26 mg/kg)",
-                   "3101 (39 mg/kg)", "3002 (39 mg/kg)"))
+        levels = animal_order)
     ) %>%
+    select(Animal_label, jour,
+           Neutrophiles, Plaquettes, GR, Reticulocytes) %>%
+    pivot_longer(cols = c(Neutrophiles, Plaquettes, GR, Reticulocytes),
+                 names_to = "Cellule", values_to = "Pct") %>%
+    mutate(Cellule = factor(Cellule,
+                            levels = c("Neutrophiles","Plaquettes",
+                                       "GR","Reticulocytes"))) %>%
     filter(!is.na(Pct))
 
+  # ── Palette ───────────────────────────────────────────
   cell_cols_ind <- c("Neutrophiles"  = "#2166ac",
                      "Plaquettes"    = "#4dac26",
                      "GR"            = "#d6604d",
                      "Reticulocytes" = "#984ea3")
 
-  p_ind <- ggplot(ind_pct,
-                  aes(x = jour, y = Pct,
-                      color = Cellule, group = Cellule)) +
+  # ── Figure ────────────────────────────────────────────
+  p_ind_pred <- ggplot(ind_pred_long,
+                       aes(x = time_d, y = Pct,
+                           color = Cellule, group = Cellule)) +
     geom_hline(yintercept = 100, linetype = "dashed",
-               color = "grey50", linewidth = 0.6) +
+               color = "grey45", linewidth = 0.6) +
+    geom_vline(xintercept = dose_days, linetype = "dotted",
+               color = "grey75", linewidth = 0.35) +
     geom_line(linewidth = 1.1) +
-    geom_point(size = 2.5) +
+    geom_point(data = obs_ind_pct,
+               aes(x = jour, y = Pct, color = Cellule),
+               shape = 19, size = 2.4, inherit.aes = FALSE) +
     scale_color_manual(values = cell_cols_ind, name = "Lignee") +
-    scale_x_continuous(breaks = c(-3, 2, 8, 12, 15, 22),
-                       labels = c("J-3","J2","J8","J12","J15","J22")) +
+    scale_x_continuous(breaks = seq(0, 120, by = 21),
+                       labels = paste0("J", seq(0, 120, by = 21))) +
     scale_y_continuous(labels = function(x) paste0(x, "%")) +
     facet_wrap(~ Animal_label, ncol = 4) +
     labs(
-      title    = "Profils hematologiques individuels — FGFR2 inhibiteur NHP",
-      subtitle = "% de la valeur pre-dose (J-3 = 100%)  |  --- baseline individuelle",
+      title    = "Profils predits individuels — FGFR2 inhibiteur NHP",
+      subtitle = "Ligne = simulation  |  Points = observations  |  % baseline J-3 individuelle  |  --- 100%  |  ... jour de dose",
       x = "Temps (jours)", y = "% baseline individuelle"
     ) +
     theme_poster +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 11))
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10))
 
-  ggsave("results/poster_PD_individual.pdf",
-         p_ind, width = 15, height = 9, dpi = 300)
-  ggsave("results/poster_PD_individual.png",
-         p_ind, width = 15, height = 9, dpi = 300)
-  cat("  -> results/poster_PD_individual.pdf / .png\n")
+  ggsave("results/poster_PD_predicted_individual.pdf",
+         p_ind_pred, width = 15, height = 9, dpi = 300)
+  ggsave("results/poster_PD_predicted_individual.png",
+         p_ind_pred, width = 15, height = 9, dpi = 300)
+  cat("  -> results/poster_PD_predicted_individual.pdf / .png\n")
 
 } else {
   cat("  [Figure 7 ignoree : nhp_hema_data.csv vide]\n")
