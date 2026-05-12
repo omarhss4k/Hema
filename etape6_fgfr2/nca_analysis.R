@@ -156,6 +156,7 @@ auclast_animal <- function(animal_data) {
 animals    <- unique(pk_raw$subject)
 results    <- list()
 pk2cmt_raw <- list()   # paramètres bruts du fit 2-cmt
+fit_params <- list()   # paramètres stockés pour les graphiques (évite double fit)
 
 for (anim in animals) {
   cat("\n--- Ajustement :", anim, "---\n")
@@ -163,6 +164,7 @@ for (anim in animals) {
   dose  <- dat$dose_mg_kg[1]
 
   p     <- fit_animal(dat)
+  fit_params[[anim]] <- p     # stocker pour réutilisation dans les graphiques
   drv   <- derived_params(p)
   aucl  <- auclast_animal(dat)
 
@@ -235,13 +237,15 @@ cat("\nTableau exporté : nca_results.csv\n")
 # ── 7. Courbes ajustées + données observées -----------------------------------
 # Générer les prédictions du modèle ajusté pour chaque animal
 
+t_max_obs  <- max(pk_raw$time, na.rm = TRUE)
+times_pred <- seq(0.083, t_max_obs * 1.05, length.out = 400)
+
 pred_list <- list()
 for (anim in animals) {
   dat  <- pk_raw %>% filter(subject == anim)
   dose <- dat$dose_mg_kg[1]
-  p    <- fit_animal(dat)
+  p    <- fit_params[[anim]]   # réutilise les paramètres du premier fit
 
-  times_pred <- seq(0.083, 168, length.out = 300)
   sol <- rxSolve(pk2cmt,
                  params = p,
                  inits  = c(A1 = dose * 1e6, A2 = 0),
@@ -278,7 +282,7 @@ theme_pk <- theme_bw(base_size = 13) +
 # 7a. Linéaire
 p_linear <- ggplot() +
   geom_line(data  = pred_df, aes(x=time, y=conc, color=Dose, group=subject), linewidth=0.9) +
-  geom_point(data = obs_df,  aes(x=time, y=conc, color=Dose, shape=subject), size=3) +
+  geom_point(data = obs_df,  aes(x=time, y=conc, color=Dose, shape=subject), size=3, na.rm=TRUE) +
   scale_color_manual(values = dose_cols_nca) +
   scale_shape_manual(values = animal_shapes) +
   labs(title    = "Profil PK — modèle 2 compartiments (rxode2)",
@@ -292,7 +296,7 @@ ggsave("nca_linear.png", plot = p_linear, width = 8, height = 5, dpi = 300)
 # 7b. Semi-logarithmique
 p_semilog <- ggplot() +
   geom_line(data  = pred_df, aes(x=time, y=conc, color=Dose, group=subject), linewidth=0.9) +
-  geom_point(data = obs_df,  aes(x=time, y=conc, color=Dose, shape=subject), size=3) +
+  geom_point(data = obs_df,  aes(x=time, y=conc, color=Dose, shape=subject), size=3, na.rm=TRUE) +
   scale_color_manual(values = dose_cols_nca) +
   scale_shape_manual(values = animal_shapes) +
   scale_y_log10() +
