@@ -697,7 +697,7 @@ pkpd_par_tbl <- data.frame(
     sprintf("%.4f g", w0)
   ),
   Estimation  = c("DEoptim","DEoptim","Fixé (littérature)","Fixé (Simeoni 2004)",
-                  "DEoptim","nlminb (PK)","nlminb (PK)","nlminb (PK)","nlminb (PK)",
+                  "DEoptim","DEoptim","nlminb (PK)","nlminb (PK)","nlminb (PK)","nlminb (PK)",
                   "Moyenne groupes j0")
 )
 
