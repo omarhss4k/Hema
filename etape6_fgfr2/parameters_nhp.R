@@ -76,11 +76,11 @@ init_pars$k_rep <- 0.017   # réparation ADN (h⁻¹)
 init_pars$MPP0  <-    1.5    # ← à ajuster (interpolation rat/humain)
 init_pars$CMP0  <-   18.0   # ← à ajuster
 init_pars$MEP0  <-   13.0   # ← à ajuster
-init_pars$Neut0 <-    3.5   # 10⁹/L  (plage 1.5–7)
-init_pars$Mono0 <-    0.4   # 10⁹/L
-init_pars$Ret0  <-   50.0   # 10⁹/L
-init_pars$RBC0  <- 5500.0   # 10⁹/L
-init_pars$Plt0  <-  350.0   # 10⁹/L
+init_pars$Neut0 <-    1.98   # 10⁹/L  — moyenne pré-dose (t=-3) 8 animaux
+init_pars$Mono0 <-    0.4    # 10⁹/L
+init_pars$Ret0  <-   82.5   # 10⁹/L  — moyenne pré-dose (t=-3) 8 animaux
+init_pars$RBC0  <- 5806.0   # 10⁹/L  — moyenne pré-dose (t=-3) 8 animaux ×1000
+init_pars$Plt0  <-  436.0   # 10⁹/L  — moyenne pré-dose (t=-3) 8 animaux
 
 # ══════════════════════════════════════════════════════════
 # MTTs NHP (en heures) — proches humain, légèrement réduits
