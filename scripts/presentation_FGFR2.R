@@ -260,11 +260,11 @@ cells3 <- rbind(hdr3, cells3)
 cells3$y    <- max(cells3$row) - cells3$row
 cells3$tcol <- ifelse(cells3$row == 0, "white", "black")
 cells3$face <- ifelse(cells3$bold, "bold", "plain")
-xw <- c(1, 1, 2.2)
-cells3$xpos <- xw[cells3$col]
+cells3$xpos <- c(1, 1, 2.2)[cells3$col]
+cells3$twd  <- c(0.9, 0.9, 1.9)[cells3$col]   # largeur de tuile par colonne
 
 p3 <- ggplot(cells3, aes(x = xpos, y = y)) +
-  geom_tile(aes(fill = fill, width = c(0.9,0.9,1.9)[cells3$col]),
+  geom_tile(aes(fill = fill, width = twd),
             color = "grey80", linewidth = 0.3) +
   geom_text(aes(label = lbl, color = tcol, fontface = face),
             size = 3.3, hjust = 0.5) +
@@ -283,52 +283,54 @@ SAVE("03_parametres_PK", p3, w = 11, h = 5.5)
 # =============================================================================
 cat("[4/9] Schéma modèle PK 2-compartiments\n")
 
-arrow <- function(x1,y1,x2,y2)
+# helpers locaux pour les schémas — nommés .seg/.box/.lbl pour éviter
+# tout conflit avec grid::arrow() ou d'autres fonctions du namespace
+.seg <- function(x1,y1,x2,y2)
   geom_segment(aes(x=x1, y=y1, xend=x2, yend=y2),
-               arrow = arrow(length = unit(0.3,"cm"), type="closed"),
+               arrow = grid::arrow(length = unit(0.3,"cm"), type="closed"),
                linewidth = 1, color = "#2C3E50")
 
-box <- function(xmin,xmax,ymin,ymax,fill="#D6EAF8",col="#2980B9")
+.box <- function(xmin,xmax,ymin,ymax,fill="#D6EAF8",col="#2980B9")
   annotate("rect", xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax,
            fill=fill, color=col, linewidth=1.2)
 
-lbl <- function(x,y,txt,sz=4.5,bold=FALSE,col="black")
+.lbl <- function(x,y,txt,sz=4.5,bold=FALSE,col="black")
   annotate("text", x=x, y=y, label=txt, size=sz,
            fontface=if(bold)"bold"else"plain", color=col, hjust=0.5)
 
 p4 <- ggplot() + xlim(0,10) + ylim(0,6) +
   # Dose IV bolus
-  box(0.2, 1.8, 3.8, 5.2, fill="#FDEBD0", col="#E67E22") +
-  lbl(1, 4.8, "Dose IV bolus", sz=4, bold=TRUE, col="#E67E22") +
-  lbl(1, 4.3, "D = dose × kg", sz=3.5, col="#7F8C8D") +
+  .box(0.2, 1.8, 3.8, 5.2, fill="#FDEBD0", col="#E67E22") +
+  .lbl(1, 4.8, "Dose IV bolus", sz=4, bold=TRUE, col="#E67E22") +
+  .lbl(1, 4.3, "D = dose × kg", sz=3.5, col="#7F8C8D") +
 
   # Compartiment central
-  box(2.8, 6.2, 3.2, 5.8, fill="#D6EAF8", col="#2980B9") +
-  lbl(4.5, 5.1, "Compartiment central", sz=4.5, bold=TRUE, col="#1A5276") +
-  lbl(4.5, 4.6, "A1  (quantité, µg/kg)", sz=3.8, col="#2C3E50") +
-  lbl(4.5, 4.0, "C1 = A1 / V1", sz=3.8, col="#2C3E50") +
+  .box(2.8, 6.2, 3.2, 5.8, fill="#D6EAF8", col="#2980B9") +
+  .lbl(4.5, 5.1, "Compartiment central", sz=4.5, bold=TRUE, col="#1A5276") +
+  .lbl(4.5, 4.6, "A1  (quantité, µg/kg)", sz=3.8, col="#2C3E50") +
+  .lbl(4.5, 4.0, "C1 = A1 / V1", sz=3.8, col="#2C3E50") +
 
   # Compartiment périphérique
-  box(2.8, 6.2, 0.5, 2.8, fill="#D5F5E3", col="#27AE60") +
-  lbl(4.5, 2.1, "Compartiment périphérique", sz=4.5, bold=TRUE, col="#1E8449") +
-  lbl(4.5, 1.6, "A2  (quantité, µg/kg)", sz=3.8, col="#2C3E50") +
+  .box(2.8, 6.2, 0.5, 2.8, fill="#D5F5E3", col="#27AE60") +
+  .lbl(4.5, 2.1, "Compartiment périphérique", sz=4.5, bold=TRUE, col="#1E8449") +
+  .lbl(4.5, 1.6, "A2  (quantité, µg/kg)", sz=3.8, col="#2C3E50") +
 
   # Élimination
-  box(7.2, 9.8, 3.8, 5.2, fill="#FADBD8", col="#E74C3C") +
-  lbl(8.5, 4.8, "Élimination", sz=4, bold=TRUE, col="#C0392B") +
-  lbl(8.5, 4.3, "CL · C1", sz=3.5, col="#7F8C8D") +
+  .box(7.2, 9.8, 3.8, 5.2, fill="#FADBD8", col="#E74C3C") +
+  .lbl(8.5, 4.8, "Élimination", sz=4, bold=TRUE, col="#C0392B") +
+  .lbl(8.5, 4.3, "CL · C1", sz=3.5, col="#7F8C8D") +
 
   # Flèches
-  arrow(1.8, 4.5, 2.8, 4.5) +   # dose → C1
-  arrow(6.2, 4.5, 7.2, 4.5) +   # C1 → élim
+  .seg(1.8, 4.5, 2.8, 4.5) +   # dose → C1
+  .seg(6.2, 4.5, 7.2, 4.5) +   # C1 → élim
 
   # Q : C1 ↔ C2
-  arrow(4.5, 3.2, 4.5, 2.8) +   # C1 → C2
-  arrow(4.9, 2.8, 4.9, 3.2) +   # C2 → C1
+  .seg(4.5, 3.2, 4.5, 2.8) +   # C1 → C2
+  .seg(4.9, 2.8, 4.9, 3.2) +   # C2 → C1
 
   # Labels flèches Q
-  lbl(3.9, 3.0, "Q/V1", sz=3.5, col="#27AE60") +
-  lbl(5.5, 3.0, "Q/V2", sz=3.5, col="#27AE60") +
+  .lbl(3.9, 3.0, "Q/V1", sz=3.5, col="#27AE60") +
+  .lbl(5.5, 3.0, "Q/V2", sz=3.5, col="#27AE60") +
 
   # Équations
   annotate("label", x=4.5, y=0.25,
@@ -422,57 +424,57 @@ p6 <- ggplot() + xlim(0,14) + ylim(0,8) +
   # ---- Bloc PK ----
   annotate("rect", xmin=0.2, xmax=3.8, ymin=5.5, ymax=7.5,
            fill="#D6EAF8", color="#2980B9", linewidth=1.2) +
-  lbl(2, 6.9, "PK 2-compartiments", sz=4.2, bold=TRUE, col="#1A5276") +
-  lbl(2, 6.4, "C1(t) = A1(t) / V1",  sz=3.6, col="#2C3E50") +
-  lbl(2, 5.9, "k12, k21, CL, V1, V2", sz=3.4, col="#7F8C8D") +
+  .lbl(2, 6.9, "PK 2-compartiments", sz=4.2, bold=TRUE, col="#1A5276") +
+  .lbl(2, 6.4, "C1(t) = A1(t) / V1",  sz=3.6, col="#2C3E50") +
+  .lbl(2, 5.9, "k12, k21, CL, V1, V2", sz=3.4, col="#7F8C8D") +
 
   # flèche PK → PD
-  arrow(3.8, 6.5, 5.2, 4.7) +
-  lbl(4.8, 5.8, "C1(t)", sz=3.5, col="#E74C3C") +
+  .seg(3.8, 6.5, 5.2, 4.7) +
+  .lbl(4.8, 5.8, "C1(t)", sz=3.5, col="#E74C3C") +
 
   # ---- Cellules proliférantes x1 ----
   annotate("rect", xmin=5.0, xmax=8.0, ymin=3.5, ymax=5.5,
            fill="#D5F5E3", color="#27AE60", linewidth=1.2) +
-  lbl(6.5, 5.0, "x1", sz=5, bold=TRUE, col="#1E8449") +
-  lbl(6.5, 4.5, "Prolifération", sz=3.8, col="#2C3E50") +
-  lbl(6.5, 4.0, "l0·x1 / (1+(l0/l1·w)^p)^(1/p)", sz=2.9, col="#7F8C8D") +
-  lbl(6.5, 3.7, "−k2·C1·x1", sz=3.1, col="#E74C3C") +
+  .lbl(6.5, 5.0, "x1", sz=5, bold=TRUE, col="#1E8449") +
+  .lbl(6.5, 4.5, "Prolifération", sz=3.8, col="#2C3E50") +
+  .lbl(6.5, 4.0, "l0·x1 / (1+(l0/l1·w)^p)^(1/p)", sz=2.9, col="#7F8C8D") +
+  .lbl(6.5, 3.7, "-k2·C1·x1", sz=3.1, col="#E74C3C") +
 
   # flèche x1 → x2
-  arrow(8.0, 4.5, 9.0, 4.5) +
-  lbl(8.5, 4.8, "k2·C1", sz=3.2, col="#E74C3C") +
+  .seg(8.0, 4.5, 9.0, 4.5) +
+  .lbl(8.5, 4.8, "k2·C1", sz=3.2, col="#E74C3C") +
 
   # ---- Transit x2 ----
   annotate("rect", xmin=9.0, xmax=10.5, ymin=3.5, ymax=5.5,
            fill="#FDEBD0", color="#E67E22", linewidth=1.0) +
-  lbl(9.75, 4.5, "x2", sz=4.5, bold=TRUE, col="#784212") +
-  lbl(9.75, 3.8, "k1·x2", sz=3, col="#7F8C8D") +
+  .lbl(9.75, 4.5, "x2", sz=4.5, bold=TRUE, col="#784212") +
+  .lbl(9.75, 3.8, "k1·x2", sz=3, col="#7F8C8D") +
 
-  arrow(10.5, 4.5, 11.0, 4.5) +
+  .seg(10.5, 4.5, 11.0, 4.5) +
 
   # ---- Transit x3 ----
   annotate("rect", xmin=11.0, xmax=12.0, ymin=3.5, ymax=5.5,
            fill="#FDEBD0", color="#E67E22", linewidth=1.0) +
-  lbl(11.5, 4.5, "x3", sz=4.5, bold=TRUE, col="#784212") +
+  .lbl(11.5, 4.5, "x3", sz=4.5, bold=TRUE, col="#784212") +
 
-  arrow(12.0, 4.5, 12.5, 4.5) +
+  .seg(12.0, 4.5, 12.5, 4.5) +
 
   # ---- Transit x4 ----
   annotate("rect", xmin=12.5, xmax=13.5, ymin=3.5, ymax=5.5,
            fill="#FADBD8", color="#E74C3C", linewidth=1.0) +
-  lbl(13.0, 4.5, "x4", sz=4.5, bold=TRUE, col="#922B21") +
+  .lbl(13.0, 4.5, "x4", sz=4.5, bold=TRUE, col="#922B21") +
 
   # ---- Masse tumorale totale ----
   annotate("rect", xmin=5.5, xmax=12.8, ymin=0.3, ymax=1.8,
            fill="#F9F9F9", color="#7F8C8D", linewidth=0.8, linetype="dashed") +
-  lbl(9.2, 1.4, "w(t) = x1 + x2 + x3 + x4", sz=4, bold=TRUE, col="#2C3E50") +
-  lbl(9.2, 0.8, "Volume tumoral total simulé (comparé aux données)", sz=3.3, col="#7F8C8D") +
+  .lbl(9.2, 1.4, "w(t) = x1 + x2 + x3 + x4", sz=4, bold=TRUE, col="#2C3E50") +
+  .lbl(9.2, 0.8, "Volume tumoral total simule (compare aux donnees)", sz=3.3, col="#7F8C8D") +
 
   # flèche w → x1 (rétroaction croissance)
   geom_curve(aes(x=9.0, y=1.8, xend=6.5, yend=3.5),
-             arrow=arrow(length=unit(0.28,"cm"), type="closed"),
+             arrow=grid::arrow(length=unit(0.28,"cm"), type="closed"),
              curvature=-0.3, linewidth=0.8, color="#27AE60") +
-  lbl(7.3, 2.8, "rétroaction\ncroissance", sz=3, col="#1E8449") +
+  .lbl(7.3, 2.8, "retroaction\ncroissance", sz=3, col="#1E8449") +
 
   # ---- Légende équations ----
   annotate("label", x=2, y=2.5,
