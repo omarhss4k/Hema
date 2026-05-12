@@ -17,7 +17,7 @@ library(deSolve)
 library(DEoptim)
 library(ggplot2)
 library(readxl)
-library(patchwork)
+library(gridExtra)
 
 OUT <- "scripts/presentation"
 dir.create(OUT, showWarnings = FALSE)
@@ -158,8 +158,13 @@ p1b <- ggplot(df_pk_raw, aes(x = Temps_h, y = Concentration, color = Dose)) +
        x = "Temps (heures)", y = "Concentration log(µg/L)", color = NULL) +
   THEME
 
-SAVE("01_donnees_PK_brutes", p1a + p1b + plot_layout(guides = "collect") &
-       theme(legend.position = "bottom"), w = 13, h = 5)
+png(file.path(OUT, "01_donnees_PK_brutes.png"),
+    width = 13, height = 5, units = "in", res = 180, bg = "white")
+grid.arrange(p1a + theme(legend.position = "none"),
+             p1b + theme(legend.position = "bottom"),
+             ncol = 2)
+dev.off()
+cat("  →", file.path(OUT, "01_donnees_PK_brutes.png"), "\n")
 
 # =============================================================================
 # FIG 2 — AJUSTEMENT PK PRÉDIT VS OBSERVÉ
@@ -552,8 +557,13 @@ p7b <- ggplot(df_res, aes(x=t, y=resid, color=Groupe)) +
        x="Temps (jours)", y="Résidu relatif (%)", color=NULL) +
   THEME + theme(legend.position="none")
 
-SAVE("07_PKPD_predit_vs_observe",
-     p7a + p7b + plot_layout(widths=c(2,1)), w=14, h=6)
+png(file.path(OUT, "07_PKPD_predit_vs_observe.png"),
+    width = 14, height = 6, units = "in", res = 180, bg = "white")
+grid.arrange(p7a + theme(legend.position = "bottom"),
+             p7b + theme(legend.position = "none"),
+             ncol = 2, widths = c(2, 1))
+dev.off()
+cat("  →", file.path(OUT, "07_PKPD_predit_vs_observe.png"), "\n")
 
 # =============================================================================
 # FIG 8 — TABLEAU TGI OBSERVÉ + PRÉDIT
