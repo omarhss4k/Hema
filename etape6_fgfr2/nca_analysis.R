@@ -309,4 +309,117 @@ print(p_semilog)
 ggsave("nca_semilog.png", plot = p_semilog, width = 8, height = 5, dpi = 300)
 
 cat("\nGraphiques exportés : nca_linear.png  nca_semilog.png\n")
+
+# ── 8. Tableau récapitulatif paramètres PK ────────────────────────────────────
+# Colonnes : Animal | Dose | Cmax | t½β | CL | V1 | Q | V2
+# Ligne finale : moyenne des 8 animaux
+
+recap_df <- merge(
+  nca_summary[, c("Animal_Id", "Dose_mg_kg", "Cmax_ng_mL", "Half_life_h")],
+  pk2cmt_df[pk2cmt_df$Animal_Id != "Mean",
+            c("Animal_Id", "CL_mL_h_kg", "V1_mL_kg", "Q_mL_h_kg", "V2_mL_kg")],
+  by = "Animal_Id"
+)
+recap_df <- recap_df[order(recap_df$Dose_mg_kg), ]
+
+mean_row2 <- pk2cmt_df[pk2cmt_df$Animal_Id == "Mean", ]
+
+# Format numérique → caractère pour affichage
+fmt <- function(x, digits = 2, big = FALSE) {
+  if (big) formatC(round(x), format = "d", big.mark = " ")
+  else     sprintf(paste0("%.", digits, "f"), x)
+}
+
+build_display <- function(df) {
+  data.frame(
+    "Animal"        = df$Animal_Id,
+    "Dose\n(mg/kg)" = fmt(df$Dose_mg_kg, 1),
+    "Cmax\n(ng/mL)" = fmt(df$Cmax_ng_mL, 0, big = TRUE),
+    "t½β\n(h)"      = fmt(df$Half_life_h, 1),
+    "CL\n(mL/h/kg)" = fmt(df$CL_mL_h_kg, 2),
+    "V1\n(mL/kg)"   = fmt(df$V1_mL_kg,   1),
+    "Q\n(mL/h/kg)"  = fmt(df$Q_mL_h_kg,  2),
+    "V2\n(mL/kg)"   = fmt(df$V2_mL_kg,   1),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+}
+
+tbl_body <- build_display(recap_df)
+
+tbl_mean <- data.frame(
+  "Animal"        = "Moyenne",
+  "Dose\n(mg/kg)" = "—",
+  "Cmax\n(ng/mL)" = "—",
+  "t½β\n(h)"      = fmt(mean_row2$t12_beta_h, 1),
+  "CL\n(mL/h/kg)" = fmt(mean_row2$CL_mL_h_kg, 2),
+  "V1\n(mL/kg)"   = fmt(mean_row2$V1_mL_kg,   1),
+  "Q\n(mL/h/kg)"  = fmt(mean_row2$Q_mL_h_kg,  2),
+  "V2\n(mL/kg)"   = fmt(mean_row2$V2_mL_kg,   1),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+display_tbl <- rbind(tbl_body, tbl_mean)
+
+# ── Rendu ggplot2 (sans dépendance externe) ───────────────────────────────────
+n_col  <- ncol(display_tbl)
+n_body <- nrow(display_tbl)
+n_row  <- n_body + 1   # + ligne d'en-tête
+
+col_names <- colnames(display_tbl)
+col_w     <- c(2.2, 1.3, 1.8, 1.2, 1.4, 1.3, 1.4, 1.3)   # largeur relative par col
+col_x     <- cumsum(c(0, col_w[-n_col])) + col_w / 2       # centre de chaque col
+
+# Long format
+cells <- data.frame(
+  ri  = c(rep(1, n_col),
+          rep(2:(n_row - 1), each = n_col),
+          rep(n_row, n_col)),
+  ci  = rep(1:n_col, n_row),
+  val = c(col_names,
+          unlist(tbl_body),
+          unlist(tbl_mean)),
+  stringsAsFactors = FALSE
+)
+
+# Géométrie
+cells$cx  <- col_x[cells$ci]
+cells$cy  <- (n_row + 1) - cells$ri   # y inverse pour lire de haut en bas
+
+# Style cellules
+cells$bg   <- ifelse(cells$ri == 1,     "#2c3e50",
+              ifelse(cells$ri == n_row, "#dfe6e9",
+              ifelse(cells$ri %% 2 == 0, "#f8f9fa", "white")))
+cells$fcol <- ifelse(cells$ri == 1, "white", "#2d3436")
+cells$face <- ifelse(cells$ri == 1, "bold",
+              ifelse(cells$ri == n_row, "bold.italic", "plain"))
+cells$sz   <- ifelse(cells$ri == 1, 3.6, 3.3)
+
+p_tbl <- ggplot(cells, aes(x = cx, y = cy)) +
+  geom_tile(aes(fill = I(bg), width = col_w[ci]),
+            height = 0.85, color = "white", linewidth = 0.6) +
+  geom_text(aes(label = val, color = I(fcol), fontface = face, size = I(sz)),
+            lineheight = 0.85) +
+  scale_x_continuous(limits = c(0, sum(col_w)), expand = c(0.01, 0)) +
+  scale_y_continuous(limits = c(0.5, n_row + 0.5), expand = c(0, 0)) +
+  labs(
+    title    = "Paramètres PK — modèle 2 compartiments (rxode2 fit)",
+    subtitle = "IV bolus · NHP (macaque) · Inhibiteur FGFR2  |  CL, V normalisés au poids (mL/h/kg, mL/kg)"
+  ) +
+  theme_void(base_size = 12) +
+  theme(
+    plot.title    = element_text(face = "bold", hjust = 0.5, size = 13,
+                                 margin = margin(b = 4)),
+    plot.subtitle = element_text(hjust = 0.5, color = "grey45", size = 10,
+                                 margin = margin(b = 6)),
+    plot.margin   = margin(10, 10, 10, 10)
+  )
+
+ggsave("pk_recap_table.pdf", plot = p_tbl,
+       width = 11, height = 4.2, device = cairo_pdf)
+ggsave("pk_recap_table.png", plot = p_tbl,
+       width = 11, height = 4.2, dpi = 300)
+
+cat("Tableau exporté : pk_recap_table.pdf  pk_recap_table.png\n")
 cat("Script terminé.\n")
