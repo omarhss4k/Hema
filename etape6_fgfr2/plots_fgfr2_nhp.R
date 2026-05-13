@@ -51,22 +51,22 @@ sim_long <- bind_rows(lapply(seq_along(doses_fgfr2), function(i) {
   mutate(
     Dose    = factor(Dose, levels = paste0(doses_fgfr2, " mg/kg")),
     Cellule = factor(Cellule, levels = c("Neut", "Plt", "Ret", "RBC", "Damage"),
-                     labels = c("Neutrophiles (10⁹/L)", "Plaquettes (10⁹/L)",
-                                "Réticulocytes (10⁹/L)", "GR (10⁹/L)",
-                                "Damage (u.a.)"))
+                     labels = c("Neutrophils (10⁹/L)", "Platelets (10⁹/L)",
+                                "Reticulocytes (10⁹/L)", "RBC (10⁹/L)",
+                                "Damage (a.u.)"))
   )
 
 # Baselines par panel
 base_df <- data.frame(
-  Cellule = c("Neutrophiles (10⁹/L)", "Plaquettes (10⁹/L)",
-              "Réticulocytes (10⁹/L)", "GR (10⁹/L)"),
+  Cellule = c("Neutrophils (10⁹/L)", "Platelets (10⁹/L)",
+              "Reticulocytes (10⁹/L)", "RBC (10⁹/L)"),
   baseline = c(init_pars$Neut0, init_pars$Plt0,
                init_pars$Ret0,  init_pars$RBC0)
 )
 
 # Nadirs par panel + dose
 nadir_df <- sim_long %>%
-  filter(Cellule != "Damage (u.a.)") %>%
+  filter(Cellule != "Damage (a.u.)") %>%
   group_by(Dose, Cellule) %>%
   slice_min(Valeur, n = 1) %>%
   ungroup()
@@ -74,7 +74,7 @@ nadir_df <- sim_long %>%
 # ════════════════════════════════════════════════════════
 # Figure 1 — 4 panels cellulaires (facet_wrap)
 # ════════════════════════════════════════════════════════
-df_cells <- sim_long %>% filter(Cellule != "Damage (u.a.)")
+df_cells <- sim_long %>% filter(Cellule != "Damage (a.u.)")
 
 # Observed data en long format (si rempli)
 obs_has_data <- nrow(obs_data) > 0 &&
@@ -90,8 +90,8 @@ obs_long <- if (obs_has_data) {
       Animal_Id = factor(Animal_Id),
       Cellule   = factor(Cellule,
                          levels = c("Neut", "Plt", "Ret", "RBC"),
-                         labels = c("Neutrophiles (10⁹/L)", "Plaquettes (10⁹/L)",
-                                    "Réticulocytes (10⁹/L)", "GR (10⁹/L)"))
+                         labels = c("Neutrophils (10⁹/L)", "Platelets (10⁹/L)",
+                                    "Reticulocytes (10⁹/L)", "RBC (10⁹/L)"))
     ) %>%
     filter(!is.na(Valeur))
 } else NULL
@@ -118,11 +118,11 @@ p_cells <- ggplot(df_cells, aes(x = time_d, y = Valeur, color = Dose)) +
   } +
   scale_color_manual(values = dose_cols) +
   scale_x_continuous(breaks = seq(0, 120, by = 21),
-                     labels = paste0("J", seq(0, 120, by = 21))) +
+                     labels = paste0("D", seq(0, 120, by = 21))) +
   facet_wrap(~Cellule, scales = "free_y", ncol = 2) +
   labs(title    = "Predicted Hematological Profiles — FGFR2 inhibitor Q3W × 3 cycles (+ recovery)",
-       subtitle = "▽ nadir  |  ··· baseline  |  --- dose day",
-       x = "Temps (jours)", y = NULL) +
+       subtitle = "▽ nadir  |  ··· baseline  |  --- dose day  |  filled circles = observations",
+       x = "Time (days)", y = NULL) +
   theme_poster
 
 ggsave("results/poster_PD_4panels.pdf",
@@ -134,16 +134,16 @@ cat("  -> results/poster_PD_4panels.pdf / .png\n")
 # ════════════════════════════════════════════════════════
 # Figure 2 — Damage seul
 # ════════════════════════════════════════════════════════
-p_damage <- ggplot(sim_long %>% filter(Cellule == "Damage (u.a.)"),
+p_damage <- ggplot(sim_long %>% filter(Cellule == "Damage (a.u.)"),
                    aes(x = time_d, y = Valeur, color = Dose)) +
   geom_vline(xintercept = dose_days, linetype = "dashed",
              color = "grey70", linewidth = 0.4) +
   geom_line(linewidth = 1.1) +
   scale_color_manual(values = dose_cols) +
   scale_x_continuous(breaks = seq(0, 120, by = 21),
-                     labels = paste0("J", seq(0, 120, by = 21))) +
+                     labels = paste0("D", seq(0, 120, by = 21))) +
   labs(title = "DNA Damage — model driver",
-       x = "Temps (jours)", y = "Damage (u.a.)") +
+       x = "Time (days)", y = "Damage (a.u.)") +
   theme_poster
 
 ggsave("results/poster_Damage.pdf", p_damage, width = 7, height = 5, dpi = 300)
@@ -153,10 +153,10 @@ cat("  -> results/poster_Damage.pdf / .png\n")
 # ════════════════════════════════════════════════════════
 # Figure 3 — Barplot nadir % changement
 # ════════════════════════════════════════════════════════
-base_vals <- c("Neutrophiles (10⁹/L)" = init_pars$Neut0,
-               "Plaquettes (10⁹/L)"   = init_pars$Plt0,
-               "Réticulocytes (10⁹/L)"= init_pars$Ret0,
-               "GR (10⁹/L)"           = init_pars$RBC0)
+base_vals <- c("Neutrophils (10⁹/L)" = init_pars$Neut0,
+               "Platelets (10⁹/L)"   = init_pars$Plt0,
+               "Reticulocytes (10⁹/L)"= init_pars$Ret0,
+               "RBC (10⁹/L)"           = init_pars$RBC0)
 
 nadir_pct <- nadir_df %>%
   mutate(Pct = (Valeur / base_vals[as.character(Cellule)] - 1) * 100)
@@ -190,10 +190,10 @@ library(grid)
 
 # ── 1. Tableau des nadirs ────────────────────────────────
 cells_info <- list(
-  list(var = "Neut", label = "Neutrophiles\n(10⁹/L)", base = init_pars$Neut0),
-  list(var = "Plt",  label = "Plaquettes\n(10⁹/L)",   base = init_pars$Plt0),
-  list(var = "Ret",  label = "Réticulocytes\n(10⁹/L)", base = init_pars$Ret0),
-  list(var = "RBC",  label = "GR\n(10⁹/L)",            base = init_pars$RBC0)
+  list(var = "Neut", label = "Neutrophils\n(10⁹/L)",   base = init_pars$Neut0),
+  list(var = "Plt",  label = "Platelets\n(10⁹/L)",     base = init_pars$Plt0),
+  list(var = "Ret",  label = "Reticulocytes\n(10⁹/L)", base = init_pars$Ret0),
+  list(var = "RBC",  label = "RBC\n(10⁹/L)",           base = init_pars$RBC0)
 )
 
 nadir_tbl <- do.call(rbind, lapply(seq_along(doses_fgfr2), function(i) {
@@ -204,7 +204,7 @@ nadir_tbl <- do.call(rbind, lapply(seq_along(doses_fgfr2), function(i) {
     val <- round(s[[ci$var]][idx], 1)
     day <- round(s$time_d[idx], 0)
     pct <- round((s[[ci$var]][idx] / ci$base - 1) * 100, 0)
-    row[[ci$label]] <- sprintf("%.1f  (J%d  |  %+d%%)", val, day, pct)
+    row[[ci$label]] <- sprintf("%.1f  (D%d  |  %+d%%)", val, day, pct)
   }
   row
 }))
@@ -229,11 +229,11 @@ tt_nad <- ttheme_minimal(
 tbl_nad_grob <- tableGrob(nadir_tbl, rows = NULL, theme = tt_nad)
 
 title_nad <- textGrob(
-  "Nadirs hématologiques prédits — FGFR2 inhibiteur NHP  (Q3W × 3 cycles)",
+  "Predicted Hematological Nadirs — FGFR2 inhibitor NHP  (Q3W × 3 cycles)",
   gp = gpar(fontsize = 11, fontface = "bold", col = "#1a3a5c")
 )
 note_nad <- textGrob(
-  "Format : valeur nadir  (jour du nadir  |  % vs baseline)",
+  "Format: nadir value  (day of nadir  |  % vs baseline)",
   gp = gpar(fontsize = 8.5, col = "grey45", fontface = "italic")
 )
 
@@ -286,11 +286,11 @@ tt_pk <- ttheme_minimal(
 tbl_pk_grob <- tableGrob(pk_tbl, rows = NULL, theme = tt_pk)
 
 title_pk <- textGrob(
-  "Validation PK FGFR2 inhibiteur NHP — vs données précliniques",
+  "PK Validation — FGFR2 inhibitor NHP vs preclinical data",
   gp = gpar(fontsize = 11, fontface = "bold", col = "#1a3a5c")
 )
 note_pk <- textGrob(
-  "C₀ (µg/mL)  |  AUC₂₁ (µg·h/mL)  |  t½ (jours)   — obs = données précliniques",
+  "C₀ (µg/mL)  |  AUC₂₁ (µg·h/mL)  |  t½ (days)   — obs = preclinical data",
   gp = gpar(fontsize = 8.5, col = "grey45", fontface = "italic")
 )
 
@@ -319,13 +319,13 @@ norm_long <- bind_rows(lapply(seq_along(doses_fgfr2), function(i) {
                Variable = "FGFR2 inhib. (% Cmax)",
                Valeur   = s$C_ADC1 / Cmax * 100),
     data.frame(time_d = s$time_d, Dose = dose,
-               Variable = "Neutrophiles (% baseline)",
+               Variable = "Neutrophils (% baseline)",
                Valeur   = s$Neut / init_pars$Neut0 * 100),
     data.frame(time_d = s$time_d, Dose = dose,
-               Variable = "Plaquettes (% baseline)",
+               Variable = "Platelets (% baseline)",
                Valeur   = s$Plt  / init_pars$Plt0  * 100),
     data.frame(time_d = s$time_d, Dose = dose,
-               Variable = "Réticulocytes (% baseline)",
+               Variable = "Reticulocytes (% baseline)",
                Valeur   = s$Ret  / init_pars$Ret0  * 100)
   )
 })) %>%
@@ -333,22 +333,22 @@ norm_long <- bind_rows(lapply(seq_along(doses_fgfr2), function(i) {
     Dose = factor(Dose, levels = paste0(doses_fgfr2, " mg/kg")),
     Variable = factor(Variable, levels = c(
       "FGFR2 inhib. (% Cmax)",
-      "Neutrophiles (% baseline)",
-      "Plaquettes (% baseline)",
-      "Réticulocytes (% baseline)"
+      "Neutrophils (% baseline)",
+      "Platelets (% baseline)",
+      "Reticulocytes (% baseline)"
     ))
   )
 
 var_cols_kin <- c(
   "FGFR2 inhib. (% Cmax)"     = "#333333",
-  "Neutrophiles (% baseline)"  = "#2166ac",
-  "Plaquettes (% baseline)"    = "#4dac26",
-  "Réticulocytes (% baseline)" = "#d6604d"
+  "Neutrophils (% baseline)"  = "#2166ac",
+  "Platelets (% baseline)"    = "#4dac26",
+  "Reticulocytes (% baseline)" = "#d6604d"
 )
 var_lty_kin <- c("FGFR2 inhib. (% Cmax)" = "solid",
-                 "Neutrophiles (% baseline)"  = "solid",
-                 "Plaquettes (% baseline)"    = "dashed",
-                 "Réticulocytes (% baseline)" = "dotdash")
+                 "Neutrophils (% baseline)"  = "solid",
+                 "Platelets (% baseline)"    = "dashed",
+                 "Reticulocytes (% baseline)" = "dotdash")
 
 p_kinetics <- ggplot(norm_long,
                      aes(x = time_d, y = Valeur,
@@ -361,14 +361,14 @@ p_kinetics <- ggplot(norm_long,
   scale_color_manual(values = var_cols_kin) +
   scale_linetype_manual(values = var_lty_kin) +
   scale_x_continuous(breaks = seq(0, 120, by = 21),
-                     labels = paste0("J", seq(0, 120, by = 21))) +
+                     labels = paste0("D", seq(0, 120, by = 21))) +
   scale_y_continuous(labels = function(x) paste0(x, "%"),
                      limits = c(0, NA)) +
   facet_wrap(~ Dose, ncol = 2) +
   labs(
-    title    = "Décalage cinétique PK → hématotoxicité — FGFR2 inhibiteur NHP",
-    subtitle = "FGFR2 inhib. : % du Cmax  |  cellules : % de la valeur basale  |  --- jour de dose",
-    x = "Temps (jours)", y = "% (normalisé)"
+    title    = "PK → Hematotoxicity Kinetic Shift — FGFR2 inhibitor NHP",
+    subtitle = "FGFR2 inhib.: % of Cmax  |  cells: % of baseline  |  --- dose day",
+    x = "Time (days)", y = "% (normalized)"
   ) +
   theme_poster +
   theme(legend.position = "bottom",
@@ -401,10 +401,10 @@ neut_long_all <- bind_rows(lapply(seq_along(doses_fgfr2), function(i) {
                names_to = "Cellule", values_to = "Valeur") %>%
   mutate(Cellule = factor(Cellule,
                           levels = c("Neut", "Plt", "Ret"),
-                          labels = c("Neutrophiles", "Plaquettes", "Réticulocytes")))
+                          labels = c("Neutrophils", "Platelets", "Reticulocytes")))
 
 xbreaks <- seq(0, 120, by = 21)
-xlabels <- paste0("J", xbreaks)
+xlabels <- paste0("D", xbreaks)
 
 p_row1 <- ggplot(pk_long_all, aes(x = time_d, y = C_ADC1, color = Dose)) +
   geom_vline(xintercept = dose_days, linetype = "dashed",
@@ -413,7 +413,7 @@ p_row1 <- ggplot(pk_long_all, aes(x = time_d, y = C_ADC1, color = Dose)) +
   scale_color_manual(values = dose_cols) +
   scale_y_log10() +
   scale_x_continuous(breaks = xbreaks, labels = xlabels) +
-  labs(title = "PK — FGFR2 inhibiteur (échelle log)",
+  labs(title = "PK — FGFR2 inhibitor (log scale)",
        x = NULL, y = "Concentration (µg/mL)") +
   theme_poster +
   theme(legend.position = "none",
@@ -426,21 +426,21 @@ p_row2 <- ggplot(neut_long_all,
   geom_vline(xintercept = dose_days, linetype = "dashed",
              color = "grey75", linewidth = 0.35) +
   geom_hline(data = data.frame(
-    Cellule = factor(c("Neutrophiles","Plaquettes","Réticulocytes")),
+    Cellule = factor(c("Neutrophils","Platelets","Reticulocytes")),
     base    = c(init_pars$Neut0, init_pars$Plt0, init_pars$Ret0)),
     aes(yintercept = base), color = "grey40", linetype = "dotted",
     linewidth = 0.55, inherit.aes = FALSE) +
   geom_line(linewidth = 1.0) +
   scale_color_manual(values = dose_cols) +
-  scale_linetype_manual(values = c("Neutrophiles"  = "solid",
-                                   "Plaquettes"    = "dashed",
-                                   "Réticulocytes" = "dotdash")) +
+  scale_linetype_manual(values = c("Neutrophils"   = "solid",
+                                   "Platelets"     = "dashed",
+                                   "Reticulocytes" = "dotdash")) +
   scale_x_continuous(breaks = xbreaks, labels = xlabels) +
   facet_wrap(~ Dose, ncol = 4) +
-  labs(title    = "Réponse hématologique (nadir retardé vs PK)",
-       subtitle = "··· baseline  |  --- jour de dose",
-       x = "Temps (jours)", y = "Cellules (10⁹/L)",
-       linetype = "Lignée") +
+  labs(title    = "Hematological Response (delayed nadir vs PK)",
+       subtitle = "··· baseline  |  --- dose day",
+       x = "Time (days)", y = "Cells (10⁹/L)",
+       linetype = "Cell type") +
   theme_poster +
   theme(legend.position = "bottom",
         plot.margin     = margin(0, 5, 5, 5))
@@ -565,17 +565,17 @@ if (obs_has_data) {
     data.frame(
       Animal_label = factor(lbl, levels = animal_order),
       time_d  = s$time_d,
-      Neutrophiles   = s$Neut / s$Neut_base[1] * 100,
-      Plaquettes     = s$Plt  / s$Plt_base[1]  * 100,
-      GR             = s$RBC  / s$RBC_base[1]  * 100,
-      Reticulocytes  = s$Ret  / s$Ret_base[1]  * 100
+      Neutrophils   = s$Neut / s$Neut_base[1] * 100,
+      Platelets     = s$Plt  / s$Plt_base[1]  * 100,
+      RBC           = s$RBC  / s$RBC_base[1]  * 100,
+      Reticulocytes = s$Ret  / s$Ret_base[1]  * 100
     )
   })) %>%
-    pivot_longer(cols = c(Neutrophiles, Plaquettes, GR, Reticulocytes),
+    pivot_longer(cols = c(Neutrophils, Platelets, RBC, Reticulocytes),
                  names_to = "Cellule", values_to = "Pct") %>%
     mutate(Cellule = factor(Cellule,
-                            levels = c("Neutrophiles","Plaquettes",
-                                       "GR","Reticulocytes")))
+                            levels = c("Neutrophils","Platelets",
+                                       "RBC","Reticulocytes")))
 
   # ── Observations en % baseline individuelle ────────────
   baseline_ind <- obs_data %>%
@@ -586,27 +586,27 @@ if (obs_has_data) {
   obs_ind_pct <- obs_data %>%
     left_join(baseline_ind, by="Animal_Id") %>%
     mutate(
-      Neutrophiles  = Neut / Neut_base * 100,
-      Plaquettes    = Plt  / Plt_base  * 100,
-      GR            = RBC  / RBC_base  * 100,
+      Neutrophils   = Neut / Neut_base * 100,
+      Platelets     = Plt  / Plt_base  * 100,
+      RBC           = RBC  / RBC_base  * 100,
       Reticulocytes = Ret  / Ret_base  * 100,
       Animal_label  = factor(
         paste0(Animal_Id, " (", dose_mgkg, " mg/kg)"),
         levels = animal_order)
     ) %>%
     select(Animal_label, jour,
-           Neutrophiles, Plaquettes, GR, Reticulocytes) %>%
-    pivot_longer(cols = c(Neutrophiles, Plaquettes, GR, Reticulocytes),
+           Neutrophils, Platelets, RBC, Reticulocytes) %>%
+    pivot_longer(cols = c(Neutrophils, Platelets, RBC, Reticulocytes),
                  names_to = "Cellule", values_to = "Pct") %>%
     mutate(Cellule = factor(Cellule,
-                            levels = c("Neutrophiles","Plaquettes",
-                                       "GR","Reticulocytes"))) %>%
+                            levels = c("Neutrophils","Platelets",
+                                       "RBC","Reticulocytes"))) %>%
     filter(!is.na(Pct))
 
   # ── Palette ───────────────────────────────────────────
-  cell_cols_ind <- c("Neutrophiles"  = "#2166ac",
-                     "Plaquettes"    = "#4dac26",
-                     "GR"            = "#d6604d",
+  cell_cols_ind <- c("Neutrophils"   = "#2166ac",
+                     "Platelets"     = "#4dac26",
+                     "RBC"           = "#d6604d",
                      "Reticulocytes" = "#984ea3")
 
   # ── Figure ────────────────────────────────────────────
@@ -621,16 +621,16 @@ if (obs_has_data) {
     geom_point(data = obs_ind_pct,
                aes(x = jour, y = Pct, color = Cellule),
                shape = 19, size = 2.4, inherit.aes = FALSE) +
-    scale_color_manual(values = cell_cols_ind, name = "Lignee") +
+    scale_color_manual(values = cell_cols_ind, name = "Cell type") +
     scale_x_continuous(breaks = c(-3, 0, 2, 8, 12, 15, 22, 25),
-                       labels = c("J-3","J0","J2","J8","J12","J15","J22","J25")) +
+                       labels = c("D-3","D0","D2","D8","D12","D15","D22","D25")) +
     coord_cartesian(xlim = c(-3, 25)) +
     scale_y_continuous(labels = function(x) paste0(x, "%")) +
     facet_wrap(~ Animal_label, ncol = 4) +
     labs(
-      title    = "Profils predits individuels — FGFR2 inhibiteur NHP",
-      subtitle = "Ligne = simulation  |  Points = observations  |  % baseline J-3 individuelle  |  --- 100%  |  ... jour de dose",
-      x = "Temps (jours)", y = "% baseline individuelle"
+      title    = "Individual Predicted Profiles — FGFR2 inhibitor NHP",
+      subtitle = "Line = model prediction  |  Points = observations  |  % of individual day-3 baseline  |  --- 100%  |  ··· dose day",
+      x = "Time (days)", y = "% of individual baseline"
     ) +
     theme_poster +
     theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10))

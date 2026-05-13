@@ -285,9 +285,9 @@ p_linear <- ggplot() +
   geom_point(data = obs_df,  aes(x=time, y=conc, color=Dose, shape=subject), size=3, na.rm=TRUE) +
   scale_color_manual(values = dose_cols_nca) +
   scale_shape_manual(values = animal_shapes) +
-  labs(title    = "Profil PK — modèle 2 compartiments (rxode2)",
-       subtitle = "Points = observations ; lignes = modèle ajusté | ●○ = animal 1/2 par dose",
-       x = "Temps (h)", y = "Concentration (ng/mL)",
+  labs(title    = "PK Profile — 2-Compartment Model (rxode2 fit)",
+       subtitle = "Points = observations ; lines = fitted model | ●○ = animal 1/2 per dose",
+       x = "Time (h)", y = "Concentration (ng/mL)",
        color = "Dose", shape = "Animal") +
   theme_pk
 print(p_linear)
@@ -300,9 +300,9 @@ p_semilog <- ggplot() +
   scale_color_manual(values = dose_cols_nca) +
   scale_shape_manual(values = animal_shapes) +
   scale_y_log10() +
-  labs(title    = "Profil PK — modèle 2 compartiments (rxode2) — échelle semi-log",
-       subtitle = "Points = observations ; lignes = modèle ajusté | ●○ = animal 1/2 par dose",
-       x = "Temps (h)", y = "Concentration (ng/mL) — log",
+  labs(title    = "PK Profile — 2-Compartment Model (rxode2 fit) — Semi-log scale",
+       subtitle = "Points = observations ; lines = fitted model | ●○ = animal 1/2 per dose",
+       x = "Time (h)", y = "Concentration (ng/mL) — log",
        color = "Dose", shape = "Animal") +
   theme_pk
 print(p_semilog)
@@ -348,7 +348,7 @@ build_display <- function(df) {
 tbl_body <- build_display(recap_df)
 
 tbl_mean <- data.frame(
-  "Animal"        = "Moyenne",
+  "Animal"        = "Mean",
   "Dose\n(mg/kg)" = "—",
   "Cmax\n(ng/mL)" = "—",
   "t½β\n(h)"      = fmt(mean_row2$t12_beta_h, 1),
@@ -406,8 +406,8 @@ p_tbl <- ggplot(cells, aes(x = cx, y = cy)) +
   scale_x_continuous(limits = c(0, sum(col_w)), expand = c(0.01, 0)) +
   scale_y_continuous(limits = c(0.5, n_row + 0.5), expand = c(0, 0)) +
   labs(
-    title    = "Paramètres PK — modèle 2 compartiments (rxode2 fit)",
-    subtitle = "IV bolus · NHP (macaque) · Inhibiteur FGFR2  |  CL, V normalisés au poids (mL/h/kg, mL/kg)"
+    title    = "PK Parameters — 2-Compartment Model (rxode2 fit)",
+    subtitle = "IV bolus · NHP (cynomolgus macaque) · FGFR2 inhibitor  |  CL, V weight-normalized (mL/h/kg, mL/kg)"
   ) +
   theme_void(base_size = 12) +
   theme(
