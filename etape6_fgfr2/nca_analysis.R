@@ -371,15 +371,17 @@ col_names <- colnames(display_tbl)
 col_w     <- c(2.2, 1.3, 1.8, 1.2, 1.4, 1.3, 1.4, 1.3)   # largeur relative par col
 col_x     <- cumsum(c(0, col_w[-n_col])) + col_w / 2       # centre de chaque col
 
-# Long format
+# Long format — ordre ligne par ligne (t + as.vector corrige le column-major d'unlist)
+row_major <- function(df) as.vector(t(as.matrix(df)))
+
 cells <- data.frame(
   ri  = c(rep(1, n_col),
           rep(2:(n_row - 1), each = n_col),
           rep(n_row, n_col)),
   ci  = rep(1:n_col, n_row),
   val = c(col_names,
-          unlist(tbl_body),
-          unlist(tbl_mean)),
+          row_major(tbl_body),
+          row_major(tbl_mean)),
   stringsAsFactors = FALSE
 )
 
