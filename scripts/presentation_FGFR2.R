@@ -262,8 +262,8 @@ cells3 <- rbind(hdr3, cells3)
 cells3$y    <- max(cells3$row) - cells3$row
 cells3$tcol <- ifelse(cells3$row == 0, "white", "black")
 cells3$face <- ifelse(cells3$bold, "bold", "plain")
-cells3$xpos <- c(1, 1, 2.2)[cells3$col]
-cells3$twd  <- c(0.9, 0.9, 1.9)[cells3$col]   # largeur de tuile par colonne
+cells3$xpos <- c(0.45, 1.55, 3.15)[cells3$col]
+cells3$twd  <- c(0.75, 1.75, 1.65)[cells3$col]
 
 p3 <- ggplot(cells3, aes(x = xpos, y = y)) +
   geom_tile(aes(fill = fill, width = twd),
