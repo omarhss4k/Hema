@@ -238,8 +238,8 @@ add_paragraph(doc,
     "virtuelle de 300 patients, aboutissant à une prédiction des grades CTCAE v5 en "
     "accord avec les données cliniques FDA (BLA 761139, DESTINY-Breast01, n=184) ; "
     "(3) application à un composé en développement interne sur données NHP précliniques "
-    "(n=8, 4 niveaux de dose), incluant une analyse non-compartimentale, un ajustement "
-    "PK individuel à 2 compartiments et une calibration PD ; (4) perspectives de "
+    "(n=8, 4 niveaux de dose), incluant un ajustement PK individuel à 2 compartiments "
+    "et une calibration PD ; (4) perspectives de "
     "traduction clinique basées sur les paramètres NHP.",
     first_line_indent=1.0)
 add_paragraph(doc,
@@ -315,7 +315,6 @@ abbrevs = [
     ("IV",     "Intraveineux"),
     ("MEP",    "Megakaryocyte-Erythroid Progenitor"),
     ("MPP",    "Multipotent Progenitor"),
-    ("NCA",    "Non-Compartmental Analysis (analyse non-compartimentale)"),
     ("NHP",    "Non-Human Primate (primate non-humain)"),
     ("NLME",   "Non-Linear Mixed Effects (effets mixtes non-linéaires)"),
     ("NOAEL",  "No Observed Adverse Effect Level"),
@@ -540,20 +539,7 @@ add_paragraph(doc,
     "avec l'hypothèse d'erreur résiduelle proportionnelle.",
     first_line_indent=1.0)
 
-add_heading(doc, "2.4 Analyse non-compartimentale (NCA)", 2)
-add_paragraph(doc,
-    "L'analyse non-compartimentale a été réalisée sur les profils PK NHP pour obtenir "
-    "des paramètres descriptifs indépendants de toute hypothèse de modèle.",
-    first_line_indent=1.0)
-add_bullet(doc, "Cmax : concentration maximale observée")
-add_bullet(doc, "Tmax : temps correspondant à Cmax")
-add_bullet(doc, "AUClast : intégrale par méthode des trapèzes linéaires jusqu'au "
-            "dernier point quantifiable")
-add_bullet(doc, "AUCinf : extrapolation vers l'infini — AUCinf = AUClast + Clast/β")
-add_bullet(doc, "t½β : demi-vie terminale, estimée sur la phase log-linéaire finale")
-add_bullet(doc, "CL : CL = Dose / AUCinf")
-
-add_heading(doc, "2.5 Simulation de population virtuelle", 2)
+add_heading(doc, "2.4 Simulation de population virtuelle", 2)
 add_paragraph(doc,
     "Pour la simulation de l'hématotoxicité induite par le T-DXd en population humaine, "
     "une cohorte virtuelle de N=300 patients a été générée selon les étapes suivantes :",
@@ -573,7 +559,7 @@ add_paragraph(doc,
     "lignée cellulaire est extrait et converti en grade CTCAE v5.",
     first_line_indent=1.0)
 
-add_heading(doc, "2.6 Grading CTCAE v5", 2)
+add_heading(doc, "2.5 Grading CTCAE v5", 2)
 add_paragraph(doc,
     "La classification des grades de toxicité hématologique suit les critères CTCAE v5 "
     "(Common Terminology Criteria for Adverse Events, version 5) :",
@@ -587,7 +573,7 @@ add_table_simple(doc,
     ],
     col_widths=[4.0, 2.5, 2.0, 2.0, 2.0, 2.0])
 
-add_heading(doc, "2.7 Données de référence cliniques", 2)
+add_heading(doc, "2.6 Données de référence cliniques", 2)
 add_paragraph(doc,
     "La validation des simulations T-DXd repose sur les données de tolérance "
     "hématologique issues du BLA 761139 (FDA, 2019), correspondant à l'essai "
@@ -602,7 +588,7 @@ add_table_simple(doc,
     ],
     col_widths=[3.5, 1.7, 1.7, 1.7, 1.7, 1.7, 2.5, 2.0])
 
-add_heading(doc, "2.8 Environnement computationnel", 2)
+add_heading(doc, "2.7 Environnement computationnel", 2)
 add_paragraph(doc,
     "L'ensemble du pipeline a été développé sous R (version ≥ 4.3.0) avec les "
     "librairies suivantes :",
@@ -764,32 +750,7 @@ add_paragraph(doc,
     "post-administration.",
     first_line_indent=1.0)
 
-add_heading(doc, "3.3.2 Analyse pharmacocinétique NHP", 3)
-add_heading(doc, "Analyse non-compartimentale", 3)
-add_paragraph(doc,
-    "Une analyse non-compartimentale a d'abord été réalisée sur chaque profil "
-    "de concentration individuel. Les paramètres NCA moyens (±SD) par groupe de dose "
-    "sont présentés dans le tableau suivant (valeurs anonymisées) :",
-    first_line_indent=1.0)
-add_table_simple(doc,
-    ["Dose", "Cmax (ng/mL)", "AUClast (ng·h/mL)", "AUCinf (ng·h/mL)", "t½β (h)", "CL (mL/h/kg)"],
-    [
-        ["D1 (faible)",  "[confidentiel]", "[confidentiel]", "[confidentiel]", "≈55", "≈1,8"],
-        ["D2",           "[confidentiel]", "[confidentiel]", "[confidentiel]", "≈55", "≈1,8"],
-        ["D3",           "[confidentiel]", "[confidentiel]", "[confidentiel]", "≈55", "≈1,8"],
-        ["D4 (élevée)",  "[confidentiel]", "[confidentiel]", "[confidentiel]", "≈55", "≈1,8"],
-        ["Moyenne (n=8)","—",              "—",              "—",              "54,7 ± 8,2", "1,83 ± 0,31"],
-    ],
-    col_widths=[2.8, 3.0, 3.5, 3.5, 2.5, 3.0])
-add_paragraph(doc,
-    "La linéarité de la PK a été vérifiée : les valeurs de CL normalisée à la dose "
-    "sont homogènes entre les 4 groupes, indiquant une pharmacocinétique dose-linéaire "
-    "sur la plage étudiée. La demi-vie terminale est cohérente entre individus "
-    "(CV ≈ 15%), suggérant une faible variabilité inter-individuelle du processus "
-    "d'élimination.",
-    first_line_indent=1.0)
-
-add_heading(doc, "Modélisation PK 2-compartiments individuelle", 3)
+add_heading(doc, "3.3.2 Analyse pharmacocinétique NHP — Modélisation 2-compartiments", 3)
 add_paragraph(doc,
     "Un modèle PK à 2 compartiments a été ajusté individuellement pour chaque animal "
     "via optimisation Nelder-Mead sous rxode2. Les paramètres moyens estimés sont :",
@@ -1178,7 +1139,7 @@ add_table_simple(doc,
         ["etape3_tdxd_rat",                "run_pkpd_tdxd_rat.R", "Application T-DXd rat"],
         ["etape5_tdxd_humain",             "run_pkpd_tdxd_human_population.R", "Simulation population humaine N=300"],
         ["etape5_tdxd_humain",             "plot_grades_poster.R", "Figure grades CTCAE vs FDA"],
-        ["etape6_fgfr2",                   "nca_analysis.R", "NCA + PK 2-comp + PD NHP (confidentiel)"],
+        ["etape6_fgfr2",                   "nca_analysis.R", "PK 2-comp + PD NHP (confidentiel)"],
         ["etape6_fgfr2",                   "plots_fgfr2_nhp.R", "Visualisation résultats NHP (confidentiel)"],
     ],
     col_widths=[5.5, 5.0, 6.5])
