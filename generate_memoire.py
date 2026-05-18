@@ -588,22 +588,77 @@ add_paragraph(doc,
 
 add_heading(doc, "2.4 Simulation de population virtuelle", 2)
 add_paragraph(doc,
-    "Pour la simulation de l'hématotoxicité induite par le T-DXd en population humaine, "
-    "une cohorte virtuelle de N=300 patients a été générée selon les étapes suivantes :",
+    "Afin d'évaluer la distribution des grades de toxicité hématologique attendus "
+    "en population, une approche de simulation Monte-Carlo a été mise en œuvre. "
+    "Une cohorte virtuelle de N=300 patients a été générée pour le T-DXd "
+    "(5,4 mg/kg Q3W × 6 cycles), en intégrant la variabilité inter-individuelle "
+    "sur les paramètres PK et PD.",
     first_line_indent=1.0)
-add_bullet(doc, "Paramètres PK individuels simulés par tirage log-normal : "
-            "CL ~ LogN(μ_CL, CV=30%), V1 ~ LogN(μ_V1, CV=25%), "
-            "Q ~ LogN(μ_Q, CV=30%), V2 ~ LogN(μ_V2, CV=25%)")
-add_bullet(doc, "Paramètres PD individuels (Slope) simulés avec CV=20% sur les "
-            "valeurs de référence calibrées")
-add_bullet(doc, "Schéma posologique : T-DXd 5,4 mg/kg Q3W × 6 cycles "
-            "(doses aux jours 1, 22, 43, 64, 85, 106)")
-add_bullet(doc, "Masse corporelle individuelle simulée : LogN(μ=70 kg, CV=15%)")
-add_bullet(doc, "Seed aléatoire fixé pour reproductibilité (set.seed(42))")
+
+add_heading(doc, "Modélisation de la variabilité inter-individuelle", 3)
 add_paragraph(doc,
-    "Pour chaque patient simulé, le système ODE complet (PK + Damage + PD) est résolu "
-    "numériquement via rxode2 (solveur LSODA) sur 126 jours. Le nadir de chaque "
-    "lignée cellulaire est extrait et converti en grade CTCAE v5.",
+    "Les paramètres individuels sont supposés distribués selon une loi log-normale, "
+    "ce qui garantit leur positivité et est cohérent avec la distribution observée "
+    "des paramètres PK en population clinique :",
+    first_line_indent=1.0)
+add_equation(doc, "θᵢ = θ_pop × exp(ηᵢ)    avec ηᵢ ~ N(0, ω²)")
+add_paragraph(doc,
+    "où θ_pop est la valeur typique de population, ηᵢ l'effet aléatoire individuel "
+    "et ω² la variance inter-individuelle. Le coefficient de variation (CV%) "
+    "associé est approximé par CV% ≈ ω × 100 pour des valeurs de ω < 0,5. "
+    "Les valeurs retenues, issues de l'analyse de population FDA (BLA 761139) "
+    "et de la littérature, sont :",
+    first_line_indent=1.0)
+add_table_simple(doc,
+    ["Paramètre", "Valeur typique (θ_pop)", "CV inter-individuel (ω)", "Source"],
+    [
+        ["CL (L/h)",        "0,50", "30%", "FDA BLA 761139"],
+        ["V1 (L)",          "3,1",  "25%", "FDA BLA 761139"],
+        ["Q (L/h)",         "0,80", "30%", "FDA BLA 761139"],
+        ["V2 (L)",          "2,5",  "25%", "FDA BLA 761139"],
+        ["Slope_MPP (µM⁻¹)","—",   "20%", "Calibration rat"],
+        ["Slope_CMP (µM⁻¹)","—",   "20%", "Calibration rat"],
+        ["Slope_MEP (µM⁻¹)","—",   "20%", "Calibration rat"],
+        ["Poids corporel (kg)", "70,0", "15%", "Littérature clinique"],
+    ],
+    col_widths=[4.0, 3.5, 3.5, 4.5])
+
+add_heading(doc, "Procédure de simulation Monte-Carlo", 3)
+add_paragraph(doc,
+    "Pour chaque patient simulé i (i = 1, …, 300), la procédure suit les étapes "
+    "suivantes :",
+    first_line_indent=1.0)
+add_bullet(doc,
+    "Tirage aléatoire des paramètres individuels : "
+    "θᵢ = θ_pop × exp(ηᵢ), avec ηᵢ ~ N(0, ω²) pour chaque paramètre PK et PD")
+add_bullet(doc,
+    "Calcul de la dose individuelle : Dose_mg = 5,4 mg/kg × BWᵢ, "
+    "arrondie à la dizaine de mg (pratique clinique standard)")
+add_bullet(doc,
+    "Résolution numérique du système ODE complet (PK + Damage + PD) "
+    "via rxode2 (solveur LSODA, pas adaptatif) sur 126 jours, "
+    "avec administration IV aux jours 1, 22, 43, 64, 85, 106")
+add_bullet(doc,
+    "Extraction du nadir pour chaque lignée : "
+    "min(Neut(t)), min(Plt(t)), min(RBC(t)) sur t ∈ [0, 126 jours]")
+add_bullet(doc,
+    "Attribution du grade CTCAE v5 par comparaison du nadir aux seuils "
+    "(cf. §2.5)")
+add_paragraph(doc,
+    "Le générateur pseudo-aléatoire est initialisé avec une graine fixe (set.seed(42)) "
+    "garantissant la reproductibilité exacte des résultats. La taille de N=300 patients "
+    "a été choisie pour assurer une estimation stable des proportions de grades rares "
+    "(G4 < 5%) avec une erreur standard inférieure à 1,5 point de pourcentage "
+    "(intervalle de confiance à 95% : ±1,5%).",
+    first_line_indent=1.0)
+
+add_heading(doc, "Résumé statistique des grades simulés", 3)
+add_paragraph(doc,
+    "Pour chaque toxicité, les résultats sont résumés par la proportion de patients "
+    "atteignant chaque grade (G0 à G4), le taux de tout grade (G≥1 = 100% − %G0) "
+    "et le taux de grade sévère (G3-4 = %G3 + %G4). Ces métriques sont directement "
+    "comparables aux données de fréquence rapportées dans les notices médicamenteuses "
+    "et les publications d'essais cliniques.",
     first_line_indent=1.0)
 
 add_heading(doc, "2.5 Grading CTCAE v5", 2)
