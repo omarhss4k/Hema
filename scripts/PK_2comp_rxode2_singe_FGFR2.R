@@ -28,7 +28,10 @@ raw <- suppressMessages(
 )
 
 # Repérer toutes les lignes d'en-tête ("Time (h)")
-header_rows <- which(raw[[1]] == "Time (h)")
+# as.character() obligatoire : readxl peut lire la colonne en numérique
+# et convertir "Time (h)" en NA, ce qui fait échouer l'égalité directe
+header_rows <- grep("Time.*\\(h\\)", trimws(as.character(raw[[1]])),
+                    ignore.case = TRUE, perl = TRUE)
 cat("Lignes 'Time (h)' trouvées :", header_rows, "\n")
 stopifnot("4 blocs attendus" = length(header_rows) == 4)
 
@@ -45,31 +48,32 @@ blocks_range <- mapply(
 # =============================================================================
 
 parse_block <- function(header_row, data_rows) {
-  # Lire l'en-tête pour récupérer les IDs animaux
-  hdr <- as.character(unlist(raw[header_row, ]))
-  # Colonnes avec un ID animal (non "Time (h)", non NA)
-  animal_cols <- which(!is.na(hdr) & hdr != "Time (h)")
-  animal_ids  <- hdr[animal_cols]
+  # Structure connue : col 1 = temps, col 2 = animal A, col 3 = animal B
+  # Les IDs et doses sont dans la ligne d'en-tête (colonnes 2 et 3)
+  hdr        <- trimws(as.character(unlist(raw[header_row, ])))
+  animal_ids <- hdr[2:3]   # ex. "1001,3mg/kg" / "2002, 10 mg/kg"
 
-  # Extraire les données de ce bloc
-  blk <- raw[data_rows[1]:data_rows[2], ]
+  # Extraire la dose depuis le nom de colonne (nombre avant "mg/kg")
+  dose_str <- regmatches(hdr[2],
+                         regexpr("[0-9]+(?=\\s*mg/kg)", hdr[2], perl = TRUE))
+  dose_mgkg <- as.numeric(dose_str)
 
-  # Colonne temps
+  blk   <- raw[data_rows[1]:data_rows[2], ]
   t_raw <- suppressWarnings(as.numeric(as.character(blk[[1]])))
 
-  # Concentrations par animal (BLQ → NA)
-  conc_list <- lapply(animal_cols, function(j) {
-    x <- as.character(blk[[j]])
-    x[toupper(trimws(x)) == "BLQ"] <- NA
+  # Concentrations — BLQ → NA, conversion numérique
+  to_num <- function(j) {
+    x <- trimws(as.character(blk[[j]]))
+    x[toupper(x) == "BLQ" | x == ""] <- NA
     suppressWarnings(as.numeric(x))
-  })
-
-  df <- data.frame(time = t_raw)
-  for (k in seq_along(animal_ids)) {
-    df[[animal_ids[k]]] <- conc_list[[k]]
   }
 
-  # Supprimer les lignes sans temps valide
+  df <- data.frame(
+    time      = t_raw,
+    animal_A  = to_num(2),
+    animal_B  = to_num(3),
+    dose_mgkg = dose_mgkg
+  )
   df[!is.na(df$time), ]
 }
 
@@ -95,53 +99,47 @@ geom_mean <- function(x) {
   exp(mean(log(x)))
 }
 
-agg_group <- function(blk, dose_mgkg) {
-  # Colonnes de concentration = tout sauf "time"
-  conc_cols <- setdiff(names(blk), "time")
-  conc_mat  <- as.matrix(blk[, conc_cols])
-  avg       <- apply(conc_mat, 1, geom_mean)
-  ok        <- !is.na(avg) & avg > 0 & blk$time > 0   # exclure t=0 et BLQ
+agg_group <- function(blk) {
+  # Colonnes de concentration : animal_A et animal_B (structure fixe après parse_block)
+  avg  <- apply(cbind(blk$animal_A, blk$animal_B), 1, geom_mean)
+  dmg  <- blk$dose_mgkg[1]
+  ok   <- !is.na(avg) & avg > 0 & blk$time > 0   # exclure t=0 et BLQ
   data.frame(
     t    = blk$time[ok],
     C    = avg[ok],
-    dose = dose_mgkg * 1000,   # mg/kg → µg/kg
-    Dose = paste0(dose_mgkg, " mg/kg")
+    dose = dmg * 1000,            # mg/kg → µg/kg
+    Dose = paste0(dmg, " mg/kg")
   )
 }
 
-d3  <- agg_group(blk1,  3)
-d10 <- agg_group(blk2, 10)
-d30 <- agg_group(blk3, 30)
-d20 <- agg_group(blk4, 20)
+d3  <- agg_group(blk1)   # 3  mg/kg
+d10 <- agg_group(blk2)   # 10 mg/kg
+d30 <- agg_group(blk3)   # 30 mg/kg
+d20 <- agg_group(blk4)   # 20 mg/kg
 
 cat("\nPoints retenus par groupe :\n")
-cat("  3  mg/kg :", nrow(d3),  "points\n")
-cat("  10 mg/kg :", nrow(d10), "points\n")
-cat("  20 mg/kg :", nrow(d20), "points\n")
-cat("  30 mg/kg :", nrow(d30), "points\n")
+cat("  3  mg/kg :", nrow(d3),  "points  | dose =", d3$dose[1],  "µg/kg\n")
+cat("  10 mg/kg :", nrow(d10), "points  | dose =", d10$dose[1], "µg/kg\n")
+cat("  20 mg/kg :", nrow(d20), "points  | dose =", d20$dose[1], "µg/kg\n")
+cat("  30 mg/kg :", nrow(d30), "points  | dose =", d30$dose[1], "µg/kg\n")
 
-# Jeu complet pour le graphique (brutes individuelles + BLQ)
-make_obs_df <- function(blk, dose_mgkg) {
-  conc_cols <- setdiff(names(blk), "time")
-  conc_mat  <- as.matrix(blk[, conc_cols])
-  avg       <- apply(conc_mat, 1, geom_mean)
-  blq       <- apply(is.na(as.matrix(blk[, conc_cols])) |
-                       apply(as.matrix(blk[, conc_cols]), 2,
-                             function(x) toupper(trimws(as.character(x))) == "BLQ"),
-                     1, all)
+# Jeu complet pour le graphique (moyenne géom. + flag BLQ)
+make_obs_df <- function(blk) {
+  avg <- apply(cbind(blk$animal_A, blk$animal_B), 1, geom_mean)
+  blq <- is.na(blk$animal_A) & is.na(blk$animal_B)
   data.frame(
     t    = blk$time,
     C    = avg,
     BLQ  = blq,
-    Dose = paste0(dose_mgkg, " mg/kg")
+    Dose = paste0(blk$dose_mgkg[1], " mg/kg")
   )
 }
 
 df_obs_all <- do.call(rbind, list(
-  make_obs_df(blk1,  3),
-  make_obs_df(blk2, 10),
-  make_obs_df(blk4, 20),
-  make_obs_df(blk3, 30)
+  make_obs_df(blk1),
+  make_obs_df(blk2),
+  make_obs_df(blk4),
+  make_obs_df(blk3)
 ))
 
 # =============================================================================
@@ -172,11 +170,14 @@ sim_dose <- function(dose_ugkg, params, times) {
 # 5. VALEURS INITIALES — mAb IV chez le singe (typiques)
 # =============================================================================
 
+# Estimations grossières depuis les données :
+#   V1  ≈ dose / Cmax(5min) :  3000/91750 ≈ 0.033 L/kg  (cohérent sur les 4 groupes)
+#   t½β ≈ 35-40 h (pente terminale 3 mg/kg) → β ≈ 0.018/h → CL ≈ β·Vss ≈ 0.001 L/h/kg
 init_params <- c(
-  CL = 0.005,   # L/h/kg  (~0.12 L/j/kg, typique IgG primate)
-  V1 = 0.05,    # L/kg    (compartiment central ≈ volume plasmatique)
-  V2 = 0.04,    # L/kg    (compartiment périphérique)
-  Q  = 0.003    # L/h/kg  (clairance intercompartimentale)
+  CL = 0.001,   # L/h/kg  (t½ elim ~ 35-40 h)
+  V1 = 0.033,   # L/kg    (dose/Cmax5min)
+  V2 = 0.025,   # L/kg    (compartiment peripherique)
+  Q  = 0.002    # L/h/kg  (clairance intercompartimentale)
 )
 
 cat("\n=== Valeurs initiales ===\n")
