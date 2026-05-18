@@ -191,25 +191,22 @@ nadir_bar <- nadir_pct %>%
   mutate(PctChange = Pct - 100)
 
 # Seuils de grade CTCAE v5 (% vs baseline approximatif)
-grade_lines <- data.frame(
-  yintercept = c(-25, -50),
-  Grade      = c("Grade 2 (−25%)", "Grade 3 (−50%)")
-)
-
 pC <- ggplot(nadir_bar,
              aes(x = Dose, y = PctChange, fill = Dose)) +
 
   geom_col(width = 0.65, color = "white", linewidth = 0.3) +
 
-  geom_hline(data = grade_lines,
-             aes(yintercept = yintercept, linetype = Grade),
-             color = c("#e67e22", "#e74c3c"),
-             linewidth = 0.9, inherit.aes = FALSE) +
+  geom_hline(yintercept = -25, linetype = "dashed",
+             color = "#e67e22", linewidth = 0.9) +
+  geom_hline(yintercept = -50, linetype = "longdash",
+             color = "#e74c3c", linewidth = 0.9) +
 
-  scale_linetype_manual(
-    values = c("Grade 2 (−25%)" = "dashed", "Grade 3 (−50%)" = "longdash"),
-    name   = "CTCAE v5"
-  ) +
+  annotate("text", x = Inf, y = -23,
+           label = "Grade 2 (−25%)", color = "#e67e22",
+           size = 3.5, hjust = 1.05, fontface = "italic") +
+  annotate("text", x = Inf, y = -48,
+           label = "Grade 3 (−50%)", color = "#e74c3c",
+           size = 3.5, hjust = 1.05, fontface = "italic") +
 
   # Labels valeurs
   geom_text(aes(label = sprintf("%.0f%%", PctChange),
@@ -229,8 +226,7 @@ pC <- ggplot(nadir_bar,
   ) +
   theme_poster_pred +
   theme(axis.text.x = element_text(angle = 35, hjust = 1, size = 11)) +
-  guides(fill     = guide_legend(nrow = 1),
-         linetype = guide_legend(nrow = 1))
+  guides(fill = guide_legend(nrow = 1))
 
 ggsave("results/poster_PD_pred_nadir.pdf",
        pC, width = 13, height = 10, device = cairo_pdf)
