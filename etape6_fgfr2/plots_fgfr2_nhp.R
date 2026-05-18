@@ -538,7 +538,7 @@ if (obs_has_data) {
       n_cycles   = 3)
     state0_pd <- attr(ip, "state0_pd")
     state0 <- c(C_ADC1=0, C_ADC2=0, Damage=0, state0_pd)
-    times  <- seq(0, 30*24, by = 1)
+    times  <- seq(0, 90*24, by = 1)
     sol <- tryCatch(
       as.data.frame(ode(y=state0, times=times,
                         func=pkpd_nhp_ode, parms=ip,
@@ -654,14 +654,14 @@ if (obs_has_data) {
                color = "grey75", linewidth = 0.35) +
     geom_line(linewidth = 1.2) +
     scale_color_manual(values = cell_cols_ind, name = "Cell type") +
-    scale_x_continuous(breaks = c(-3, 0, 2, 8, 12, 15, 22, 25),
-                       labels = c("D-3","D0","D2","D8","D12","D15","D22","D25")) +
-    coord_cartesian(xlim = c(-3, 25)) +
+    scale_x_continuous(breaks = c(-3, 0, 21, 42, 56, 70, 84),
+                       labels = c("D-3","D0","D21","D42","D56","D70","D84")) +
+    coord_cartesian(xlim = c(-3, 90)) +
     scale_y_continuous(labels = function(x) paste0(x, "%")) +
     facet_wrap(~ Animal_label, ncol = 4) +
     labs(
       title    = "Individual Predicted Profiles — FGFR2 inhibitor NHP",
-      subtitle = "Model prediction  |  % of individual day-3 baseline  |  --- 100%  |  ··· dose day",
+      subtitle = "Model prediction  |  % of individual day-3 baseline  |  --- 100%  |  ··· dose day (D0/D21/D42)",
       x = "Time (days)", y = "% of individual baseline"
     ) +
     theme_poster +
