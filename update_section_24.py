@@ -1,382 +1,316 @@
 #!/usr/bin/env python3
 """
-Update section §2.4 in memoire_stage_M2_PKPD_hematotoxicite_corrige.docx
-Replace the short §2.5 "Simulation de population virtuelle" with extended §2.4 content.
+Replace "Simulation de population virtuelle" section in corrige.docx
+with extended §2.4 content as specified.
 """
 
-import copy
 from docx import Document
+from docx.shared import Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
-from docx.shared import Pt, RGBColor, Cm, Inches
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from lxml import etree
+import os
 
-INPUT_PATH = "/home/user/Hema/memoire_stage_M2_PKPD_hematotoxicite_corrige.docx"
-OUTPUT_PATH = "/home/user/Hema/memoire_stage_M2_PKPD_hematotoxicite_corrige.docx"
-
-# Colors
-COLOR_TITLE = RGBColor(44, 62, 80)       # #2C3E50
-COLOR_HEADER_BG = "2C3E50"               # hex for XML
-COLOR_EQUATION = RGBColor(60, 60, 120)   # #3C3C78
+COLOR_TITLE = RGBColor(44, 62, 80)
+COLOR_EQUATION = RGBColor(60, 60, 120)
+COLOR_HEADER_BG = "2C3E50"
 COLOR_ROW_ALT = "F2F2F2"
-COLOR_WHITE = "FFFFFF"
+COLOR_ROW_WHITE = "FFFFFF"
 
-def set_cell_background(cell, color_hex):
-    """Set cell background color."""
+
+def set_cell_background(cell, hex_color):
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     shd = OxmlElement('w:shd')
     shd.set(qn('w:val'), 'clear')
     shd.set(qn('w:color'), 'auto')
-    shd.set(qn('w:fill'), color_hex)
-    # Remove existing shd if any
-    existing = tcPr.find(qn('w:shd'))
-    if existing is not None:
-        tcPr.remove(existing)
+    shd.set(qn('w:fill'), hex_color)
     tcPr.append(shd)
 
-def make_paragraph_element(text, font_name="Times New Roman", font_size_pt=12,
-                            bold=False, italic=False, color=None,
-                            alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-                            indent_cm=None, space_after_pt=6,
-                            bullet=False, bullet_indent_cm=0.5):
-    """Create a paragraph XML element with specified formatting."""
-    p = OxmlElement('w:p')
-    pPr = OxmlElement('w:pPr')
-    p.append(pPr)
 
-    # Alignment
-    jc = OxmlElement('w:jc')
-    align_map = {
-        WD_ALIGN_PARAGRAPH.JUSTIFY: 'both',
-        WD_ALIGN_PARAGRAPH.CENTER: 'center',
-        WD_ALIGN_PARAGRAPH.LEFT: 'left',
-    }
-    jc.set(qn('w:val'), align_map.get(alignment, 'both'))
-    pPr.append(jc)
+def set_cell_borders(cell):
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    tcBorders = OxmlElement('w:tcBorders')
+    for border_name in ['top', 'left', 'bottom', 'right']:
+        border = OxmlElement(f'w:{border_name}')
+        border.set(qn('w:val'), 'single')
+        border.set(qn('w:sz'), '4')
+        border.set(qn('w:space'), '0')
+        border.set(qn('w:color'), '000000')
+        tcBorders.append(border)
+    tcPr.append(tcBorders)
 
-    # Spacing
-    spacing = OxmlElement('w:spacing')
-    spacing.set(qn('w:after'), str(int(space_after_pt * 20)))  # twips
-    pPr.append(spacing)
 
-    # Indent
-    if indent_cm is not None or bullet:
-        ind = OxmlElement('w:ind')
-        if bullet:
-            ind.set(qn('w:left'), str(int(bullet_indent_cm * 360)))  # 360 twips per cm
-            ind.set(qn('w:hanging'), '360')
-        elif indent_cm is not None:
-            ind.set(qn('w:firstLine'), str(int(indent_cm * 360)))
-        pPr.append(ind)
-
-    # Run
-    r = OxmlElement('w:r')
-    rPr = OxmlElement('w:rPr')
-    r.append(rPr)
-
-    # Font
-    rFonts = OxmlElement('w:rFonts')
+def set_run_font(run, font_name='Times New Roman'):
+    rPr = run._element.get_or_add_rPr()
+    rFonts = rPr.find(qn('w:rFonts'))
+    if rFonts is None:
+        rFonts = OxmlElement('w:rFonts')
+        rPr.insert(0, rFonts)
     rFonts.set(qn('w:ascii'), font_name)
     rFonts.set(qn('w:hAnsi'), font_name)
-    rPr.append(rFonts)
 
-    # Size
-    sz = OxmlElement('w:sz')
-    sz.set(qn('w:val'), str(int(font_size_pt * 2)))
-    rPr.append(sz)
-    szCs = OxmlElement('w:szCs')
-    szCs.set(qn('w:val'), str(int(font_size_pt * 2)))
-    rPr.append(szCs)
 
-    # Bold
-    if bold:
-        b = OxmlElement('w:b')
-        rPr.append(b)
-        bCs = OxmlElement('w:bCs')
-        rPr.append(bCs)
+def add_spacing(p_element, before_twips=None, after_twips=None):
+    pPr = p_element.get_or_add_pPr()
+    spacing = OxmlElement('w:spacing')
+    if before_twips is not None:
+        spacing.set(qn('w:before'), str(before_twips))
+    if after_twips is not None:
+        spacing.set(qn('w:after'), str(after_twips))
+    pPr.append(spacing)
 
-    # Italic
-    if italic:
-        i_elem = OxmlElement('w:i')
-        rPr.append(i_elem)
-        iCs = OxmlElement('w:iCs')
-        rPr.append(iCs)
 
-    # Color
-    if color is not None:
-        color_elem = OxmlElement('w:color')
-        if isinstance(color, RGBColor):
-            hex_color = '{:02X}{:02X}{:02X}'.format(color[0], color[1], color[2])
-        else:
-            hex_color = color
-        color_elem.set(qn('w:val'), hex_color)
-        rPr.append(color_elem)
-
-    # Text
-    t = OxmlElement('w:t')
-    t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
-    t.text = text
-    r.append(t)
-    p.append(r)
-
+def make_heading2(doc, text):
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    add_spacing(p._element, before_twips=240, after_twips=120)
+    run = p.add_run(text)
+    run.bold = True
+    run.font.name = 'Times New Roman'
+    run.font.size = Pt(14)
+    run.font.color.rgb = COLOR_TITLE
+    set_run_font(run, 'Times New Roman')
     return p
 
 
-def make_table_element(doc, headers, rows):
-    """Create a formatted table XML element."""
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
+def make_heading3(doc, text):
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    add_spacing(p._element, before_twips=180, after_twips=90)
+    run = p.add_run(text)
+    run.bold = True
+    run.font.name = 'Times New Roman'
+    run.font.size = Pt(12)
+    run.font.color.rgb = COLOR_TITLE
+    set_run_font(run, 'Times New Roman')
+    return p
 
-    table = doc.add_table(rows=1 + len(rows), cols=len(headers))
+
+def make_body_para(doc, text, first_line_indent=True):
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    pPr = p._element.get_or_add_pPr()
+    if first_line_indent:
+        ind = OxmlElement('w:ind')
+        ind.set(qn('w:firstLine'), '567')
+        pPr.append(ind)
+    add_spacing(p._element, after_twips=120)
+    run = p.add_run(text)
+    run.font.name = 'Times New Roman'
+    run.font.size = Pt(12)
+    set_run_font(run, 'Times New Roman')
+    return p
+
+
+def make_equation_para(doc, text):
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    add_spacing(p._element, before_twips=60, after_twips=60)
+    run = p.add_run(text)
+    run.italic = True
+    run.font.name = 'Courier New'
+    run.font.size = Pt(11)
+    run.font.color.rgb = COLOR_EQUATION
+    set_run_font(run, 'Courier New')
+    return p
+
+
+def make_bullet_para(doc, text):
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    pPr = p._element.get_or_add_pPr()
+    ind = OxmlElement('w:ind')
+    ind.set(qn('w:left'), '284')
+    ind.set(qn('w:hanging'), '284')
+    pPr.append(ind)
+    add_spacing(p._element, after_twips=60)
+    run = p.add_run(text)
+    run.font.name = 'Times New Roman'
+    run.font.size = Pt(12)
+    set_run_font(run, 'Times New Roman')
+    return p
+
+
+def make_table(doc):
+    headers = ['Paramètre', 'Valeur typique (θ_pop)', 'CV inter-individuel (ω)', 'Source']
+    rows_data = [
+        ['CL (L/h)', '0,50', '30%', 'FDA BLA 761139'],
+        ['V1 (L)', '3,1', '25%', 'FDA BLA 761139'],
+        ['Q (L/h)', '0,80', '30%', 'FDA BLA 761139'],
+        ['V2 (L)', '2,5', '25%', 'FDA BLA 761139'],
+        ['Slope_MPP (µM⁻¹)', '—', '20%', 'Calibration rat'],
+        ['Slope_CMP (µM⁻¹)', '—', '20%', 'Calibration rat'],
+        ['Slope_MEP (µM⁻¹)', '—', '20%', 'Calibration rat'],
+        ['Poids corporel (kg)', '70,0', '15%', 'Littérature clinique'],
+    ]
+
+    table = doc.add_table(rows=1 + len(rows_data), cols=4)
     table.style = 'Table Grid'
 
-    # Header row
-    hdr_row = table.rows[0]
-    for i, (cell, hdr_text) in enumerate(zip(hdr_row.cells, headers)):
+    hrow = table.rows[0]
+    for j, hdr in enumerate(headers):
+        cell = hrow.cells[j]
         set_cell_background(cell, COLOR_HEADER_BG)
-        cell.text = ''
+        set_cell_borders(cell)
         p = cell.paragraphs[0]
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run(hdr_text)
+        run = p.add_run(hdr)
         run.bold = True
         run.font.name = 'Times New Roman'
         run.font.size = Pt(11)
         run.font.color.rgb = RGBColor(255, 255, 255)
+        set_run_font(run, 'Times New Roman')
 
-    # Data rows
-    for r_idx, row_data in enumerate(rows):
-        row = table.rows[r_idx + 1]
-        bg = COLOR_ROW_ALT if r_idx % 2 == 0 else COLOR_WHITE
-        for c_idx, (cell, cell_text) in enumerate(zip(row.cells, row_data)):
+    for i, row_data in enumerate(rows_data):
+        row = table.rows[i + 1]
+        bg = COLOR_ROW_ALT if i % 2 == 0 else COLOR_ROW_WHITE
+        for j, cell_text in enumerate(row_data):
+            cell = row.cells[j]
             set_cell_background(cell, bg)
-            cell.text = ''
+            set_cell_borders(cell)
             p = cell.paragraphs[0]
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER if c_idx > 0 else WD_ALIGN_PARAGRAPH.LEFT
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT if j == 0 else WD_ALIGN_PARAGRAPH.CENTER
             run = p.add_run(cell_text)
             run.font.name = 'Times New Roman'
             run.font.size = Pt(11)
+            run.font.color.rgb = RGBColor(0, 0, 0)
+            set_run_font(run, 'Times New Roman')
 
-    return table._tbl
+    return table
 
 
 def main():
-    doc = Document(INPUT_PATH)
+    path = '/home/user/Hema/memoire_stage_M2_PKPD_hematotoxicite_corrige.docx'
+    doc = Document(path)
     body = doc.element.body
 
-    # ---- Step 1: Find the range to replace ----
-    # Find paragraph with "2.5 Simulation de population virtuelle" -> start
-    # Find paragraph with "2.6 Grading CTCAE" -> end (keep this one)
+    # 1. Find start and end paragraphs
+    start_para = None
+    end_para = None
+    for p in doc.paragraphs:
+        text = p.text.strip()
+        if 'Simulation de population virtuelle' in text and start_para is None:
+            start_para = p
+            print(f"Start: {repr(text[:80])}")
+        elif start_para is not None and 'Grading CTCAE' in text and end_para is None:
+            end_para = p
+            print(f"End:   {repr(text[:80])}")
+            break
 
-    start_idx = None
-    end_idx = None
+    if start_para is None:
+        raise ValueError("Start not found")
+    if end_para is None:
+        raise ValueError("End not found")
 
+    # 2. Determine body indices and remove old elements
     body_children = list(body)
-    for idx, child in enumerate(body_children):
-        if child.tag.endswith('}p'):
-            texts = [r.text for r in child.iter() if r.tag.endswith('}t') and r.text]
-            full_text = ''.join(texts).strip()
-            if start_idx is None and "Simulation de population virtuelle" in full_text:
-                start_idx = idx
-                print(f"Found start at body[{idx}]: {full_text[:80]}")
-            elif start_idx is not None and end_idx is None and "Grading CTCAE" in full_text:
-                end_idx = idx
-                print(f"Found end at body[{idx}]: {full_text[:80]}")
-                break
+    start_idx = next(i for i, c in enumerate(body_children) if c is start_para._element)
+    end_idx = next(i for i, c in enumerate(body_children) if c is end_para._element)
 
-    if start_idx is None or end_idx is None:
-        raise ValueError(f"Could not find section boundaries. start_idx={start_idx}, end_idx={end_idx}")
+    print(f"Body indices: start={start_idx}, end={end_idx}, removing {end_idx - start_idx} elements")
+    for el in body_children[start_idx:end_idx]:
+        el.getparent().remove(el)
 
-    print(f"Will remove body[{start_idx}] to body[{end_idx-1}] (inclusive)")
+    # 3. Build new content by appending to doc (at end of body temporarily)
+    #    We'll collect the elements and then move them before end_el.
 
-    # ---- Step 2: Remove elements from start_idx to end_idx-1 ----
-    # Collect elements to remove (re-index after each removal)
-    elements_to_remove = body_children[start_idx:end_idx]
-    for elem in elements_to_remove:
-        body.remove(elem)
+    # Marker: record current last child of body before we start adding
+    # We'll add to doc normally, then move elements into position.
 
-    # The anchor is now the element that was at end_idx (now at start_idx position)
-    # We need to insert new content before this element
-    anchor_element = list(body)[start_idx]
-    print(f"Anchor element (§2.6 Grading CTCAE): {anchor_element.tag}")
+    staging_elements = []
 
-    # ---- Step 3: Build new content ----
-    new_elements = []
+    def capture(x):
+        """After adding element to doc, capture its element reference."""
+        staging_elements.append(x._element)
+        return x
 
-    # 1. Title H2: "2.4 Simulation de population virtuelle"
-    p1 = make_paragraph_element(
-        "2.4 Simulation de population virtuelle",
-        font_name="Times New Roman", font_size_pt=14,
-        bold=True, color=COLOR_TITLE,
-        alignment=WD_ALIGN_PARAGRAPH.LEFT,
-        space_after_pt=6
-    )
-    new_elements.append(p1)
-
-    # 2. Body paragraph
-    p2 = make_paragraph_element(
+    # Build content
+    capture(make_heading2(doc, "2.4 Simulation de population virtuelle"))
+    capture(make_body_para(doc,
         "Afin d'évaluer la distribution des grades de toxicité hématologique attendus en population, "
-        "une approche de simulation Monte-Carlo a été mise en œuvre. Une cohorte virtuelle de N=300 patients "
-        "a été générée pour le T-DXd (5,4 mg/kg Q3W × 6 cycles), en intégrant la variabilité inter-individuelle "
-        "sur les paramètres PK et PD.",
-        font_name="Times New Roman", font_size_pt=12,
-        alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-        indent_cm=1.0, space_after_pt=6
-    )
-    new_elements.append(p2)
-
-    # 3. Title H3: "Modélisation de la variabilité inter-individuelle"
-    p3 = make_paragraph_element(
-        "Modélisation de la variabilité inter-individuelle",
-        font_name="Times New Roman", font_size_pt=12,
-        bold=True, color=COLOR_TITLE,
-        alignment=WD_ALIGN_PARAGRAPH.LEFT,
-        space_after_pt=6
-    )
-    new_elements.append(p3)
-
-    # 4. Body paragraph
-    p4 = make_paragraph_element(
-        "Les paramètres individuels sont supposés distribués selon une loi log-normale, ce qui garantit leur "
-        "positivité et est cohérent avec la distribution observée des paramètres PK en population clinique :",
-        font_name="Times New Roman", font_size_pt=12,
-        alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-        space_after_pt=6
-    )
-    new_elements.append(p4)
-
-    # 5. Equation (centered, Courier New 11pt italic)
-    p5 = make_paragraph_element(
-        "θᵢ = θ_pop × exp(ηᵢ)    avec ηᵢ ~ N(0, ω²)",
-        font_name="Courier New", font_size_pt=11,
-        italic=True, color=COLOR_EQUATION,
-        alignment=WD_ALIGN_PARAGRAPH.CENTER,
-        space_after_pt=6
-    )
-    new_elements.append(p5)
-
-    # 6. Body paragraph
-    p6 = make_paragraph_element(
+        "une approche de simulation Monte-Carlo a été mise en œuvre. Une cohorte virtuelle de N=300 "
+        "patients a été générée pour le T-DXd (5,4 mg/kg Q3W × 6 cycles), en intégrant la variabilité "
+        "inter-individuelle sur les paramètres PK et PD."))
+    capture(make_heading3(doc, "Modélisation de la variabilité inter-individuelle"))
+    capture(make_body_para(doc,
+        "Les paramètres individuels sont supposés distribués selon une loi log-normale, ce qui garantit "
+        "leur positivité et est cohérent avec la distribution observée des paramètres PK en population clinique :",
+        first_line_indent=False))
+    capture(make_equation_para(doc, "θᵢ = θ_pop × exp(ηᵢ)    avec ηᵢ ~ N(0, ω²)"))
+    capture(make_body_para(doc,
         "où θ_pop est la valeur typique de population, ηᵢ l'effet aléatoire individuel et ω² la variance "
         "inter-individuelle. Le coefficient de variation (CV%) associé est approximé par CV% ≈ ω × 100 pour "
         "des valeurs de ω < 0,5. Les valeurs retenues, issues de l'analyse de population FDA (BLA 761139) "
         "et de la littérature, sont :",
-        font_name="Times New Roman", font_size_pt=12,
-        alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-        space_after_pt=6
-    )
-    new_elements.append(p6)
-
-    # 7. Table: PK parameters
-    table_headers = ["Paramètre", "Valeur typique (θ_pop)", "CV inter-individuel (ω)", "Source"]
-    table_rows = [
-        ["CL (L/h)", "0,50", "30%", "FDA BLA 761139"],
-        ["V1 (L)", "3,1", "25%", "FDA BLA 761139"],
-        ["Q (L/h)", "0,80", "30%", "FDA BLA 761139"],
-        ["V2 (L)", "2,5", "25%", "FDA BLA 761139"],
-        ["Slope_MPP (µM⁻¹)", "—", "20%", "Calibration rat"],
-        ["Slope_CMP (µM⁻¹)", "—", "20%", "Calibration rat"],
-        ["Slope_MEP (µM⁻¹)", "—", "20%", "Calibration rat"],
-        ["Poids corporel (kg)", "70,0", "15%", "Littérature clinique"],
-    ]
-    tbl_elem = make_table_element(doc, table_headers, table_rows)
-    new_elements.append(tbl_elem)
-
-    # Add a spacing paragraph after table
-    p_space = make_paragraph_element("", font_size_pt=6, space_after_pt=0)
-    new_elements.append(p_space)
-
-    # 8. Title H3: "Procédure de simulation Monte-Carlo"
-    p8 = make_paragraph_element(
-        "Procédure de simulation Monte-Carlo",
-        font_name="Times New Roman", font_size_pt=12,
-        bold=True, color=COLOR_TITLE,
-        alignment=WD_ALIGN_PARAGRAPH.LEFT,
-        space_after_pt=6
-    )
-    new_elements.append(p8)
-
-    # 9. Body paragraph
-    p9 = make_paragraph_element(
+        first_line_indent=False))
+    tbl = make_table(doc)
+    staging_elements.append(tbl._element)
+    capture(make_body_para(doc, "", first_line_indent=False))  # spacer
+    capture(make_heading3(doc, "Procédure de simulation Monte-Carlo"))
+    capture(make_body_para(doc,
         "Pour chaque patient simulé i (i = 1, …, 300), la procédure suit les étapes suivantes :",
-        font_name="Times New Roman", font_size_pt=12,
-        alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-        space_after_pt=6
-    )
-    new_elements.append(p9)
-
-    # 10. Bullet points
-    bullets = [
-        "Tirage aléatoire des paramètres individuels : θᵢ = θ_pop × exp(ηᵢ), avec ηᵢ ~ N(0, ω²) pour chaque paramètre PK et PD",
-        "Calcul de la dose individuelle : Dose_mg = 5,4 mg/kg × BWᵢ, arrondie à la dizaine de mg (pratique clinique standard)",
-        "Résolution numérique du système ODE complet (PK + Damage + PD) via rxode2 (solveur LSODA, pas adaptatif) sur 126 jours, avec administration IV aux jours 1, 22, 43, 64, 85, 106",
-        "Extraction du nadir pour chaque lignée : min(Neut(t)), min(Plt(t)), min(RBC(t)) sur t ∈ [0, 126 jours]",
-        "Attribution du grade CTCAE v5 par comparaison du nadir aux seuils (cf. §2.5)",
-    ]
-    for bullet_text in bullets:
-        pb = make_paragraph_element(
-            "• " + bullet_text,
-            font_name="Times New Roman", font_size_pt=12,
-            alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-            bullet=True, bullet_indent_cm=0.5,
-            space_after_pt=3
-        )
-        new_elements.append(pb)
-
-    # 11. Body paragraph (seed/reproducibility)
-    p11 = make_paragraph_element(
-        "Le générateur pseudo-aléatoire est initialisé avec une graine fixe (set.seed(42)) garantissant la "
-        "reproductibilité exacte des résultats. La taille de N=300 patients a été choisie pour assurer une "
-        "estimation stable des proportions de grades rares (G4 < 5%) avec une erreur standard inférieure à "
-        "1,5 point de pourcentage (intervalle de confiance à 95% : ±1,5%).",
-        font_name="Times New Roman", font_size_pt=12,
-        alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-        space_after_pt=6
-    )
-    new_elements.append(p11)
-
-    # 12. Title H3: "Résumé statistique des grades simulés"
-    p12 = make_paragraph_element(
-        "Résumé statistique des grades simulés",
-        font_name="Times New Roman", font_size_pt=12,
-        bold=True, color=COLOR_TITLE,
-        alignment=WD_ALIGN_PARAGRAPH.LEFT,
-        space_after_pt=6
-    )
-    new_elements.append(p12)
-
-    # 13. Body paragraph
-    p13 = make_paragraph_element(
+        first_line_indent=False))
+    for b in [
+        "• Tirage aléatoire des paramètres individuels : θᵢ = θ_pop × exp(ηᵢ), avec ηᵢ ~ N(0, ω²) pour chaque paramètre PK et PD",
+        "• Calcul de la dose individuelle : Dose_mg = 5,4 mg/kg × BWᵢ, arrondie à la dizaine de mg (pratique clinique standard)",
+        "• Résolution numérique du système ODE complet (PK + Damage + PD) via rxode2 (solveur LSODA, pas adaptatif) sur 126 jours, avec administration IV aux jours 1, 22, 43, 64, 85, 106",
+        "• Extraction du nadir pour chaque lignée : min(Neut(t)), min(Plt(t)), min(RBC(t)) sur t ∈ [0, 126 jours]",
+        "• Attribution du grade CTCAE v5 par comparaison du nadir aux seuils (cf. §2.5)",
+    ]:
+        capture(make_bullet_para(doc, b))
+    capture(make_body_para(doc,
+        "Le générateur pseudo-aléatoire est initialisé avec une graine fixe (set.seed(42)) garantissant "
+        "la reproductibilité exacte des résultats. La taille de N=300 patients a été choisie pour assurer "
+        "une estimation stable des proportions de grades rares (G4 < 5%) avec une erreur standard inférieure "
+        "à 1,5 point de pourcentage (intervalle de confiance à 95% : ±1,5%).",
+        first_line_indent=False))
+    capture(make_heading3(doc, "Résumé statistique des grades simulés"))
+    capture(make_body_para(doc,
         "Pour chaque toxicité, les résultats sont résumés par la proportion de patients atteignant chaque "
-        "grade (G0 à G4), le taux de tout grade (G≥1 = 100% − %G0) et le taux de grade sévère (G3-4 = %G3 + %G4). "
-        "Ces métriques sont directement comparables aux données de fréquence rapportées dans les notices "
-        "médicamenteuses et les publications d'essais cliniques.",
-        font_name="Times New Roman", font_size_pt=12,
-        alignment=WD_ALIGN_PARAGRAPH.JUSTIFY,
-        space_after_pt=6
-    )
-    new_elements.append(p13)
+        "grade (G0 à G4), le taux de tout grade (G≥1 = 100% − %G0) et le taux de grade sévère "
+        "(G3-4 = %G3 + %G4). Ces métriques sont directement comparables aux données de fréquence rapportées "
+        "dans les notices médicamenteuses et les publications d'essais cliniques.",
+        first_line_indent=False))
 
-    # ---- Step 4: Insert all new elements before the anchor ----
-    for elem in new_elements:
-        anchor_element.addprevious(elem)
+    # 4. Move all staged elements from their current (end-of-body) position
+    #    to just before end_el
+    end_el = end_para._element
+    for el in staging_elements:
+        # Remove from current position (end of body)
+        parent = el.getparent()
+        if parent is not None:
+            parent.remove(el)
+        # Insert before end_el
+        end_el.addprevious(el)
 
-    print(f"Inserted {len(new_elements)} new elements before anchor")
-
-    # ---- Step 5: Save ----
-    doc.save(OUTPUT_PATH)
-    print(f"Saved to {OUTPUT_PATH}")
-
-    # ---- Step 6: Verify file size ----
-    import os
-    size = os.path.getsize(OUTPUT_PATH)
+    doc.save(path)
+    print(f"\nSaved: {path}")
+    size = os.path.getsize(path)
     print(f"File size: {size:,} bytes ({size/1024:.1f} KB)")
     if size < 500 * 1024:
-        print("WARNING: File is smaller than 500 KB!")
+        print("WARNING: File < 500 KB!")
     else:
-        print("OK: File size is above 500 KB")
+        print("OK: File > 500 KB.")
+
+    # Verify
+    doc2 = Document(path)
+    found_24 = any('2.4 Simulation de population virtuelle' in p.text for p in doc2.paragraphs)
+    found_grading = any('Grading CTCAE' in p.text for p in doc2.paragraphs)
+    found_h3 = any('Modélisation de la variabilité' in p.text for p in doc2.paragraphs)
+    found_montecarlo = any('Procédure de simulation Monte-Carlo' in p.text for p in doc2.paragraphs)
+    found_resume = any('Résumé statistique' in p.text for p in doc2.paragraphs)
+    print(f"\nVerification:")
+    print(f"  §2.4 title: {found_24}")
+    print(f"  Grading CTCAE: {found_grading}")
+    print(f"  H3 variabilité: {found_h3}")
+    print(f"  H3 Monte-Carlo: {found_montecarlo}")
+    print(f"  H3 Résumé: {found_resume}")
+    # Check table
+    tbl_count = len(doc2.tables)
+    print(f"  Total tables: {tbl_count}")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
