@@ -608,8 +608,31 @@ add_paragraph(doc,
 
 add_heading(doc, "2.5 Grading CTCAE v5", 2)
 add_paragraph(doc,
-    "La classification des grades de toxicité hématologique suit les critères CTCAE v5 "
-    "(Common Terminology Criteria for Adverse Events, version 5) :",
+    "L'évaluation de la toxicité hématologique prédicte repose sur la classification "
+    "CTCAE v5 (Common Terminology Criteria for Adverse Events, version 5.0, NCI 2017), "
+    "standard international utilisé dans les essais cliniques oncologiques pour "
+    "caractériser la sévérité des effets indésirables.",
+    first_line_indent=1.0)
+
+add_heading(doc, "Principe de classification", 3)
+add_paragraph(doc,
+    "Pour chaque lignée hématologique, le grade CTCAE est attribué en comparant "
+    "la valeur minimale simulée (nadir) aux seuils absolus définis par le NCI. "
+    "Le grade reflète la sévérité clinique et conditionne les décisions thérapeutiques "
+    "(réduction de dose, interruption, hospitalisation) :",
+    first_line_indent=1.0)
+add_bullet(doc, "G0 : valeurs dans les limites de la normale — aucune intervention requise")
+add_bullet(doc, "G1 : anomalie légère — surveillance accrue, pas de modification du traitement")
+add_bullet(doc, "G2 : anomalie modérée — possible réduction de dose selon le protocole")
+add_bullet(doc, "G3 : anomalie sévère — interruption du traitement généralement recommandée, "
+            "risque infectieux ou hémorragique significatif")
+add_bullet(doc, "G4 : anomalie critique, engageant le pronostic vital — arrêt du traitement, "
+            "prise en charge hospitalière (G-CSF, transfusion, thromboprophylaxie)")
+
+add_heading(doc, "Seuils utilisés dans le modèle", 3)
+add_paragraph(doc,
+    "Les seuils CTCAE v5 retenus pour les trois toxicités hématologiques modélisées "
+    "sont les suivants :",
     first_line_indent=1.0)
 add_table_simple(doc,
     ["Toxicité", "G0 (normal)", "G1", "G2", "G3", "G4"],
@@ -619,6 +642,55 @@ add_table_simple(doc,
         ["Thrombocytopénie\n(×10⁹/L)", "≥150", "75–150", "50–75", "25–50", "<25"],
     ],
     col_widths=[4.0, 2.5, 2.0, 2.0, 2.0, 2.0])
+
+add_heading(doc, "Application au modèle : extraction du nadir", 3)
+add_paragraph(doc,
+    "Dans le pipeline PK/PD, le grade CTCAE de chaque patient simulé est déterminé "
+    "en trois étapes :",
+    first_line_indent=1.0)
+add_bullet(doc,
+    "Simulation longitudinale : les concentrations cellulaires sont simulées sur "
+    "l'ensemble de l'horizon temporel (126 jours pour 6 cycles T-DXd Q3W)")
+add_bullet(doc,
+    "Extraction du nadir : la valeur minimale de chaque lignée est identifiée "
+    "sur la totalité de la période de traitement — min(Neut(t)), min(Plt(t)), min(RBC(t))")
+add_bullet(doc,
+    "Attribution du grade : le nadir est comparé aux seuils CTCAE v5 ; "
+    "le grade le plus élevé atteint à n'importe quel moment constitue le grade "
+    "de toxicité retenu pour ce patient")
+add_paragraph(doc,
+    "Cette approche — utilisation du nadir comme critère de grading — est cohérente "
+    "avec la pratique clinique, où le grade rapporté dans les essais correspond au "
+    "grade maximal observé sur la durée du traitement (worst-case grading).",
+    first_line_indent=1.0)
+
+add_heading(doc, "Proxy RBC pour l'anémie", 3)
+add_paragraph(doc,
+    "Le modèle de Fornari simule directement le compartiment RBC (érythrocytes, ×10¹²/L) "
+    "plutôt que l'hémoglobine (Hb, g/dL) mesurée en clinique. Une correspondance "
+    "linéaire est utilisée pour convertir les seuils CTCAE :",
+    first_line_indent=1.0)
+add_equation(doc, "Hb (g/dL) ≈ RBC (×10¹²/L) × CCMH (g/dL) × VGM (fL) / 1000")
+add_equation(doc, "Hb ≈ RBC × 33 × 90 / 1000 = RBC × 2,97  ≈  RBC × 3,0")
+add_paragraph(doc,
+    "avec CCMH = 33 g/dL (concentration corpusculaire moyenne en hémoglobine) "
+    "et VGM = 90 fL (volume globulaire moyen), valeurs normales adultes. "
+    "Les seuils CTCAE en unités RBC équivalentes (×10¹²/L) sont ainsi :",
+    first_line_indent=1.0)
+add_table_simple(doc,
+    ["Grade", "Seuil Hb (g/dL)", "Seuil RBC équivalent (×10¹²/L)"],
+    [
+        ["G0", "≥11,0", "≥3,67"],
+        ["G1", "10,0–11,0", "3,33–3,67"],
+        ["G2", "8,0–10,0", "2,67–3,33"],
+        ["G3", "<8,0", "<2,67"],
+    ],
+    col_widths=[2.5, 4.5, 5.5])
+add_paragraph(doc,
+    "Cette approximation introduit une incertitude estimée à ±5% sur les seuils "
+    "de grade, jugée acceptable au regard de la variabilité inter-individuelle "
+    "des paramètres érythrocytaires.",
+    first_line_indent=1.0)
 
 add_heading(doc, "2.6 Données de référence cliniques", 2)
 add_paragraph(doc,
