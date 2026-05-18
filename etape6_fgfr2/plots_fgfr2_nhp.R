@@ -641,6 +641,38 @@ if (obs_has_data) {
          p_ind_pred, width = 15, height = 9, dpi = 300)
   cat("  -> results/poster_PD_predicted_individual.pdf / .png\n")
 
+  # ════════════════════════════════════════════════════════
+  # Figure 8 — Profils PREDITS individuels SANS observé
+  # Identique à Fig 7 mais sans geom_point observations
+  # ════════════════════════════════════════════════════════
+  p_ind_pred_noobs <- ggplot(ind_pred_long,
+                             aes(x = time_d, y = Pct,
+                                 color = Cellule, group = Cellule)) +
+    geom_hline(yintercept = 100, linetype = "dashed",
+               color = "grey45", linewidth = 0.6) +
+    geom_vline(xintercept = dose_days, linetype = "dotted",
+               color = "grey75", linewidth = 0.35) +
+    geom_line(linewidth = 1.2) +
+    scale_color_manual(values = cell_cols_ind, name = "Cell type") +
+    scale_x_continuous(breaks = c(-3, 0, 2, 8, 12, 15, 22, 25),
+                       labels = c("D-3","D0","D2","D8","D12","D15","D22","D25")) +
+    coord_cartesian(xlim = c(-3, 25)) +
+    scale_y_continuous(labels = function(x) paste0(x, "%")) +
+    facet_wrap(~ Animal_label, ncol = 4) +
+    labs(
+      title    = "Individual Predicted Profiles — FGFR2 inhibitor NHP",
+      subtitle = "Model prediction  |  % of individual day-3 baseline  |  --- 100%  |  ··· dose day",
+      x = "Time (days)", y = "% of individual baseline"
+    ) +
+    theme_poster +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10))
+
+  ggsave("results/poster_PD_predicted_individual_noobs.pdf",
+         p_ind_pred_noobs, width = 15, height = 9, dpi = 300)
+  ggsave("results/poster_PD_predicted_individual_noobs.png",
+         p_ind_pred_noobs, width = 15, height = 9, dpi = 300)
+  cat("  -> results/poster_PD_predicted_individual_noobs.pdf / .png\n")
+
 } else {
   cat("  [Figure 7 ignoree : nhp_hema_data.csv vide]\n")
 }
