@@ -528,15 +528,62 @@ add_equation(doc, "t½β = ln(2) / β    avec β = racine de l'équation caract�
 
 add_heading(doc, "2.3.2 Ajustement individuel par optimisation", 3)
 add_paragraph(doc,
-    "Pour chaque animal ou patient disposant de données de concentration, les paramètres "
-    "PK sont estimés par minimisation de la somme des résidus quadratiques (SSR) "
-    "sur l'échelle logarithmique, via l'algorithme de Nelder-Mead (méthode du simplex) :",
+    "Pour chaque animal ou patient disposant de données de concentration temporelle, "
+    "les quatre paramètres PK (CL, V1, Q, V2) sont estimés individuellement par "
+    "minimisation d'une fonction objectif sur l'échelle logarithmique, via l'algorithme "
+    "de Nelder-Mead (méthode du simplexe).",
     first_line_indent=1.0)
-add_equation(doc, "SSR = Σ [log(C_obs,i) − log(C_pred,i)]²")
+
+add_heading(doc, "Fonction objectif", 3)
 add_paragraph(doc,
-    "L'utilisation de l'échelle logarithmique confère une pondération homogène à toutes "
-    "les concentrations, y compris les valeurs faibles en fin de profil, et est cohérente "
-    "avec l'hypothèse d'erreur résiduelle proportionnelle.",
+    "La fonction objectif minimisée est la somme des résidus quadratiques (SSR) "
+    "calculée sur les logarithmes des concentrations :",
+    first_line_indent=1.0)
+add_equation(doc, "SSR(θ) = Σᵢ [log(C_obs,i) − log(C_pred,i | θ)]²")
+add_paragraph(doc,
+    "où θ = (CL, V1, Q, V2) est le vecteur de paramètres, C_obs,i la concentration "
+    "observée au temps tᵢ, et C_pred,i la concentration prédite par le modèle "
+    "bi-exponentiel pour ces paramètres. Cette formulation sur l'échelle logarithmique "
+    "est équivalente à supposer un modèle d'erreur résiduelle proportionnelle :",
+    first_line_indent=1.0)
+add_equation(doc, "C_obs,i = C_pred,i × exp(εᵢ)    avec εᵢ ~ N(0, σ²)")
+add_paragraph(doc,
+    "Elle confère ainsi une pondération homogène à toutes les concentrations observées, "
+    "indépendamment de leur ordre de grandeur. Sans cette transformation, les points en "
+    "fin de profil (faibles concentrations) auraient un poids négligeable face aux "
+    "concentrations initiales élevées, biaisant l'estimation de la demi-vie terminale.",
+    first_line_indent=1.0)
+
+add_heading(doc, "Algorithme de Nelder-Mead", 3)
+add_paragraph(doc,
+    "L'algorithme de Nelder-Mead est une méthode d'optimisation sans gradient (dérivée-free), "
+    "particulièrement adaptée aux fonctions objectif non différentiables ou bruitées. "
+    "Il opère par déformation itérative d'un simplexe dans l'espace des paramètres "
+    "(réflexion, expansion, contraction, réduction), convergeant vers un minimum local "
+    "sans nécessiter le calcul du gradient de SSR.",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "En pratique, l'optimisation est réalisée via la fonction optim() de R "
+    "(method = \"Nelder-Mead\") avec les réglages suivants :",
+    first_line_indent=1.0)
+add_bullet(doc, "Valeurs initiales : CL₀ = CL_NCA, V1₀ = Dose/C₀, Q₀ = 0,5×CL₀, V2₀ = V1₀ "
+            "(estimations préliminaires par NCA ou inspection visuelle)")
+add_bullet(doc, "Contrainte de positivité : optimisation sur log(θ), avec retour à θ = exp(log(θ)) "
+            "pour garantir CL, V1, Q, V2 > 0 à chaque évaluation")
+add_bullet(doc, "Critère de convergence : tolérance relative sur SSR < 10⁻⁶ (reltol par défaut R)")
+add_bullet(doc, "Nombre maximal d'itérations : 5 000 (maxit = 5000)")
+
+add_heading(doc, "Évaluation de la qualité d'ajustement", 3)
+add_paragraph(doc,
+    "La qualité de l'ajustement individuel est évaluée par inspection visuelle des "
+    "profils observés vs prédits (échelles linéaire et semi-logarithmique) et par "
+    "le calcul des résidus relatifs individuels :",
+    first_line_indent=1.0)
+add_equation(doc, "Résidu relatif (%) = (C_obs,i − C_pred,i) / C_obs,i × 100")
+add_paragraph(doc,
+    "Un ajustement est jugé satisfaisant lorsque les résidus relatifs médians sont "
+    "inférieurs à 20% sur l'ensemble du profil, et qu'aucune tendance systématique "
+    "(biais) n'est observée sur l'échelle semi-logarithmique.",
     first_line_indent=1.0)
 
 add_heading(doc, "2.4 Simulation de population virtuelle", 2)
