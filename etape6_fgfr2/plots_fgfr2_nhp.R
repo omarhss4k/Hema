@@ -654,9 +654,9 @@ if (obs_has_data) {
                color = "grey75", linewidth = 0.35) +
     geom_line(linewidth = 1.2) +
     scale_color_manual(values = cell_cols_ind, name = "Cell type") +
-    scale_x_continuous(breaks = c(-3, 0, 21, 42, 56, 70, 84),
-                       labels = c("D-3","D0","D21","D42","D56","D70","D84")) +
-    coord_cartesian(xlim = c(-3, 90)) +
+    scale_x_continuous(breaks = c(0, 21, 42, 56, 70, 84),
+                       labels = c("D0","D21","D42","D56","D70","D84")) +
+    coord_cartesian(xlim = c(0, 90)) +
     scale_y_continuous(labels = function(x) paste0(x, "%")) +
     facet_wrap(~ Animal_label, ncol = 4) +
     labs(
