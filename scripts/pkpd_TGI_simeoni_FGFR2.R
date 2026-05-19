@@ -25,6 +25,7 @@
 # =============================================================================
 
 library(deSolve)
+library(DEoptim)
 library(ggplot2)
 library(readxl)
 
@@ -337,20 +338,50 @@ cat(sprintf("Objectif initial : %.4f %s\n", obj0,
     if (obj0 >= 1e11) "— ECHEC (1e12 = toutes simulations NA)" else "— OK"))
 
 # =============================================================================
-# 7. OPTIMISATION — nlminb (log-espace)
+# 7. OPTIMISATION — DEoptim (évolution différentielle, optimiseur global)
+#
+#    Avantage vs nlminb : explore tout l'espace, évite les minima locaux
+#    Bornes physiologiques en log-espace :
+#      L0  ∈ [0.005, 1.0]  /j        (doublement 0.7 j → 139 j)
+#      L1  ∈ [10, 1e6]     mm³/j     (taux de croissance linéaire)
+#      k1  ∈ [0.2, 4.0]    /j        (MTT = 4/k1 ∈ [1, 20] j)
+#      k2  ∈ [1e-8, 1e-3]  L/µg/j
 # =============================================================================
 
-cat("\nOptimisation nlminb en cours...\n")
+lower_log <- c(log(0.005), log(10),  log(0.2), log(1e-8))
+upper_log <- c(log(1.0),   log(1e6), log(4.0), log(1e-3))
 
-fit_pd <- nlminb(
-  start     = log(init_pd),
+cat("\nOptimisation DEoptim en cours (peut prendre 1-2 min)...\n")
+
+set.seed(42)
+fit_de <- DEoptim(
+  fn      = objective_simeoni,
+  lower   = lower_log,
+  upper   = upper_log,
+  control = DEoptim.control(
+    NP      = 120,     # population : 30 × nb_params (4)
+    itermax = 600,     # itérations max
+    F       = 0.8,     # facteur de mutation
+    CR      = 0.9,     # probabilité de croisement
+    trace   = 100,     # affiche le progrès toutes les 100 itérations
+    reltol  = 1e-8,
+    steptol = 150      # arrêt anticipé si pas d'amélioration sur 150 iter
+  )
+)
+
+# Affinage local à partir du meilleur point DEoptim
+fit_local <- nlminb(
+  start     = fit_de$optim$bestmem,
   objective = objective_simeoni,
-  control   = list(eval.max = 10000, iter.max = 5000,
+  lower     = lower_log,
+  upper     = upper_log,
+  control   = list(eval.max = 3000, iter.max = 1000,
                    rel.tol = 1e-12, x.tol = 1e-12)
 )
 
-best_pd        <- exp(fit_pd$par)
-names(best_pd) <- c("L0", "L1", "k1", "k2")
+best_log           <- fit_local$par
+best_pd            <- exp(best_log)
+names(best_pd)     <- c("L0", "L1", "k1", "k2")
 
 # =============================================================================
 # 8. PARAMÈTRES DÉRIVÉS
@@ -362,16 +393,16 @@ tsc <- unname(best_pd["L0"] / best_pd["k2"])
 # MTT : 4 / k1  (3 compartiments de transit + x1)
 mtt <- 4 / unname(best_pd["k1"])
 
-cat("\n=== Paramètres PD estimés (Simeoni) ===\n")
+cat("\n=== Paramètres PD estimés (Simeoni + DEoptim) ===\n")
 cat(sprintf("λ0 (L0) = %.6f /j         (croissance exponentielle)\n",  best_pd["L0"]))
 cat(sprintf("λ1 (L1) = %.2f mm³/j      (croissance linéaire)\n",       best_pd["L1"]))
 cat(sprintf("k1      = %.5f /j         (transit rate)\n",               best_pd["k1"]))
-cat(sprintf("k2      = %.7f L/µg/j    (potence drogue)\n",              best_pd["k2"]))
+cat(sprintf("k2      = %.2e L/µg/j    (potence drogue)\n",              best_pd["k2"]))
 cat("─────────────────────────────────────────────────────────\n")
 cat(sprintf("TSC   = %.1f µg/L   (= λ0/k2, concentration statique tumorale)\n", tsc))
 cat(sprintf("MTT   = %.1f j      (= 4/k1, délai de réponse)\n", mtt))
-cat(sprintf("Objectif final = %.6f\n", fit_pd$objective))
-cat(sprintf("Convergence    : %s (code %d)\n", fit_pd$message, fit_pd$convergence))
+cat(sprintf("Objectif DEoptim = %.6f\n", fit_de$optim$bestval))
+cat(sprintf("Objectif final   = %.6f\n", fit_local$objective))
 
 # =============================================================================
 # 9. SIMULATION FINALE
@@ -466,15 +497,15 @@ cat("\nGraphique → scripts/plot_PKPD_simeoni_FGFR2.png\n")
 # =============================================================================
 
 simeoni_results <- list(
-  pk_fixed    = pk_fixed,
-  L0          = unname(best_pd["L0"]),
-  L1          = unname(best_pd["L1"]),
-  k1          = unname(best_pd["k1"]),
-  k2          = unname(best_pd["k2"]),
-  TSC_ugL     = tsc,
-  MTT_days    = mtt,
-  objective   = fit_pd$objective,
-  convergence = fit_pd$convergence
+  pk_fixed         = pk_fixed,
+  L0               = unname(best_pd["L0"]),
+  L1               = unname(best_pd["L1"]),
+  k1               = unname(best_pd["k1"]),
+  k2               = unname(best_pd["k2"]),
+  TSC_ugL          = tsc,
+  MTT_days         = mtt,
+  objective_deoptim = fit_de$optim$bestval,
+  objective_final  = fit_local$objective
 )
 
 save(simeoni_results, file = "scripts/resultats_PKPD_simeoni_FGFR2.RData")
