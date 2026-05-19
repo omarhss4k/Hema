@@ -212,7 +212,9 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
 
 objective_simeoni <- function(logpar) {
   par <- exp(logpar)
-  L0 <- par[1]; L1 <- par[2]; k1 <- par[3]; k2 <- par[4]
+  # unname() : évite "L0.L0" quand nlminb passe des vecteurs nommés
+  L0 <- unname(par[1]); L1 <- unname(par[2])
+  k1 <- unname(par[3]); k2 <- unname(par[4])
   if (any(par <= 0)) return(1e12)
 
   params_all <- c(pk_fixed, L0 = L0, L1 = L1, k1 = k1, k2 = k2)
@@ -222,21 +224,24 @@ objective_simeoni <- function(logpar) {
   pred_ctrl <- sim_ctrl_fn(L0, L1, tv0_ctrl, t_c)
   obs_ctrl  <- tv_ctrl[ok_ctrl]
   w_ctrl    <- 1 / sem_ctrl[ok_ctrl]^2
-  if (any(is.na(pred_ctrl) | pred_ctrl <= 0)) return(1e12)
+  if (any(is.na(pred_ctrl))) return(1e12)
+  pred_ctrl <- pmax(pred_ctrl, 0.1)
 
   # — 3 mg/kg —
   t_3     <- times_d[ok_d3]
   pred_d3 <- sim_treated(3000, tv0_d3, params_all, t_3)
   obs_d3  <- tv_d3[ok_d3]
   w_d3    <- 1 / sem_d3[ok_d3]^2
-  if (any(is.na(pred_d3) | pred_d3 <= 0)) return(1e12)
+  if (any(is.na(pred_d3))) return(1e12)
+  pred_d3 <- pmax(pred_d3, 0.1)
 
   # — 10 mg/kg —
   t_10     <- times_d[ok_d10]
   pred_d10 <- sim_treated(10000, tv0_d10, params_all, t_10)
   obs_d10  <- tv_d10[ok_d10]
   w_d10    <- 1 / sem_d10[ok_d10]^2
-  if (any(is.na(pred_d10) | pred_d10 <= 0)) return(1e12)
+  if (any(is.na(pred_d10))) return(1e12)
+  pred_d10 <- pmax(pred_d10, 0.1)
 
   sum(w_ctrl * (log(obs_ctrl) - log(pred_ctrl))^2, na.rm = TRUE) +
   sum(w_d3   * (log(obs_d3)   - log(pred_d3))^2,   na.rm = TRUE) +
@@ -259,9 +264,10 @@ L1_init <- max(tv_ctrl[ok_ctrl], na.rm = TRUE) * L0_init * 50
 # k1 : transit rate → MTT ~ 7 jours → k1 = 4/7 ≈ 0.57 /j
 k1_init <- 4 / 7
 
-# k2 : potence drogue → TSC ≈ 10 % du Cmax(3mg/kg) = 3000/V1 × 0.10
-Cmax_3mgkg <- 3000 / as.numeric(pk_fixed["V1"])
-k2_init    <- L0_init / (Cmax_3mgkg * 0.10)
+# k2 : TSC initial = Cmax(10 mg/kg) → 10 mg/kg au seuil de stasis à t=0
+# (plus conservateur que 10% Cmax(3mg) qui surdose le modèle)
+Cmax_10mgkg <- 10000 / as.numeric(pk_fixed["V1"])
+k2_init     <- L0_init / Cmax_10mgkg
 
 init_pd <- c(L0 = L0_init, L1 = L1_init, k1 = k1_init, k2 = k2_init)
 
@@ -270,8 +276,8 @@ cat(sprintf("L0 = %.5f /j   (λ0, croissance exponentielle)\n", init_pd["L0"]))
 cat(sprintf("L1 = %.2f mm³/j (λ1, croissance linéaire)\n",     init_pd["L1"]))
 cat(sprintf("k1 = %.4f /j   (transit rate, MTT = %.1f j)\n",
             init_pd["k1"], 4/init_pd["k1"]))
-cat(sprintf("k2 = %.6f L/µg/j (potence drogue)\n",             init_pd["k2"]))
-cat(sprintf("TSC initiale ≈ %.1f µg/L  (= L0/k2)\n",
+cat(sprintf("k2 = %.2e L/µg/j   (potence drogue)\n",             init_pd["k2"]))
+cat(sprintf("TSC initiale ≈ %.1f µg/L  (= L0/k2 = Cmax 10mg/kg)\n",
             init_pd["L0"] / init_pd["k2"]))
 
 # =============================================================================
@@ -316,14 +322,14 @@ cat(sprintf("Convergence    : %s (code %d)\n", fit_pd$message, fit_pd$convergenc
 # =============================================================================
 
 params_best <- c(pk_fixed,
-                 L0 = best_pd["L0"],
-                 L1 = best_pd["L1"],
-                 k1 = best_pd["k1"],
-                 k2 = best_pd["k2"])
+                 L0 = unname(best_pd["L0"]),
+                 L1 = unname(best_pd["L1"]),
+                 k1 = unname(best_pd["k1"]),
+                 k2 = unname(best_pd["k2"]))
 
 times_sim <- seq(0, max(times_d, na.rm = TRUE) * 1.05, by = 0.5)
 
-pred_ctrl_sim <- sim_ctrl_fn(best_pd["L0"], best_pd["L1"], tv0_ctrl, times_sim)
+pred_ctrl_sim <- sim_ctrl_fn(unname(best_pd["L0"]), unname(best_pd["L1"]), tv0_ctrl, times_sim)
 pred_d3_sim   <- sim_treated(3000,  tv0_d3,  params_best, times_sim)
 pred_d10_sim  <- sim_treated(10000, tv0_d10, params_best, times_sim)
 
