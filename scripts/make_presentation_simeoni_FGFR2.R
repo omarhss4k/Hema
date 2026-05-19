@@ -562,10 +562,10 @@ df_res$Groupe <- factor(df_res$Groupe, levels=lev_pd)
 
 p7a <- ggplot() +
   geom_vline(xintercept=DOSE_DAYS, linetype="dashed", color="grey70", linewidth=0.4) +
-  geom_line(data=df_sim_pd[df_sim_pd$Groupe=="Contrôle", ],
-            aes(x=jour, y=w, color=Groupe), linewidth=1.2, linetype="dashed") +
   geom_line(data=df_sim_pd[df_sim_pd$Groupe!="Contrôle", ],
             aes(x=jour, y=w, color=Groupe), linewidth=1.2) +
+  geom_line(data=df_sim_pd[df_sim_pd$Groupe=="Contrôle", ],
+            aes(x=jour, y=w, color=Groupe), linewidth=1.2, linetype="dashed") +
   geom_errorbar(data=df_obs_pd,
                 aes(x=jour, ymin=w-sem, ymax=w+sem, color=Groupe),
                 width=0.8, linewidth=0.5) +
