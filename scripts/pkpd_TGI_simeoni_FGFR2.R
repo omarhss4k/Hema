@@ -80,10 +80,12 @@ get_row <- function(blk, pat)
   as.numeric(unlist(blk[grep(pat, blk[[1]], ignore.case = TRUE)[1], -1]))
 
 tv_ctrl  <- get_row(blk_mean, "Group 01")
+tv_iso   <- get_row(blk_mean, "Group 02")
 tv_d3    <- get_row(blk_mean, "Group 04")
 tv_d10   <- get_row(blk_mean, "Group 03")
 
 sem_ctrl <- pmax(get_row(blk_sem, "Group 01"), 1)
+sem_iso  <- pmax(get_row(blk_sem, "Group 02"), 1)
 sem_d3   <- pmax(get_row(blk_sem, "Group 04"), 1)
 sem_d10  <- pmax(get_row(blk_sem, "Group 03"), 1)
 
@@ -92,15 +94,17 @@ get_tv0 <- function(tv) {
   if (length(v) == 0 || is.na(v[1])) tv[!is.na(tv)][1] else v[1]
 }
 tv0_ctrl <- get_tv0(tv_ctrl)
+tv0_iso  <- get_tv0(tv_iso)
 tv0_d3   <- get_tv0(tv_d3)
 tv0_d10  <- get_tv0(tv_d10)
 
 ok_ctrl <- !is.na(tv_ctrl)
+ok_iso  <- !is.na(tv_iso)
 ok_d3   <- !is.na(tv_d3)
 ok_d10  <- !is.na(tv_d10)
 
-cat(sprintf("\nTV initiale (j0) : Ctrl=%.0f | 3mg=%.0f | 10mg=%.0f mm³\n",
-            tv0_ctrl, tv0_d3, tv0_d10))
+cat(sprintf("\nTV initiale (j0) : Ctrl=%.0f | Isotype=%.0f | 3mg=%.0f | 10mg=%.0f mm³\n",
+            tv0_ctrl, tv0_iso, tv0_d3, tv0_d10))
 
 # =============================================================================
 # 3. ÉQUATIONS DU MODÈLE (deSolve)
@@ -417,11 +421,13 @@ params_best <- c(pk_fixed,
 times_sim <- seq(0, max(times_d, na.rm = TRUE) * 1.05, by = 0.5)
 
 pred_ctrl_sim <- sim_ctrl_fn(unname(best_pd["L0"]), unname(best_pd["L1"]), tv0_ctrl, times_sim)
+pred_iso_sim  <- sim_ctrl_fn(unname(best_pd["L0"]), unname(best_pd["L1"]), tv0_iso,  times_sim)
 pred_d3_sim   <- sim_treated(3000,  tv0_d3,  params_best, times_sim)
 pred_d10_sim  <- sim_treated(10000, tv0_d10, params_best, times_sim)
 
 df_sim <- rbind(
   data.frame(jour = times_sim, TV = pred_ctrl_sim, Groupe = "Contrôle"),
+  data.frame(jour = times_sim, TV = pred_iso_sim,  Groupe = "Isotype 10mg/kg"),
   data.frame(jour = times_sim, TV = pred_d3_sim,   Groupe = "3 mg/kg"),
   data.frame(jour = times_sim, TV = pred_d10_sim,  Groupe = "10 mg/kg")
 )
@@ -429,13 +435,15 @@ df_sim <- rbind(
 df_obs <- rbind(
   data.frame(jour = times_d[ok_ctrl], TV = tv_ctrl[ok_ctrl],
              sem  = sem_ctrl[ok_ctrl],  Groupe = "Contrôle"),
+  data.frame(jour = times_d[ok_iso],  TV = tv_iso[ok_iso],
+             sem  = sem_iso[ok_iso],    Groupe = "Isotype 10mg/kg"),
   data.frame(jour = times_d[ok_d3],   TV = tv_d3[ok_d3],
              sem  = sem_d3[ok_d3],      Groupe = "3 mg/kg"),
   data.frame(jour = times_d[ok_d10],  TV = tv_d10[ok_d10],
              sem  = sem_d10[ok_d10],    Groupe = "10 mg/kg")
 )
 
-niv <- c("Contrôle", "3 mg/kg", "10 mg/kg")
+niv <- c("Contrôle", "Isotype 10mg/kg", "3 mg/kg", "10 mg/kg")
 df_sim$Groupe <- factor(df_sim$Groupe, levels = niv)
 df_obs$Groupe <- factor(df_obs$Groupe, levels = niv)
 
@@ -443,7 +451,10 @@ df_obs$Groupe <- factor(df_obs$Groupe, levels = niv)
 # 10. GRAPHIQUE
 # =============================================================================
 
-cols <- c("Contrôle" = "#888888", "3 mg/kg" = "#4393C3", "10 mg/kg" = "#2166AC")
+cols <- c("Contrôle"       = "#888888",
+          "Isotype 10mg/kg"= "#CC4444",
+          "3 mg/kg"        = "#4393C3",
+          "10 mg/kg"       = "#2166AC")
 ymax <- max(df_obs$TV + df_obs$sem, na.rm = TRUE)
 
 subtitle_txt <- paste0(

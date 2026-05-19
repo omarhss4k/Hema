@@ -27,9 +27,10 @@ SAVE <- function(name, p, w = 10, h = 6) {
   cat("  →", file.path(OUT, paste0(name, ".png")), "\n")
 }
 
-COLS <- c("10 mg/kg" = "#1B4F9E",
-          "3 mg/kg"  = "#27AE60",
-          "Contrôle" = "#888888")
+COLS <- c("10 mg/kg"       = "#1B4F9E",
+          "3 mg/kg"        = "#27AE60",
+          "Contrôle"       = "#888888",
+          "Isotype 10mg/kg"= "#CC4444")
 
 THEME <- theme_bw(base_size = 13) +
   theme(plot.title    = element_text(face = "bold", size = 14),
@@ -91,9 +92,11 @@ tv      <- read_tumor_excel("TumorVolume_FGFR2.xlsx")
 times_d <- tv$times
 
 w_ctrl   <- .gr(tv$blk_mean, "Group 01")
+w_iso    <- .gr(tv$blk_mean, "Group 02")
 w_d10_tv <- .gr(tv$blk_mean, "Group 03")
 w_d3_tv  <- .gr(tv$blk_mean, "Group 04")
 sem_ctrl <- pmax(.gr(tv$blk_sem, "Group 01"), 1)
+sem_iso  <- pmax(.gr(tv$blk_sem, "Group 02"), 1)
 sem_d10  <- pmax(.gr(tv$blk_sem, "Group 03"), 1)
 sem_d3   <- pmax(.gr(tv$blk_sem, "Group 04"), 1)
 
@@ -102,19 +105,23 @@ get_tv0 <- function(tv_vec) {
   if (length(v) == 0 || is.na(v[1])) tv_vec[!is.na(tv_vec)][1] else v[1]
 }
 tv0_ctrl <- get_tv0(w_ctrl)
+tv0_iso  <- get_tv0(w_iso)
 tv0_d3   <- get_tv0(w_d3_tv)
 tv0_d10  <- get_tv0(w_d10_tv)
 
 # Données obs formatées
-lev_pd <- c("Contrôle", "3 mg/kg", "10 mg/kg")
+lev_pd <- c("Contrôle", "Isotype 10mg/kg", "3 mg/kg", "10 mg/kg")
 
 ok_ctrl <- !is.na(w_ctrl)
+ok_iso  <- !is.na(w_iso)
 ok_d3   <- !is.na(w_d3_tv)
 ok_d10  <- !is.na(w_d10_tv)
 
 df_obs_pd <- rbind(
   data.frame(jour=times_d[ok_ctrl], w=w_ctrl[ok_ctrl],
              sem=sem_ctrl[ok_ctrl], Groupe="Contrôle"),
+  data.frame(jour=times_d[ok_iso],  w=w_iso[ok_iso],
+             sem=sem_iso[ok_iso],   Groupe="Isotype 10mg/kg"),
   data.frame(jour=times_d[ok_d3],   w=w_d3_tv[ok_d3],
              sem=sem_d3[ok_d3],     Groupe="3 mg/kg"),
   data.frame(jour=times_d[ok_d10],  w=w_d10_tv[ok_d10],
@@ -523,6 +530,9 @@ df_sim_pd <- rbind(
              w=sim_ctrl_fn(tv0_ctrl, list(L0=L0,L1=L1), times_sim),
              Groupe="Contrôle"),
   data.frame(jour=times_sim,
+             w=sim_ctrl_fn(tv0_iso,  list(L0=L0,L1=L1), times_sim),
+             Groupe="Isotype 10mg/kg"),
+  data.frame(jour=times_sim,
              w=sim_simeoni(3000,  tv0_d3,  pars_sim, times_sim),
              Groupe="3 mg/kg"),
   data.frame(jour=times_sim,
@@ -531,24 +541,24 @@ df_sim_pd <- rbind(
 )
 df_sim_pd$Groupe <- factor(df_sim_pd$Groupe, levels=lev_pd)
 
+# Plafonne Contrôle et Isotype à la limite de l'axe Y pour garder l'échelle
+ymax7 <- max(df_obs_pd$w + df_obs_pd$sem, na.rm=TRUE)
+df_sim_pd$w[df_sim_pd$Groupe %in% c("Contrôle","Isotype 10mg/kg") &
+            !is.na(df_sim_pd$w) &
+            df_sim_pd$w > ymax7 * 1.05] <- NA
+
 # Résidus relatifs aux points observés
 df_res <- do.call(rbind, lapply(lev_pd, function(g) {
   obs  <- df_obs_pd[df_obs_pd$Groupe==g, ]
-  pred <- sim_simeoni(
-    switch(g, "Contrôle"=0, "3 mg/kg"=3000, "10 mg/kg"=10000),
-    switch(g, "Contrôle"=tv0_ctrl, "3 mg/kg"=tv0_d3, "10 mg/kg"=tv0_d10),
-    pars_sim, obs$jour)
+  pred <- switch(g,
+    "Contrôle"       = sim_ctrl_fn(tv0_ctrl, list(L0=L0,L1=L1), obs$jour),
+    "Isotype 10mg/kg"= sim_ctrl_fn(tv0_iso,  list(L0=L0,L1=L1), obs$jour),
+    "3 mg/kg"        = sim_simeoni(3000,  tv0_d3,  pars_sim, obs$jour),
+    "10 mg/kg"       = sim_simeoni(10000, tv0_d10, pars_sim, obs$jour)
+  )
   data.frame(jour=obs$jour, resid=(obs$w-pred)/pmax(pred,1)*100, Groupe=g)
 }))
 df_res$Groupe <- factor(df_res$Groupe, levels=lev_pd)
-
-ymax7 <- max(df_obs_pd$w + df_obs_pd$sem, na.rm=TRUE)
-
-# Plafonne la prédiction contrôle à la limite de l'axe Y (données s'arrêtent à j25,
-# mais la tumeur continue à croître exponentiellement — on garde l'échelle)
-df_sim_pd$w[df_sim_pd$Groupe == "Contrôle" &
-            !is.na(df_sim_pd$w) &
-            df_sim_pd$w > ymax7 * 1.05] <- NA
 
 p7a <- ggplot() +
   geom_vline(xintercept=DOSE_DAYS, linetype="dashed", color="grey70", linewidth=0.4) +
