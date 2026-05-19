@@ -108,9 +108,10 @@ cat(sprintf("\nTV initiale (j0) : Ctrl=%.0f | 3mg=%.0f | 10mg=%.0f mm³\n",
 PSI <- 20   # exposant de la fonction de croissance (fixé, Simeoni 2004)
 
 simeoni_rhs <- function(t, state, parms) {
-  A1 <- state["A1"]; A2 <- state["A2"]
-  x1 <- state["x1"]; x2 <- state["x2"]
-  x3 <- state["x3"]; x4 <- state["x4"]
+  # Clamp à 0 : empêche x1<0 de s'auto-amplifier (instabilité numérique)
+  A1 <- max(state["A1"], 0); A2 <- max(state["A2"], 0)
+  x1 <- max(state["x1"], 0); x2 <- max(state["x2"], 0)
+  x3 <- max(state["x3"], 0); x4 <- max(state["x4"], 0)
 
   CL <- parms["CL"]; V1 <- parms["V1"]
   V2 <- parms["V2"]; Q  <- parms["Q"]
@@ -126,7 +127,6 @@ simeoni_rhs <- function(t, state, parms) {
   w   <- x1 + x2 + x3 + x4
   gw  <- L0 * w / (1 + (L0 * w / L1)^PSI)^(1/PSI)
 
-  # Taux de croissance net de x1 (gw/w si w>0, sinon L0)
   growth_rate <- if (w > 1e-12) gw / w else L0
 
   dx1 <- (growth_rate - k2 * C1) * x1
@@ -140,8 +140,10 @@ simeoni_rhs <- function(t, state, parms) {
 
 # Contrôle : même modèle sans drogue (A1=A2=0 fixes, k2 ignoré)
 simeoni_ctrl_rhs <- function(t, state, parms) {
-  x1 <- state["x1"]; x2 <- state["x2"]
-  x3 <- state["x3"]; x4 <- state["x4"]
+  x1 <- max(state["x1"], 0)
+  x2 <- max(state["x2"], 0)
+  x3 <- max(state["x3"], 0)
+  x4 <- max(state["x4"], 0)
   L0 <- parms["L0"]; L1 <- parms["L1"]
 
   w  <- x1 + x2 + x3 + x4
@@ -191,13 +193,14 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
       times  = t_all,
       func   = simeoni_rhs,
       parms  = params,
-      events = list(data = ev_doses)
+      events = list(data = ev_doses),
+      atol   = 1e-6, rtol = 1e-6
     )),
     error = function(e) NULL
   )
-  if (is.null(out)) return(rep(NA_real_, length(times_out)))
-  w_tot <- out$x1 + out$x2 + out$x3 + out$x4
-  if (any(is.na(w_tot)) || any(w_tot < 0)) return(rep(NA_real_, length(times_out)))
+  if (is.null(out) || any(is.na(out$x1))) return(rep(NA_real_, length(times_out)))
+  # pmax : résidus numériques négatifs proches de 0 sont ignorés
+  w_tot <- pmax(out$x1, 0) + pmax(out$x2, 0) + pmax(out$x3, 0) + pmax(out$x4, 0)
   approx(out$time, w_tot, xout = times_out, rule = 2)$y
 }
 
@@ -248,9 +251,10 @@ objective_simeoni <- function(logpar) {
 lm_ctrl <- lm(log(tv_ctrl[ok_ctrl]) ~ times_d[ok_ctrl])
 L0_init <- max(coef(lm_ctrl)[2], 0.005)
 
-# L1 : taux de croissance linéaire — initialisé à une valeur large
-#       (plateau rarement atteint sur courte expérience souris)
-L1_init <- max(tv_ctrl[ok_ctrl], na.rm = TRUE) * L0_init * 2
+# L1 : taux de croissance linéaire (mm³/j au plateau de croissance)
+# Initialisé très grand pour rester en phase exponentielle sur toute l'expérience
+# (L1 devient identifiable seulement si la croissance linéaire est visible)
+L1_init <- max(tv_ctrl[ok_ctrl], na.rm = TRUE) * L0_init * 50
 
 # k1 : transit rate → MTT ~ 7 jours → k1 = 4/7 ≈ 0.57 /j
 k1_init <- 4 / 7
