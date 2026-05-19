@@ -544,6 +544,12 @@ df_res$Groupe <- factor(df_res$Groupe, levels=lev_pd)
 
 ymax7 <- max(df_obs_pd$w + df_obs_pd$sem, na.rm=TRUE)
 
+# Plafonne la prédiction contrôle à la limite de l'axe Y (données s'arrêtent à j25,
+# mais la tumeur continue à croître exponentiellement — on garde l'échelle)
+df_sim_pd$w[df_sim_pd$Groupe == "Contrôle" &
+            !is.na(df_sim_pd$w) &
+            df_sim_pd$w > ymax7 * 1.05] <- NA
+
 p7a <- ggplot() +
   geom_vline(xintercept=DOSE_DAYS, linetype="dashed", color="grey70", linewidth=0.4) +
   geom_line(data=df_sim_pd, aes(x=jour, y=w, color=Groupe), linewidth=1.2) +
