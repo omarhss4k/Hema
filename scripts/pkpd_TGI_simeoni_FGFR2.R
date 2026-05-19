@@ -178,30 +178,58 @@ sim_ctrl_fn <- function(L0, L1, tv0, times_out) {
   approx(out$time, w_tot, xout = times_out, rule = 2)$y
 }
 
+# Redémarre l'intégrateur à chaque dose : plus robuste que lsoda events
 sim_treated <- function(dose_ugkg, tv0, params, times_out) {
-  ev_doses <- data.frame(
-    var    = "A1",
-    time   = dose_days[-1],
-    value  = dose_ugkg,
-    method = "add"
-  )
-  t_all <- sort(unique(c(0, times_out)))
-  out <- tryCatch(
-    as.data.frame(lsoda(
-      y      = c(A1 = dose_ugkg, A2 = 0,
-                 x1 = tv0, x2 = 0, x3 = 0, x4 = 0),
-      times  = t_all,
-      func   = simeoni_rhs,
-      parms  = params,
-      events = list(data = ev_doses),
-      atol   = 1e-6, rtol = 1e-6
-    )),
-    error = function(e) NULL
-  )
-  if (is.null(out) || any(is.na(out$x1))) return(rep(NA_real_, length(times_out)))
-  # pmax : résidus numériques négatifs proches de 0 sont ignorés
-  w_tot <- pmax(out$x1, 0) + pmax(out$x2, 0) + pmax(out$x3, 0) + pmax(out$x4, 0)
-  approx(out$time, w_tot, xout = times_out, rule = 2)$y
+  t_end  <- max(times_out)
+  breaks <- c(dose_days, t_end + 1)   # limites de chaque intervalle dose
+
+  state <- c(A1 = dose_ugkg, A2 = 0,
+             x1 = tv0,       x2 = 0, x3 = 0, x4 = 0)
+
+  t_all <- numeric(0)
+  w_all <- numeric(0)
+
+  for (i in seq_along(dose_days)) {
+    t_start <- dose_days[i]
+    t_stop  <- min(breaks[i + 1], t_end)
+    if (t_start >= t_end) break
+
+    # Bolus additif à chaque dose (sauf la 1re déjà dans les CI)
+    if (i > 1) state["A1"] <- state["A1"] + dose_ugkg
+
+    t_seg <- sort(unique(c(t_start,
+                           times_out[times_out > t_start & times_out <= t_stop],
+                           t_stop)))
+    if (length(t_seg) < 2) t_seg <- c(t_start, t_stop)
+
+    seg <- tryCatch(
+      as.data.frame(lsoda(
+        y     = state,
+        times = t_seg,
+        func  = simeoni_rhs,
+        parms = params,
+        atol  = 1e-6, rtol = 1e-6
+      )),
+      error = function(e) NULL
+    )
+    if (is.null(seg) || any(is.na(seg$x1))) return(rep(NA_real_, length(times_out)))
+
+    w_seg <- pmax(seg$x1, 0) + pmax(seg$x2, 0) +
+             pmax(seg$x3, 0) + pmax(seg$x4, 0)
+
+    # Évite les doublons au raccord entre segments
+    keep   <- if (length(t_all) > 0) seg$time > tail(t_all, 1) else rep(TRUE, nrow(seg))
+    t_all  <- c(t_all, seg$time[keep])
+    w_all  <- c(w_all, w_seg[keep])
+
+    # État final → conditions initiales du segment suivant
+    last  <- seg[nrow(seg), ]
+    state <- c(A1 = last$A1, A2 = last$A2,
+               x1 = last$x1, x2 = last$x2, x3 = last$x3, x4 = last$x4)
+  }
+
+  if (length(t_all) == 0) return(rep(NA_real_, length(times_out)))
+  approx(t_all, w_all, xout = times_out, rule = 2)$y
 }
 
 # =============================================================================
@@ -279,6 +307,34 @@ cat(sprintf("k1 = %.4f /j   (transit rate, MTT = %.1f j)\n",
 cat(sprintf("k2 = %.2e L/µg/j   (potence drogue)\n",             init_pd["k2"]))
 cat(sprintf("TSC initiale ≈ %.1f µg/L  (= L0/k2 = Cmax 10mg/kg)\n",
             init_pd["L0"] / init_pd["k2"]))
+
+# =============================================================================
+# 6b. TEST SIMULATION AUX VALEURS INITIALES (diagnostic)
+# =============================================================================
+
+params_test <- c(pk_fixed,
+                 L0 = unname(L0_init), L1 = unname(L1_init),
+                 k1 = unname(k1_init), k2 = unname(k2_init))
+
+cat("\n=== TEST simulation aux valeurs initiales ===\n")
+tc_test <- sim_ctrl_fn(L0_init, L1_init, tv0_ctrl, times_d[ok_ctrl])
+cat(sprintf("Contrôle : %s\n",
+    if (any(is.na(tc_test))) "ECHEC (NA)" else
+    paste(round(head(tc_test, 4)), collapse = " | ")))
+
+t3_test <- sim_treated(3000, tv0_d3, params_test, times_d[ok_d3])
+cat(sprintf("3 mg/kg  : %s\n",
+    if (any(is.na(t3_test))) "ECHEC (NA)" else
+    paste(round(head(t3_test, 4)), collapse = " | ")))
+
+t10_test <- sim_treated(10000, tv0_d10, params_test, times_d[ok_d10])
+cat(sprintf("10 mg/kg : %s\n",
+    if (any(is.na(t10_test))) "ECHEC (NA)" else
+    paste(round(head(t10_test, 4)), collapse = " | ")))
+
+obj0 <- objective_simeoni(log(init_pd))
+cat(sprintf("Objectif initial : %.4f %s\n", obj0,
+    if (obj0 >= 1e11) "— ECHEC (1e12 = toutes simulations NA)" else "— OK"))
 
 # =============================================================================
 # 7. OPTIMISATION — nlminb (log-espace)
