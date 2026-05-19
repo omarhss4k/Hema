@@ -468,7 +468,10 @@ subtitle_txt <- paste0(
 p_simeoni <- ggplot() +
   geom_vline(xintercept = dose_days, linetype = "dashed",
              color = "grey70", linewidth = 0.4) +
-  geom_line(data  = df_sim,
+  geom_line(data = df_sim[df_sim$Groupe == "Contrôle", ],
+            aes(x = jour, y = TV, color = Groupe, group = Groupe),
+            linewidth = 1, linetype = "dashed") +
+  geom_line(data = df_sim[df_sim$Groupe != "Contrôle", ],
             aes(x = jour, y = TV, color = Groupe, group = Groupe),
             linewidth = 1) +
   geom_errorbar(data = df_obs,
