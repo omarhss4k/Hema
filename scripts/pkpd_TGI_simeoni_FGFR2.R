@@ -356,12 +356,12 @@ cat(sprintf("Objectif initial : %.4f %s\n", obj0,
 #    Bornes physiologiques en log-espace :
 #      L0  ∈ [0.005, 1.0]  /j        (doublement 0.7 j → 139 j)
 #      L1  ∈ [10, 1e6]     mm³/j     (taux de croissance linéaire)
-#      k1  ∈ [0.2, 4.0]    /j        (MTT = 4/k1 ∈ [1, 20] j)
+#      k1  ∈ [0.05, 4.0]   /j        (MTT = 4/k1 ∈ [1, 80] j)
 #      k2  ∈ [1e-8, 1e-3]  L/µg/j
 # =============================================================================
 
-lower_log <- c(log(0.005), log(10),  log(0.2), log(1e-8))
-upper_log <- c(log(1.0),   log(1e6), log(4.0), log(1e-3))
+lower_log <- c(log(0.005), log(10),  log(0.05), log(1e-8))
+upper_log <- c(log(1.0),   log(1e6), log(4.0),  log(1e-3))
 
 cat("\nOptimisation DEoptim en cours (peut prendre 1-2 min)...\n")
 
