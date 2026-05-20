@@ -302,8 +302,12 @@ objective_simeoni <- function(logpar) {
 # Le fixer garantit que la prédiction contrôle passe par les données.
 # =============================================================================
 
-# λ0 FIXÉ : régression log-linéaire sur le contrôle tronqué (j0–j39)
-lm_ctrl  <- lm(log(tv_ctrl[ok_ctrl_fit]) ~ times_d[ok_ctrl_fit])
+# λ0 FIXÉ : régression log-linéaire sur la phase exponentielle (j0–j21)
+# Au-delà de j21 le contrôle entre en plateau → inclure ces points
+# sous-estime λ0 et dégrade la prédiction de la phase précoce.
+L0_EXPO_DAY  <- 21
+ok_ctrl_expo <- ok_ctrl & times_d <= L0_EXPO_DAY
+lm_ctrl  <- lm(log(tv_ctrl[ok_ctrl_expo]) ~ times_d[ok_ctrl_expo])
 L0_fixed <- max(coef(lm_ctrl)[2], 0.005)
 
 # L1 : initialisé grand → croissance encore exponentielle sur la durée du suivi
@@ -320,7 +324,7 @@ init_pd <- c(L1 = L1_init, k1 = k1_init, k2 = k2_init)
 
 cat("\n=== Paramètre fixé ===\n")
 cat(sprintf("λ0 (L0_fixed) = %.5f /j  (t½ = %.1f j — régression log-linéaire contrôle j0–j%d)\n",
-            L0_fixed, log(2)/L0_fixed, CTRL_CENSOR_DAY))
+            L0_fixed, log(2)/L0_fixed, L0_EXPO_DAY))
 cat("\n=== Valeurs initiales PD (paramètres libres) ===\n")
 cat(sprintf("L1 = %.2f mm³/j (λ1, croissance linéaire)\n",   init_pd["L1"]))
 cat(sprintf("k1 = %.4f /j   (transit rate, MTT = %.1f j)\n", init_pd["k1"], 4/init_pd["k1"]))
