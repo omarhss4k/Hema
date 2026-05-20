@@ -1,7 +1,5 @@
 # =============================================================================
 # Modèle PK/PD TGI — Simeoni (2004) — Fc-silent FGFR2-huBPA-LP1
-# VARIANTE : 3 doses (j0, j14, j28) — teste si le protocole Q2W×3
-# explique mieux les données que Q2W×4
 #
 # PK  : 2 compartiments IV bolus (paramètres fixés depuis fit précédent)
 # PD  : Modèle de Simeoni — compartiments de transit
@@ -19,10 +17,10 @@
 #   TSC    ≈ λ0 / k2   (Tumor Static Concentration — phase exponentielle)
 #   MTT    = 4 / k1    (Mean Transit Time, 3 compartiments de transit + x1)
 #
-# Paramètres PD estimés : λ0, λ1, k1, k2  (log-espace)
+# Paramètres PD estimés (libres) : λ0, λ1, k1, k2  (log-espace)
 # Unités : temps en jours | dose en µg/kg | concentration en µg/L
 #
-# Schéma : Q2W × 4 (j0, j14, j28, j42)
+# Schéma : Q2W × 3 (j0, j14, j28) — VARIANTE 3 doses
 # Groupes : Contrôle (Group 01) | 3 mg/kg (Group 04) | 10 mg/kg (Group 03)
 # =============================================================================
 
@@ -105,18 +103,9 @@ ok_iso  <- !is.na(tv_iso)
 ok_d3   <- !is.na(tv_d3)
 ok_d10  <- !is.na(tv_d10)
 
-# Troncature du contrôle à j≤39 : après j39 les animaux atteignent l'endpoint
-# humanitaire et sont sacrifiés → les TV post-j39 (≈142 mm³) sont des artefacts
-# de censure qui biaiseraient λ0 vers le bas.
-# ok_ctrl_fit : masque restreint pour l'estimation
-# ok_ctrl     : masque complet conservé pour l'affichage
-CTRL_CENSOR_DAY <- 39
-ok_ctrl_fit <- ok_ctrl & times_d <= CTRL_CENSOR_DAY
-
 cat(sprintf("\nTV initiale (j0) : Ctrl=%.0f | Isotype=%.0f | 3mg=%.0f | 10mg=%.0f mm³\n",
             tv0_ctrl, tv0_iso, tv0_d3, tv0_d10))
-cat(sprintf("Contrôle : %d points valides, %d retenus pour le fit (≤ j%d)\n",
-            sum(ok_ctrl), sum(ok_ctrl_fit), CTRL_CENSOR_DAY))
+cat(sprintf("Contrôle : %d points valides\n", sum(ok_ctrl)))
 
 # =============================================================================
 # 3. ÉQUATIONS DU MODÈLE (deSolve)
@@ -251,24 +240,23 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
 
 # =============================================================================
 # 5. FONCTION OBJECTIVE
-#    Paramètres libres : L1, k1, k2  (λ0 fixé depuis contrôle)
+#    Paramètres libres : L0, L1, k1, k2
 #    Pondération par 1/SEM² sur log(TV)
 # =============================================================================
 
 objective_simeoni <- function(logpar) {
   par <- exp(logpar)
-  # L0 fixé hors optimisation — L1, k1, k2 sont libres
-  L0 <- L0_fixed
-  L1 <- unname(par[1]); k1 <- unname(par[2]); k2 <- unname(par[3])
+  L0 <- unname(par[1]); L1 <- unname(par[2])
+  k1 <- unname(par[3]); k2 <- unname(par[4])
   if (any(par <= 0)) return(1e12)
 
   params_all <- c(pk_fixed, L0 = L0, L1 = L1, k1 = k1, k2 = k2)
 
-  # — Contrôle (tronqué à j≤CTRL_CENSOR_DAY) —
-  t_c       <- times_d[ok_ctrl_fit]
+  # — Contrôle —
+  t_c       <- times_d[ok_ctrl]
   pred_ctrl <- sim_ctrl_fn(L0, L1, tv0_ctrl, t_c)
-  obs_ctrl  <- tv_ctrl[ok_ctrl_fit]
-  w_ctrl    <- 1 / sem_ctrl[ok_ctrl_fit]^2
+  obs_ctrl  <- tv_ctrl[ok_ctrl]
+  w_ctrl    <- 1 / sem_ctrl[ok_ctrl]^2
   if (any(is.na(pred_ctrl))) return(1e12)
   pred_ctrl <- pmax(pred_ctrl, 0.1)
 
@@ -296,47 +284,43 @@ objective_simeoni <- function(logpar) {
 # =============================================================================
 # 6. VALEURS INITIALES
 #
-# Stratégie : λ0 fixé depuis le contrôle (régression j0–j21).
-# L1, k1, k2 sont optimisés par DEoptim.
+# Stratégie : λ0 libre, estimé depuis la phase exponentielle du contrôle (j0–j21).
+# L0, L1, k1, k2 sont optimisés par DEoptim.
 # =============================================================================
 
-# λ0 FIXÉ : phase exponentielle j0–j21
-L0_EXPO_DAY  <- 21
-ok_ctrl_expo <- ok_ctrl & times_d <= L0_EXPO_DAY
-lm_ctrl      <- lm(log(tv_ctrl[ok_ctrl_expo]) ~ times_d[ok_ctrl_expo])
-L0_fixed     <- max(coef(lm_ctrl)[2], 0.005)
+# L0 : régression log-linéaire sur contrôle comme point de départ
+lm_ctrl <- lm(log(tv_ctrl[ok_ctrl]) ~ times_d[ok_ctrl])
+L0_init <- max(coef(lm_ctrl)[2], 0.005)
 
 # L1 : initialisé grand (croissance encore exponentielle sur la durée du suivi)
-L1_init <- max(tv_ctrl[ok_ctrl_fit], na.rm = TRUE) * L0_fixed * 50
+L1_init <- max(tv_ctrl[ok_ctrl], na.rm = TRUE) * L0_init * 50
 
 # k1 : MTT ~ 7 jours
 k1_init <- 4 / 7
 
 # k2 : TSC ≈ Cmax(10 mg/kg)
 Cmax_10mgkg <- 10000 / as.numeric(pk_fixed["V1"])
-k2_init     <- L0_fixed / Cmax_10mgkg
+k2_init     <- L0_init / Cmax_10mgkg
 
-init_pd <- c(L1 = L1_init, k1 = k1_init, k2 = k2_init)
+init_pd <- c(L0 = L0_init, L1 = L1_init, k1 = k1_init, k2 = k2_init)
 
-cat("\n=== Paramètre fixé ===\n")
-cat(sprintf("λ0 (L0_fixed) = %.5f /j  (t½ = %.1f j — régression j0–j%d)\n",
-            L0_fixed, log(2)/L0_fixed, L0_EXPO_DAY))
-cat("\n=== Valeurs initiales PD (paramètres libres : L1, k1, k2) ===\n")
+cat("\n=== Valeurs initiales PD (paramètres libres : L0, L1, k1, k2) ===\n")
+cat(sprintf("L0 = %.5f /j   (t½ = %.1f j — init depuis régression contrôle)\n", L0_init, log(2)/L0_init))
 cat(sprintf("L1 = %.2f mm³/j\n", L1_init))
 cat(sprintf("k1 = %.4f /j   (MTT = %.1f j)\n", k1_init, 4/k1_init))
 cat(sprintf("k2 = %.2e L/µg/j\n", k2_init))
-cat(sprintf("TSC initiale ≈ %.1f µg/L\n", L0_fixed / k2_init))
+cat(sprintf("TSC initiale ≈ %.1f µg/L\n", L0_init / k2_init))
 
 # =============================================================================
 # 6b. TEST SIMULATION AUX VALEURS INITIALES (diagnostic)
 # =============================================================================
 
 params_test <- c(pk_fixed,
-                 L0 = unname(L0_fixed), L1 = unname(L1_init),
-                 k1 = unname(k1_init),  k2 = unname(k2_init))
+                 L0 = unname(L0_init), L1 = unname(L1_init),
+                 k1 = unname(k1_init), k2 = unname(k2_init))
 
 cat("\n=== TEST simulation aux valeurs initiales ===\n")
-tc_test <- sim_ctrl_fn(L0_fixed, L1_init, tv0_ctrl, times_d[ok_ctrl_fit])
+tc_test <- sim_ctrl_fn(L0_init, L1_init, tv0_ctrl, times_d[ok_ctrl])
 cat(sprintf("Contrôle : %s\n",
     if (any(is.na(tc_test))) "ECHEC (NA)" else
     paste(round(head(tc_test, 4)), collapse = " | ")))
@@ -358,17 +342,18 @@ cat(sprintf("Objectif initial : %.4f %s\n", obj0,
 # =============================================================================
 # 7. OPTIMISATION — DEoptim (évolution différentielle, optimiseur global)
 #
-#    3 paramètres libres : L1, k1, k2  (λ0 fixé)
+#    4 paramètres libres : L0, L1, k1, k2
 #    Bornes physiologiques en log-espace :
+#      L0  ∈ [0.005, 0.5]  /j        (t½ ∈ [1.4, 139] j)
 #      L1  ∈ [10, 1e6]     mm³/j
 #      k1  ∈ [0.05, 4.0]   /j        (MTT = 4/k1 ∈ [1, 80] j)
 #      k2  ∈ [1e-8, 1e-3]  L/µg/j
 # =============================================================================
 
-lower_log <- c(log(10),  log(0.05), log(1e-8))
-upper_log <- c(log(1e6), log(4.0),  log(1e-3))
+lower_log <- c(log(0.005), log(10),  log(0.05), log(1e-8))
+upper_log <- c(log(0.5),   log(1e6), log(4.0),  log(1e-3))
 
-cat("\nOptimisation DEoptim en cours (λ0 fixé, 3 paramètres libres)...\n")
+cat("\nOptimisation DEoptim en cours (4 paramètres libres : L0, L1, k1, k2)...\n")
 
 set.seed(42)
 fit_de <- DEoptim(
@@ -376,7 +361,7 @@ fit_de <- DEoptim(
   lower   = lower_log,
   upper   = upper_log,
   control = DEoptim.control(
-    NP      = 90,      # population : 30 × nb_params (3)
+    NP      = 120,     # population : 30 × nb_params (4)
     itermax = 600,
     F       = 0.8,
     CR      = 0.9,
@@ -398,21 +383,21 @@ fit_local <- nlminb(
 
 best_log       <- fit_local$par
 best_pd        <- exp(best_log)
-names(best_pd) <- c("L1", "k1", "k2")
+names(best_pd) <- c("L0", "L1", "k1", "k2")
 
 # =============================================================================
 # 8. PARAMÈTRES DÉRIVÉS
 # =============================================================================
 
-# TSC (phase exponentielle) : L0_fixed / k2
-tsc <- L0_fixed / unname(best_pd["k2"])
+# TSC (phase exponentielle) : L0 / k2
+tsc <- unname(best_pd["L0"]) / unname(best_pd["k2"])
 
 # MTT : 4 / k1
 mtt <- 4 / unname(best_pd["k1"])
 
 cat("\n=== Paramètres PD estimés (Simeoni + DEoptim) ===\n")
-cat(sprintf("λ0 (L0) = %.6f /j         (FIXÉ — régression contrôle j0–j%d)\n", L0_fixed, L0_EXPO_DAY))
-cat(sprintf("λ1 (L1) = %.2f mm³/j      (estimé)\n",                            best_pd["L1"]))
+cat(sprintf("λ0 (L0) = %.6f /j         (estimé — t½ = %.1f j)\n", best_pd["L0"], log(2)/best_pd["L0"]))
+cat(sprintf("λ1 (L1) = %.2f mm³/j      (estimé)\n",               best_pd["L1"]))
 cat(sprintf("k1      = %.5f /j         (transit rate)\n",                best_pd["k1"]))
 cat(sprintf("k2      = %.2e L/µg/j    (potence drogue)\n",               best_pd["k2"]))
 cat("─────────────────────────────────────────────────────────\n")
@@ -426,15 +411,15 @@ cat(sprintf("Objectif final   = %.6f\n", fit_local$objective))
 # =============================================================================
 
 params_best <- c(pk_fixed,
-                 L0 = L0_fixed,
+                 L0 = unname(best_pd["L0"]),
                  L1 = unname(best_pd["L1"]),
                  k1 = unname(best_pd["k1"]),
                  k2 = unname(best_pd["k2"]))
 
 times_sim <- seq(0, max(times_d, na.rm = TRUE) * 1.05, by = 0.5)
 
-pred_ctrl_sim <- sim_ctrl_fn(L0_fixed, unname(best_pd["L1"]), tv0_ctrl, times_sim)
-pred_iso_sim  <- sim_ctrl_fn(L0_fixed, unname(best_pd["L1"]), tv0_iso,  times_sim)
+pred_ctrl_sim <- sim_ctrl_fn(unname(best_pd["L0"]), unname(best_pd["L1"]), tv0_ctrl, times_sim)
+pred_iso_sim  <- sim_ctrl_fn(unname(best_pd["L0"]), unname(best_pd["L1"]), tv0_iso,  times_sim)
 pred_d3_sim   <- sim_treated(3000,  tv0_d3,  params_best, times_sim)
 pred_d10_sim  <- sim_treated(10000, tv0_d10, params_best, times_sim)
 
@@ -445,20 +430,15 @@ df_sim <- rbind(
   data.frame(jour = times_sim, TV = pred_d10_sim,  Groupe = "10 mg/kg")
 )
 
-# Sépare les points contrôle valides (fit) des points censurés (post-j39)
-ok_ctrl_cens <- ok_ctrl & times_d > CTRL_CENSOR_DAY
-
 df_obs <- rbind(
-  data.frame(jour = times_d[ok_ctrl_fit],  TV = tv_ctrl[ok_ctrl_fit],
-             sem  = sem_ctrl[ok_ctrl_fit],   Groupe = "Contrôle",        censored = FALSE),
-  data.frame(jour = times_d[ok_ctrl_cens], TV = tv_ctrl[ok_ctrl_cens],
-             sem  = sem_ctrl[ok_ctrl_cens],  Groupe = "Contrôle",        censored = TRUE),
-  data.frame(jour = times_d[ok_iso],       TV = tv_iso[ok_iso],
-             sem  = sem_iso[ok_iso],         Groupe = "Isotype 10mg/kg", censored = FALSE),
-  data.frame(jour = times_d[ok_d3],        TV = tv_d3[ok_d3],
-             sem  = sem_d3[ok_d3],           Groupe = "3 mg/kg",         censored = FALSE),
-  data.frame(jour = times_d[ok_d10],       TV = tv_d10[ok_d10],
-             sem  = sem_d10[ok_d10],         Groupe = "10 mg/kg",        censored = FALSE)
+  data.frame(jour = times_d[ok_ctrl], TV = tv_ctrl[ok_ctrl],
+             sem  = sem_ctrl[ok_ctrl], Groupe = "Contrôle"),
+  data.frame(jour = times_d[ok_iso],  TV = tv_iso[ok_iso],
+             sem  = sem_iso[ok_iso],   Groupe = "Isotype 10mg/kg"),
+  data.frame(jour = times_d[ok_d3],   TV = tv_d3[ok_d3],
+             sem  = sem_d3[ok_d3],     Groupe = "3 mg/kg"),
+  data.frame(jour = times_d[ok_d10],  TV = tv_d10[ok_d10],
+             sem  = sem_d10[ok_d10],   Groupe = "10 mg/kg")
 )
 
 niv <- c("Contrôle", "Isotype 10mg/kg", "3 mg/kg", "10 mg/kg")
@@ -476,40 +456,28 @@ cols <- c("Contrôle"       = "#888888",
 ymax <- max(df_obs$TV + df_obs$sem, na.rm = TRUE)
 
 subtitle_txt <- paste0(
-  "λ0 = ", round(L0_fixed, 4), " /j (fixé)  |  ",
+  "λ0 = ", round(best_pd["L0"], 4), " /j (estimé)  |  ",
   "k2 = ", formatC(best_pd["k2"], digits = 3, format = "e"), " L/µg/j  |  ",
   "k1 = ", round(best_pd["k1"], 3), " /j  |  ",
   "TSC = ", round(tsc, 0), " µg/L  |  ",
   "MTT = ", round(mtt, 1), " j"
 )
 
-df_obs_fit  <- df_obs[!df_obs$censored, ]
-df_obs_cens <- df_obs[df_obs$censored,  ]
-
 p_simeoni <- ggplot() +
   geom_vline(xintercept = dose_days, linetype = "dashed",
              color = "grey70", linewidth = 0.4) +
-  geom_vline(xintercept = CTRL_CENSOR_DAY, linetype = "dotted",
-             color = "#888888", linewidth = 0.6) +
-  annotate("text", x = CTRL_CENSOR_DAY + 0.5, y = ymax * 0.55,
-           label = sprintf("Endpoint\ncontrôle\n(j%d)", CTRL_CENSOR_DAY),
-           hjust = 0, size = 2.8, color = "#888888") +
   geom_line(data = df_sim[df_sim$Groupe != "Contrôle", ],
             aes(x = jour, y = TV, color = Groupe, group = Groupe),
             linewidth = 1) +
   geom_line(data = df_sim[df_sim$Groupe == "Contrôle", ],
             aes(x = jour, y = TV, color = Groupe, group = Groupe),
             linewidth = 1, linetype = "dashed") +
-  geom_errorbar(data = df_obs_fit,
+  geom_errorbar(data = df_obs,
                 aes(x = jour, ymin = TV - sem, ymax = TV + sem, color = Groupe),
                 width = 0.8, linewidth = 0.5) +
-  geom_point(data = df_obs_fit,
+  geom_point(data = df_obs,
              aes(x = jour, y = TV, color = Groupe),
              size = 2.5) +
-  # Points censurés contrôle : symbole creux pour signaler l'exclusion du fit
-  geom_point(data = df_obs_cens,
-             aes(x = jour, y = TV, color = Groupe),
-             size = 2.5, shape = 1, stroke = 0.8) +
   annotate("point", x = dose_days, y = -ymax * 0.06,
            shape = 17, size = 3.5, color = "#CC0000") +
   annotate("text",  x = max(dose_days) + 1.5, y = -ymax * 0.06,
@@ -520,8 +488,6 @@ p_simeoni <- ggplot() +
   labs(
     title    = "Modèle PK/PD TGI — Simeoni (2004) — Fc-silent FGFR2-huBPA-LP1",
     subtitle = subtitle_txt,
-    caption  = sprintf("Contrôle tronqué à j≤%d (endpoint humanitaire) — points creux = exclus du fit",
-                       CTRL_CENSOR_DAY),
     x        = "Temps (jours)",
     y        = "Volume tumoral (mm³)",
     color    = NULL
@@ -545,14 +511,13 @@ cat("\nGraphique → scripts/plot_PKPD_simeoni_FGFR2_3doses.png\n")
 
 simeoni_results <- list(
   pk_fixed          = pk_fixed,
-  L0                = L0_fixed,
-  L0_fixed          = TRUE,
+  L0                = unname(best_pd["L0"]),
+  L0_fixed          = FALSE,
   L1                = unname(best_pd["L1"]),
   k1                = unname(best_pd["k1"]),
   k2                = unname(best_pd["k2"]),
   TSC_ugL           = tsc,
   MTT_days          = mtt,
-  ctrl_censor_day   = CTRL_CENSOR_DAY,
   objective_deoptim = fit_de$optim$bestval,
   objective_final   = fit_local$objective
 )
