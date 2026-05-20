@@ -183,19 +183,19 @@ sim_treated <- function(dose_ugkg, tv0, times_out) {
 times_sim <- seq(0, max(times_d, na.rm = TRUE) * 1.05, by = 0.5)
 
 pred_ctrl <- sim_ctrl_fn(tv0_ctrl, times_sim)
-pred_iso  <- sim_ctrl_fn(tv0_iso,  times_sim)
 pred_d3   <- sim_treated(3000,  tv0_d3,  times_sim)
 pred_d10  <- sim_treated(10000, tv0_d10, times_sim)
 
 niv <- c("Contrôle", "Isotype 10mg/kg", "3 mg/kg", "10 mg/kg")
 
+# Prédiction uniquement pour véhicule et groupes traités (pas pour isotype)
 df_sim <- rbind(
   data.frame(jour = times_sim, TV = pred_ctrl, Groupe = "Contrôle"),
-  data.frame(jour = times_sim, TV = pred_iso,  Groupe = "Isotype 10mg/kg"),
   data.frame(jour = times_sim, TV = pred_d3,   Groupe = "3 mg/kg"),
   data.frame(jour = times_sim, TV = pred_d10,  Groupe = "10 mg/kg")
 )
 
+# Points observés pour tous les groupes y compris isotype
 df_obs <- rbind(
   data.frame(jour = times_d[ok_ctrl], TV = tv_ctrl[ok_ctrl], sem = sem_ctrl[ok_ctrl], Groupe = "Contrôle"),
   data.frame(jour = times_d[ok_iso],  TV = tv_iso[ok_iso],   sem = sem_iso[ok_iso],   Groupe = "Isotype 10mg/kg"),
@@ -217,9 +217,8 @@ cols <- c("Contrôle"        = "#888888",
 
 ymax <- max(df_obs$TV + df_obs$sem, na.rm = TRUE)
 
-# Plafonne contrôle et isotype pour garder l'échelle après j25
-for (g in c("Contrôle", "Isotype 10mg/kg"))
-  df_sim$TV[df_sim$Groupe == g & !is.na(df_sim$TV) & df_sim$TV > ymax * 1.05] <- NA
+# Plafonne la prédiction contrôle pour garder l'échelle après j25
+df_sim$TV[df_sim$Groupe == "Contrôle" & !is.na(df_sim$TV) & df_sim$TV > ymax * 1.05] <- NA
 
 subtitle_txt <- paste0(
   "λ0 = ", round(L0, 4), " /j  |  ",
