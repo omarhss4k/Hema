@@ -182,7 +182,20 @@ sim_treated <- function(dose_ugkg, tv0, times_out) {
 
 times_sim <- seq(0, max(times_d, na.rm = TRUE) * 1.05, by = 0.5)
 
+# λ0 re-estimé sur les données contrôle seules (régression log-linéaire j0-j25)
+ok_early <- ok_ctrl & times_d <= 25
+L0_ctrl_obs <- max(coef(lm(log(tv_ctrl[ok_early]) ~ times_d[ok_early]))[2], 0.005)
+cat(sprintf("λ0 contrôle (régression obs) = %.4f /j\n", L0_ctrl_obs))
+
 pred_ctrl <- sim_ctrl_fn(tv0_ctrl, times_sim)
+# Remplace L0 par la valeur observée pour la prédiction contrôle
+environment(sim_ctrl_fn)  # juste pour rappel — on redéfinit localement
+pred_ctrl_obs <- {
+  L0_save <- L0; L0 <<- L0_ctrl_obs
+  res <- sim_ctrl_fn(tv0_ctrl, times_sim)
+  L0 <<- L0_save
+  res
+}
 pred_d3   <- sim_treated(3000,  tv0_d3,  times_sim)
 pred_d10  <- sim_treated(10000, tv0_d10, times_sim)
 
@@ -190,7 +203,7 @@ niv <- c("Contrôle", "Isotype 10mg/kg", "3 mg/kg", "10 mg/kg")
 
 # Prédiction uniquement pour véhicule et groupes traités (pas pour isotype)
 df_sim <- rbind(
-  data.frame(jour = times_sim, TV = pred_ctrl, Groupe = "Contrôle"),
+  data.frame(jour = times_sim, TV = pred_ctrl_obs, Groupe = "Contrôle"),
   data.frame(jour = times_sim, TV = pred_d3,   Groupe = "3 mg/kg"),
   data.frame(jour = times_sim, TV = pred_d10,  Groupe = "10 mg/kg")
 )
