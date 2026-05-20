@@ -1,5 +1,7 @@
 # =============================================================================
 # Modèle PK/PD TGI — Simeoni (2004) — Fc-silent FGFR2-huBPA-LP1
+# VARIANTE : 3 doses (j0, j14, j28) — teste si le protocole Q2W×3
+# explique mieux les données que Q2W×4
 #
 # PK  : 2 compartiments IV bolus (paramètres fixés depuis fit précédent)
 # PD  : Modèle de Simeoni — compartiments de transit
@@ -175,7 +177,7 @@ simeoni_ctrl_rhs <- function(t, state, parms) {
 # 4. FONCTIONS DE SIMULATION
 # =============================================================================
 
-dose_days <- c(0, 14, 28, 42)
+dose_days <- c(0, 14, 28)   # Q2W × 3 doses (pas de 4e dose à j42)
 
 sim_ctrl_fn <- function(L0, L1, tv0, times_out) {
   t_all <- sort(unique(c(0, times_out)))
@@ -533,9 +535,9 @@ p_simeoni <- ggplot() +
   )
 
 print(p_simeoni)
-ggsave("scripts/plot_PKPD_simeoni_FGFR2.png", p_simeoni,
+ggsave("scripts/plot_PKPD_simeoni_FGFR2_3doses.png", p_simeoni,
        width = 9, height = 5.5, dpi = 150)
-cat("\nGraphique → scripts/plot_PKPD_simeoni_FGFR2.png\n")
+cat("\nGraphique → scripts/plot_PKPD_simeoni_FGFR2_3doses.png\n")
 
 # =============================================================================
 # 11. SAUVEGARDE
@@ -555,5 +557,5 @@ simeoni_results <- list(
   objective_final   = fit_local$objective
 )
 
-save(simeoni_results, file = "scripts/resultats_PKPD_simeoni_FGFR2.RData")
-cat("Résultats → scripts/resultats_PKPD_simeoni_FGFR2.RData\n")
+save(simeoni_results, file = "scripts/resultats_PKPD_simeoni_FGFR2_3doses.RData")
+cat("Résultats → scripts/resultats_PKPD_simeoni_FGFR2_3doses.RData\n")
