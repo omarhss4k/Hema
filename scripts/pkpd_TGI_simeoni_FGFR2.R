@@ -210,13 +210,14 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
 
     seg <- tryCatch(
       as.data.frame(lsoda(
-        y     = state,
-        times = t_seg,
-        func  = simeoni_rhs,
-        parms = params,
-        atol  = 1e-6, rtol = 1e-6
+        y        = state,
+        times    = t_seg,
+        func     = simeoni_rhs,
+        parms    = params,
+        atol     = 1e-4, rtol = 1e-4,
+        maxsteps = 50000
       )),
-      error = function(e) NULL
+      error = function(e) { message("lsoda erreur segment ", i, ": ", conditionMessage(e)); NULL }
     )
     if (is.null(seg) || any(is.na(seg$x1))) return(rep(NA_real_, length(times_out)))
 
@@ -350,6 +351,10 @@ loc_treated <- nlminb(
   control   = list(eval.max = 2000, iter.max = 500, rel.tol = 1e-12)
 )
 
+# Diagnostic
+cat(sprintf("DEoptim bestval   = %.8f\n", de_treated$optim$bestval))
+cat(sprintf("nlminb  objective = %.8f\n", loc_treated$objective))
+
 # Fallback : si nlminb diverge, conserver le résultat DEoptim
 if (loc_treated$objective > de_treated$optim$bestval * 10) {
   cat("nlminb étape 2 a divergé — utilisation du résultat DEoptim\n")
@@ -360,8 +365,12 @@ if (loc_treated$objective > de_treated$optim$bestval * 10) {
   best_obj_treated <- loc_treated$objective
 }
 
-k1_best <- exp(best_log_treated[1])
-k2_best <- exp(best_log_treated[2])
+# Vérification directe au point choisi
+check_obj <- obj_treated(best_log_treated)
+cat(sprintf("Vérif obj au point final : %.8f\n", check_obj))
+
+k1_best <- exp(unname(best_log_treated[1]))
+k2_best <- exp(unname(best_log_treated[2]))
 
 best_pd <- c(L0 = L0_ctrl, L1 = L1_FIXED, k1 = k1_best, k2 = k2_best)
 
