@@ -242,16 +242,19 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
 # 5. FONCTIONS OBJECTIVES (fit en 2 étapes)
 # =============================================================================
 
-# Étape 1 : contrôle seul → L0, L1
-obj_ctrl <- function(logpar) {
-  L0 <- exp(logpar[1]); L1 <- exp(logpar[2])
-  if (any(c(L0, L1) <= 0)) return(1e12)
-  t_c   <- times_d[ok_ctrl]
-  pred  <- sim_ctrl_fn(L0, L1, tv0_ctrl, t_c)
-  obs   <- tv_ctrl[ok_ctrl]
-  w     <- 1 / sem_ctrl[ok_ctrl]^2
+# Étape 1 : contrôle seul → L0 uniquement (L1 non-identifiable sans plateau)
+# L1_FIXED : grande valeur → régime exponentiel pur (L0*w/L1 << 1 toujours)
+L1_FIXED <- 1e6   # mm³/j — largement supérieur aux volumes observés
+
+obj_ctrl <- function(log_L0) {
+  L0 <- exp(log_L0)
+  if (L0 <= 0) return(1e12)
+  t_c  <- times_d[ok_ctrl]
+  pred <- sim_ctrl_fn(L0, L1_FIXED, tv0_ctrl, t_c)
+  obs  <- tv_ctrl[ok_ctrl]
+  w    <- 1 / sem_ctrl[ok_ctrl]^2
   if (any(is.na(pred))) return(1e12)
-  pred  <- pmax(pred, 0.1)
+  pred <- pmax(pred, 0.1)
   sum(w * (log(obs) - log(pred))^2, na.rm = TRUE)
 }
 
@@ -259,7 +262,7 @@ obj_ctrl <- function(logpar) {
 obj_treated <- function(logpar) {
   k1 <- exp(logpar[1]); k2 <- exp(logpar[2])
   if (any(c(k1, k2) <= 0)) return(1e12)
-  params_all <- c(pk_fixed, L0 = L0_ctrl, L1 = L1_ctrl, k1 = k1, k2 = k2)
+  params_all <- c(pk_fixed, L0 = L0_ctrl, L1 = L1_FIXED, k1 = k1, k2 = k2)
 
   t_3     <- times_d[ok_d3]
   pred_d3 <- sim_treated(3000, tv0_d3, params_all, t_3)
@@ -278,47 +281,38 @@ obj_treated <- function(logpar) {
 }
 
 # =============================================================================
-# 6. ÉTAPE 1 — FIT CONTRÔLE : estimation de L0 et L1
+# 6. ÉTAPE 1 — FIT CONTRÔLE : estimation de L0 (1 paramètre)
 # =============================================================================
 
 cat("\n══════════════════════════════════════════════════════════\n")
-cat("ÉTAPE 1 — Fit contrôle seul (L0, L1 libres)\n")
+cat("ÉTAPE 1 — Fit contrôle seul (L0 libre, L1 fixé à 1e6)\n")
 cat("══════════════════════════════════════════════════════════\n")
+cat("Note : L1 non identifiable sans plateau — fixé à 1e6 mm³/j\n")
 
-# Valeurs initiales : L0 depuis régression, L1 grand
+# Valeurs initiales : L0 depuis régression log-linéaire
 lm_ctrl <- lm(log(tv_ctrl[ok_ctrl]) ~ times_d[ok_ctrl])
 L0_init <- max(coef(lm_ctrl)[2], 0.005)
-L1_init <- max(tv_ctrl[ok_ctrl], na.rm = TRUE) * L0_init * 100
+cat(sprintf("L0 initial (régression) : %.5f /j\n", L0_init))
 
-lower_ctrl <- c(log(0.005), log(10))
-upper_ctrl <- c(log(0.5),   log(1e8))
-
-set.seed(42)
-de_ctrl <- DEoptim(
-  fn      = obj_ctrl,
-  lower   = lower_ctrl,
-  upper   = upper_ctrl,
-  control = DEoptim.control(
-    NP      = 60,
-    itermax = 400,
-    F       = 0.8, CR = 0.9,
-    trace   = 100, reltol = 1e-8, steptol = 100
-  )
-)
-
+# Optimisation 1D : nlminb suffit (1 paramètre, surface lisse)
 loc_ctrl <- nlminb(
-  start     = de_ctrl$optim$bestmem,
+  start     = log(L0_init),
   objective = obj_ctrl,
-  lower     = lower_ctrl,
-  upper     = upper_ctrl,
-  control   = list(eval.max = 2000, iter.max = 500, rel.tol = 1e-12)
+  lower     = log(0.005),
+  upper     = log(0.5),
+  control   = list(eval.max = 1000, iter.max = 500, rel.tol = 1e-12)
 )
 
-L0_ctrl <- exp(loc_ctrl$par[1])
-L1_ctrl <- exp(loc_ctrl$par[2])
+# Vérification : si nlminb échoue, fallback sur L0_init
+if (loc_ctrl$objective > 1e6) {
+  warning("nlminb étape 1 a échoué — utilisation de L0 par régression")
+  L0_ctrl <- L0_init
+} else {
+  L0_ctrl <- exp(loc_ctrl$par)
+}
 
 cat(sprintf("\nλ0 (L0) = %.5f /j   (t½ = %.1f j)\n", L0_ctrl, log(2)/L0_ctrl))
-cat(sprintf("λ1 (L1) = %.2f mm³/j\n", L1_ctrl))
+cat(sprintf("λ1 (L1) = %.0f mm³/j  (FIXÉ)\n", L1_FIXED))
 cat(sprintf("Objectif contrôle = %.6f\n", loc_ctrl$objective))
 
 # =============================================================================
@@ -360,7 +354,7 @@ loc_treated <- nlminb(
 k1_best <- exp(loc_treated$par[1])
 k2_best <- exp(loc_treated$par[2])
 
-best_pd <- c(L0 = L0_ctrl, L1 = L1_ctrl, k1 = k1_best, k2 = k2_best)
+best_pd <- c(L0 = L0_ctrl, L1 = L1_FIXED, k1 = k1_best, k2 = k2_best)
 
 # =============================================================================
 # 8. PARAMÈTRES DÉRIVÉS
@@ -371,7 +365,7 @@ mtt <- 4 / k1_best
 
 cat("\n=== Paramètres PD finaux (Simeoni — fit 2 étapes) ===\n")
 cat(sprintf("λ0 (L0) = %.6f /j         (fit contrôle)\n",    L0_ctrl))
-cat(sprintf("λ1 (L1) = %.2f mm³/j      (fit contrôle)\n",    L1_ctrl))
+cat(sprintf("λ1 (L1) = %.0f mm³/j      (FIXÉ)\n",             L1_FIXED))
 cat(sprintf("k1      = %.5f /j         (fit traités)\n",      k1_best))
 cat(sprintf("k2      = %.2e L/µg/j    (fit traités)\n",       k2_best))
 cat("─────────────────────────────────────────────────────────\n")
@@ -386,14 +380,14 @@ cat(sprintf("Objectif traités  = %.6f\n", loc_treated$objective))
 
 params_best <- c(pk_fixed,
                  L0 = L0_ctrl,
-                 L1 = L1_ctrl,
+                 L1 = L1_FIXED,
                  k1 = k1_best,
                  k2 = k2_best)
 
 times_sim <- seq(0, max(times_d, na.rm = TRUE) * 1.05, by = 0.5)
 
-pred_ctrl_sim <- sim_ctrl_fn(L0_ctrl, L1_ctrl, tv0_ctrl, times_sim)
-pred_iso_sim  <- sim_ctrl_fn(L0_ctrl, L1_ctrl, tv0_iso,  times_sim)
+pred_ctrl_sim <- sim_ctrl_fn(L0_ctrl, L1_FIXED, tv0_ctrl, times_sim)
+pred_iso_sim  <- sim_ctrl_fn(L0_ctrl, L1_FIXED, tv0_iso,  times_sim)
 pred_d3_sim   <- sim_treated(3000,  tv0_d3,  params_best, times_sim)
 pred_d10_sim  <- sim_treated(10000, tv0_d10, params_best, times_sim)
 
@@ -430,8 +424,7 @@ cols <- c("Contrôle"       = "#888888",
 ymax <- max(df_obs$TV + df_obs$sem, na.rm = TRUE)
 
 subtitle_txt <- paste0(
-  "λ0 = ", round(L0_ctrl, 4), " /j  |  ",
-  "λ1 = ", round(L1_ctrl, 0), " mm³/j  |  ",
+  "λ0 = ", round(L0_ctrl, 4), " /j (fit ctrl)  |  ",
   "k2 = ", formatC(k2_best, digits = 3, format = "e"), " L/µg/j  |  ",
   "k1 = ", round(k1_best, 3), " /j  |  ",
   "TSC = ", round(tsc, 0), " µg/L  |  ",
@@ -487,7 +480,7 @@ cat("\nGraphique → scripts/plot_PKPD_simeoni_FGFR2.png\n")
 simeoni_results <- list(
   pk_fixed           = pk_fixed,
   L0                 = L0_ctrl,
-  L1                 = L1_ctrl,
+  L1                 = L1_FIXED,
   k1                 = k1_best,
   k2                 = k2_best,
   TSC_ugL            = tsc,
