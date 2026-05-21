@@ -114,10 +114,10 @@ cat(sprintf("Contrôle : %d points valides\n", sum(ok_ctrl)))
 PSI <- 20   # exposant de la fonction de croissance (fixé, Simeoni 2004)
 
 simeoni_rhs <- function(t, state, parms) {
-  # Clamp à 0 : empêche x1<0 de s'auto-amplifier (instabilité numérique)
-  A1 <- max(state["A1"], 0); A2 <- max(state["A2"], 0)
-  x1 <- max(state["x1"], 0); x2 <- max(state["x2"], 0)
-  x3 <- max(state["x3"], 0); x4 <- max(state["x4"], 0)
+  # Indexation positionnelle + clamp : robuste aux NaN/Inf que lsoda peut explorer
+  A1 <- max(state[1], 0, na.rm = TRUE); A2 <- max(state[2], 0, na.rm = TRUE)
+  x1 <- max(state[3], 0, na.rm = TRUE); x2 <- max(state[4], 0, na.rm = TRUE)
+  x3 <- max(state[5], 0, na.rm = TRUE); x4 <- max(state[6], 0, na.rm = TRUE)
 
   CL <- parms["CL"]; V1 <- parms["V1"]
   V2 <- parms["V2"]; Q  <- parms["Q"]
@@ -130,36 +130,42 @@ simeoni_rhs <- function(t, state, parms) {
   dA2 <-  (Q/V1)*A1 - (Q/V2)*A2
 
   # PD — fonction de croissance de Simeoni
-  w   <- x1 + x2 + x3 + x4
-  gw  <- L0 * w / (1 + (L0 * w / L1)^PSI)^(1/PSI)
-
-  growth_rate <- if (w > 1e-12) gw / w else L0
+  w <- x1 + x2 + x3 + x4
+  if (is.finite(w) && w > 1e-12) {
+    gw          <- L0 * w / (1 + (L0 * w / L1)^PSI)^(1/PSI)
+    growth_rate <- gw / w
+  } else {
+    growth_rate <- as.numeric(L0)
+  }
 
   dx1 <- (growth_rate - k2 * C1) * x1
   dx2 <- k2 * C1 * x1 - k1 * x2
   dx3 <- k1 * x2 - k1 * x3
   dx4 <- k1 * x3 - k1 * x4
 
-  list(c(A1 = dA1, A2 = dA2,
-         x1 = dx1, x2 = dx2, x3 = dx3, x4 = dx4))
+  list(c(dA1, dA2, dx1, dx2, dx3, dx4))
 }
 
 # Contrôle : même modèle sans drogue (A1=A2=0 fixes, k2 ignoré)
 simeoni_ctrl_rhs <- function(t, state, parms) {
-  x1 <- max(state["x1"], 0)
-  x2 <- max(state["x2"], 0)
-  x3 <- max(state["x3"], 0)
-  x4 <- max(state["x4"], 0)
+  x1 <- max(state[1], 0, na.rm = TRUE)
+  x2 <- max(state[2], 0, na.rm = TRUE)
+  x3 <- max(state[3], 0, na.rm = TRUE)
+  x4 <- max(state[4], 0, na.rm = TRUE)
   L0 <- parms["L0"]; L1 <- parms["L1"]
 
-  w  <- x1 + x2 + x3 + x4
-  gw <- L0 * w / (1 + (L0 * w / L1)^PSI)^(1/PSI)
-  growth_rate <- if (w > 1e-12) gw / w else L0
+  w <- x1 + x2 + x3 + x4
+  if (is.finite(w) && w > 1e-12) {
+    gw          <- L0 * w / (1 + (L0 * w / L1)^PSI)^(1/PSI)
+    growth_rate <- gw / w
+  } else {
+    growth_rate <- as.numeric(L0)
+  }
 
   dx1 <- growth_rate * x1
   dx2 <- 0; dx3 <- 0; dx4 <- 0
 
-  list(c(x1 = dx1, x2 = dx2, x3 = dx3, x4 = dx4))
+  list(c(dx1, dx2, dx3, dx4))
 }
 
 # =============================================================================
