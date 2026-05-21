@@ -323,11 +323,10 @@ cat("\n════════════════════════�
 cat("ÉTAPE 2 — Fit groupes traités (k1, k2 libres ; L0, L1 fixés)\n")
 cat("══════════════════════════════════════════════════════════\n")
 
-Cmax_10mgkg <- 10000 / as.numeric(pk_fixed["V1"])
-k1_init     <- 4 / 7
-k2_init     <- L0_ctrl / Cmax_10mgkg
+Cmax_10mgkg   <- 10000 / as.numeric(pk_fixed["V1"])
+k2_init       <- L0_ctrl / Cmax_10mgkg
 
-lower_treated <- c(log(0.05), log(1e-8))
+lower_treated <- c(log(0.01), log(1e-8))   # k1 min = 0.01 → MTT max = 400 j
 upper_treated <- c(log(4.0),  log(1e-3))
 
 set.seed(42)
@@ -337,9 +336,9 @@ de_treated <- DEoptim(
   upper   = upper_treated,
   control = DEoptim.control(
     NP      = 60,
-    itermax = 400,
+    itermax = 600,
     F       = 0.8, CR = 0.9,
-    trace   = 100, reltol = 1e-8, steptol = 100
+    trace   = 100, reltol = 1e-8, steptol = 200
   )
 )
 
@@ -351,8 +350,18 @@ loc_treated <- nlminb(
   control   = list(eval.max = 2000, iter.max = 500, rel.tol = 1e-12)
 )
 
-k1_best <- exp(loc_treated$par[1])
-k2_best <- exp(loc_treated$par[2])
+# Fallback : si nlminb diverge, conserver le résultat DEoptim
+if (loc_treated$objective > de_treated$optim$bestval * 10) {
+  cat("nlminb étape 2 a divergé — utilisation du résultat DEoptim\n")
+  best_log_treated <- de_treated$optim$bestmem
+  best_obj_treated <- de_treated$optim$bestval
+} else {
+  best_log_treated <- loc_treated$par
+  best_obj_treated <- loc_treated$objective
+}
+
+k1_best <- exp(best_log_treated[1])
+k2_best <- exp(best_log_treated[2])
 
 best_pd <- c(L0 = L0_ctrl, L1 = L1_FIXED, k1 = k1_best, k2 = k2_best)
 
@@ -372,7 +381,7 @@ cat("─────────────────────────
 cat(sprintf("TSC   = %.1f µg/L   (= λ0/k2)\n", tsc))
 cat(sprintf("MTT   = %.1f j      (= 4/k1)\n",  mtt))
 cat(sprintf("Objectif contrôle = %.6f\n", loc_ctrl$objective))
-cat(sprintf("Objectif traités  = %.6f\n", loc_treated$objective))
+cat(sprintf("Objectif traités  = %.6f\n", best_obj_treated))
 
 # =============================================================================
 # 9. SIMULATION FINALE
