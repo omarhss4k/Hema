@@ -180,19 +180,19 @@ simeoni_ctrl_rhs <- function(t, state, parms) {
 dose_days <- c(0, 14, 28, 42)
 
 sim_ctrl_fn <- function(L0, L1, tv0, times_out) {
-  t_all <- sort(unique(c(0, times_out)))
-  out <- tryCatch(
-    as.data.frame(lsoda(
+  tryCatch({
+    t_all <- sort(unique(c(0, times_out)))
+    out   <- suppressWarnings(as.data.frame(lsoda(
       y     = c(x1 = tv0, x2 = 0, x3 = 0, x4 = 0),
       times = t_all,
       func  = simeoni_ctrl_rhs,
       parms = c(L0 = L0, L1 = L1)
-    )),
-    error = function(e) NULL
-  )
-  if (is.null(out) || nrow(out) < 2) return(rep(NA_real_, length(times_out)))
-  w_tot <- out$x1 + out$x2 + out$x3 + out$x4
-  approx(out$time, w_tot, xout = times_out, rule = 2)$y
+    )))
+    w_tot <- out$x1 + out$x2 + out$x3 + out$x4
+    ok    <- is.finite(w_tot)
+    if (sum(ok) < 2) return(rep(NA_real_, length(times_out)))
+    approx(out$time[ok], w_tot[ok], xout = times_out, rule = 2)$y
+  }, error = function(e) rep(NA_real_, length(times_out)))
 }
 
 # Redémarre l'intégrateur à chaque dose : plus robuste que lsoda events
