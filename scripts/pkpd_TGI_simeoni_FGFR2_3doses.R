@@ -217,16 +217,19 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
     if (length(t_seg) < 2) t_seg <- c(t_start, t_stop)
 
     seg <- tryCatch(
-      as.data.frame(lsoda(
-        y     = state,
-        times = t_seg,
-        func  = simeoni_rhs,
-        parms = params,
-        atol  = 1e-2, rtol = 1e-2
-      )),
+      suppressWarnings(as.data.frame(ode(
+        y      = state,
+        times  = t_seg,
+        func   = simeoni_rhs,
+        parms  = params,
+        method = "bdf",
+        rtol   = 1e-4,
+        atol   = 1e-4
+      ))),
       error = function(e) NULL
     )
-    if (is.null(seg) || any(is.na(seg$x1))) return(rep(NA_real_, length(times_out)))
+    if (is.null(seg) || nrow(seg) < 2 || any(!is.finite(seg$x1)))
+      return(rep(NA_real_, length(times_out)))
 
     w_seg <- pmax(seg$x1, 0) + pmax(seg$x2, 0) +
              pmax(seg$x3, 0) + pmax(seg$x4, 0)
