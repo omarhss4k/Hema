@@ -250,21 +250,21 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
 # 5. FONCTIONS OBJECTIVES — FIT EN 2 ÉTAPES
 # =============================================================================
 
-L1_FIXED <- 1e6   # mm³/j — non identifiable en phase exponentielle
+ok_ctrl_j21 <- ok_ctrl & times_d <= 21
 
-obj_ctrl <- function(log_L0) {
-  L0   <- exp(log_L0)
-  pred <- sim_ctrl_fn(L0, L1_FIXED, tv0_ctrl, times_d[ok_ctrl])
+obj_ctrl <- function(log_par) {
+  L0 <- exp(log_par[1]); L1 <- exp(log_par[2])
+  pred <- sim_ctrl_fn(L0, L1, tv0_ctrl, times_d[ok_ctrl_j21])
   if (any(is.na(pred))) return(1e12)
-  obs  <- tv_ctrl[ok_ctrl]
-  wt   <- 1 / sem_ctrl[ok_ctrl]^2
+  obs  <- tv_ctrl[ok_ctrl_j21]
+  wt   <- 1 / sem_ctrl[ok_ctrl_j21]^2
   pred <- pmax(pred, 0.1)
   sum(wt * (log(obs) - log(pred))^2, na.rm = TRUE)
 }
 
-obj_treated <- function(log_k2) {
-  k2 <- exp(log_k2)
-  params <- c(pk_fixed, L0 = L0_ctrl, L1 = L1_FIXED, k1 = K1_FIXED, k2 = k2)
+obj_treated <- function(log_k) {
+  k1 <- exp(log_k[1]); k2 <- exp(log_k[2])
+  params <- c(pk_fixed, L0 = L0_ctrl, L1 = L1_ctrl, k1 = k1, k2 = k2)
 
   pred_d3 <- sim_treated(3000,  tv0_d3,  params, times_d[ok_d3])
   if (any(is.na(pred_d3))) return(1e12)
@@ -281,82 +281,96 @@ obj_treated <- function(log_k2) {
 }
 
 # =============================================================================
-# 6. ÉTAPE 1 — FIT CONTRÔLE : estimation de λ0
+# 6. ÉTAPE 1 — FIT CONTRÔLE j0–j21 : estimation de λ0 et λ1
 # =============================================================================
 
 cat("\n══════════════════════════════════════════════════════════\n")
-cat("ÉTAPE 1 — Fit contrôle seul (λ0 libre, λ1 fixé à 1e6)\n")
+cat("ÉTAPE 1 — Fit contrôle j0–j21 (λ0 et λ1 libres)\n")
 cat("══════════════════════════════════════════════════════════\n")
+cat(sprintf("Points utilisés : %d (j ≤ 21)\n", sum(ok_ctrl_j21)))
 
-lm_ctrl  <- lm(log(tv_ctrl[ok_ctrl]) ~ times_d[ok_ctrl])
-L0_init  <- max(coef(lm_ctrl)[2], 0.005)
-cat(sprintf("λ0 initial (régression log-linéaire) : %.5f /j\n", L0_init))
+lower_ctrl <- c(log(0.001), log(10))
+upper_ctrl <- c(log(1.0),   log(300))
 
-fit_ctrl <- nlminb(
-  start     = log(L0_init),
+set.seed(42)
+de_ctrl <- DEoptim(
+  fn      = obj_ctrl,
+  lower   = lower_ctrl,
+  upper   = upper_ctrl,
+  control = DEoptim.control(
+    NP      = 40,
+    itermax = 400,
+    F       = 0.8, CR = 0.9,
+    trace   = FALSE,
+    reltol  = 1e-10, steptol = 150
+  )
+)
+
+loc_ctrl <- nlminb(
+  start     = de_ctrl$optim$bestmem,
   objective = obj_ctrl,
-  lower     = log(0.001),
-  upper     = log(1.0),
+  lower     = lower_ctrl,
+  upper     = upper_ctrl,
   control   = list(eval.max = 2000, iter.max = 1000, rel.tol = 1e-12)
 )
 
-L0_ctrl <- exp(fit_ctrl$par)
-cat(sprintf("λ0 (L0) = %.5f /j   (t½ = %.1f j)\n", L0_ctrl, log(2)/L0_ctrl))
-cat(sprintf("λ1 (L1) = %.0f mm³/j  (FIXÉ)\n", L1_FIXED))
-cat(sprintf("Objectif contrôle = %.8f\n", fit_ctrl$objective))
+best_ctrl <- if (!is.finite(loc_ctrl$objective) ||
+                 loc_ctrl$objective > de_ctrl$optim$bestval * 10)
+               de_ctrl$optim$bestmem else loc_ctrl$par
+
+L0_ctrl <- exp(unname(best_ctrl[1]))
+L1_ctrl <- exp(unname(best_ctrl[2]))
+
+cat(sprintf("λ0 (L0) = %.5f /j    (t½ = %.1f j)\n",  L0_ctrl, log(2)/L0_ctrl))
+cat(sprintf("λ1 (L1) = %.1f mm³/j (pente linéaire)\n", L1_ctrl))
+cat(sprintf("Objectif contrôle = %.8f\n",
+            if (!is.finite(loc_ctrl$objective)) de_ctrl$optim$bestval
+            else loc_ctrl$objective))
 
 # =============================================================================
 # 7. ÉTAPE 2 — FIT GROUPES TRAITÉS : estimation de k1 et k2
 # =============================================================================
 
 cat("\n══════════════════════════════════════════════════════════\n")
-cat("ÉTAPE 2 — Fit traités seuls (k2 libre ; λ0, λ1, k1 gelés)\n")
+cat("ÉTAPE 2 — Fit traités seuls (k1, k2 libres ; λ0, λ1 gelés)\n")
 cat("══════════════════════════════════════════════════════════\n")
 
-K1_FIXED <- 4 / 14
-cat(sprintf("k1 (K1_FIXED) = %.4f /j  (MTT = %.0f j — FIXÉ, non identifiable)\n",
-            K1_FIXED, 4/K1_FIXED))
-
-Cmax_10 <- 10000 / as.numeric(pk_fixed["V1"])
-k2_init <- L0_ctrl / Cmax_10
-cat(sprintf("k2 init = %.2e L/µg/j (TSC ≈ %.0f µg/L)\n", k2_init, L0_ctrl/k2_init))
-
-lower_k2 <- log(1e-8)
-upper_k2 <- log(1e-3)
+lower_k <- c(log(0.1),  log(1e-8))
+upper_k <- c(log(5.0),  log(1e-3))
 
 set.seed(42)
 de_treated <- DEoptim(
   fn      = obj_treated,
-  lower   = lower_k2,
-  upper   = upper_k2,
+  lower   = lower_k,
+  upper   = upper_k,
   control = DEoptim.control(
-    NP      = 40,
-    itermax = 400,
+    NP      = 60,
+    itermax = 600,
     F       = 0.8, CR = 0.9,
     trace   = 100,
-    reltol  = 1e-8, steptol = 150
+    reltol  = 1e-8, steptol = 200
   )
 )
 
 loc_treated <- nlminb(
   start     = de_treated$optim$bestmem,
   objective = obj_treated,
-  lower     = lower_k2,
-  upper     = upper_k2,
+  lower     = lower_k,
+  upper     = upper_k,
   control   = list(eval.max = 2000, iter.max = 1000, rel.tol = 1e-12)
 )
 
 if (!is.finite(loc_treated$objective) ||
     loc_treated$objective > de_treated$optim$bestval * 10) {
-  best_log_k2 <- de_treated$optim$bestmem
-  best_obj_k  <- de_treated$optim$bestval
+  best_log_k <- de_treated$optim$bestmem
+  best_obj_k <- de_treated$optim$bestval
 } else {
-  best_log_k2 <- loc_treated$par
-  best_obj_k  <- loc_treated$objective
+  best_log_k <- loc_treated$par
+  best_obj_k <- loc_treated$objective
 }
 
-k1_best <- K1_FIXED
-k2_best <- exp(unname(best_log_k2))
+k1_best <- exp(unname(best_log_k[1]))
+k2_best <- exp(unname(best_log_k[2]))
 
 # =============================================================================
 # 8. PARAMÈTRES DÉRIVÉS
@@ -366,14 +380,16 @@ tsc <- L0_ctrl / k2_best
 mtt <- 4 / k1_best
 
 cat("\n=== Paramètres PD finaux (Simeoni — fit 2 étapes) ===\n")
-cat(sprintf("λ0 (L0) = %.6f /j         (étape 1 — fit contrôle)\n", L0_ctrl))
-cat(sprintf("λ1 (L1) = %.0f mm³/j      (FIXÉ)\n",                    L1_FIXED))
-cat(sprintf("k1      = %.5f /j         (FIXÉ — MTT = %.0f j)\n",      k1_best, 4/k1_best))
-cat(sprintf("k2      = %.2e L/µg/j    (étape 2 — fit traités)\n",    k2_best))
+cat(sprintf("λ0 (L0) = %.6f /j         (étape 1 — fit contrôle j0–j21)\n", L0_ctrl))
+cat(sprintf("λ1 (L1) = %.2f mm³/j     (étape 1 — fit contrôle j0–j21)\n", L1_ctrl))
+cat(sprintf("k1      = %.5f /j         (étape 2 — fit traités)\n",         k1_best))
+cat(sprintf("k2      = %.2e L/µg/j    (étape 2 — fit traités)\n",          k2_best))
 cat("─────────────────────────────────────────────────────────\n")
 cat(sprintf("TSC = %.1f µg/L  (= λ0/k2)\n", tsc))
 cat(sprintf("MTT = %.1f j     (= 4/k1)\n",  mtt))
-cat(sprintf("Objectif contrôle = %.8f\n", fit_ctrl$objective))
+cat(sprintf("Objectif contrôle = %.8f\n",
+            if (!is.finite(loc_ctrl$objective)) de_ctrl$optim$bestval
+            else loc_ctrl$objective))
 cat(sprintf("Objectif traités  = %.8f\n", best_obj_k))
 
 # =============================================================================
@@ -382,14 +398,14 @@ cat(sprintf("Objectif traités  = %.8f\n", best_obj_k))
 
 params_best <- c(pk_fixed,
                  L0 = L0_ctrl,
-                 L1 = L1_FIXED,
+                 L1 = L1_ctrl,
                  k1 = k1_best,
                  k2 = k2_best)
 
 times_sim <- seq(0, max(times_d, na.rm = TRUE) * 1.05, by = 0.5)
 
-pred_ctrl_sim <- sim_ctrl_fn(L0_ctrl, L1_FIXED, tv0_ctrl, times_sim)
-pred_iso_sim  <- sim_ctrl_fn(L0_ctrl, L1_FIXED, tv0_iso,  times_sim)
+pred_ctrl_sim <- sim_ctrl_fn(L0_ctrl, L1_ctrl, tv0_ctrl, times_sim)
+pred_iso_sim  <- sim_ctrl_fn(L0_ctrl, L1_ctrl, tv0_iso,  times_sim)
 pred_d3_sim   <- sim_treated(3000,  tv0_d3,  params_best, times_sim)
 pred_d10_sim  <- sim_treated(10000, tv0_d10, params_best, times_sim)
 
@@ -426,11 +442,11 @@ cols <- c("Contrôle"       = "#888888",
 ymax <- max(df_obs$TV + df_obs$sem, na.rm = TRUE)
 
 subtitle_txt <- paste0(
-  "λ0 = ", round(L0_ctrl, 4), " /j (fit ctrl)  |  ",
+  "λ0 = ", round(L0_ctrl, 4), " /j  |  ",
+  "λ1 = ", round(L1_ctrl, 1), " mm³/j  |  ",
   "k2 = ", formatC(k2_best, digits = 3, format = "e"), " L/µg/j  |  ",
   "k1 = ", round(k1_best, 3), " /j  |  ",
-  "TSC = ", round(tsc, 0), " µg/L  |  ",
-  "MTT = ", round(mtt, 1), " j"
+  "TSC = ", round(tsc, 0), " µg/L  |  MTT = ", round(mtt, 1), " j"
 )
 
 p_simeoni <- ggplot() +
@@ -482,11 +498,9 @@ cat("\nGraphique → scripts/plot_PKPD_simeoni_FGFR2_3doses.png\n")
 simeoni_results <- list(
   pk_fixed           = pk_fixed,
   L0                 = L0_ctrl,
-  L0_source          = "fit contrôle étape 1",
-  L1                 = L1_FIXED,
-  L1_fixed           = TRUE,
+  L1                 = L1_ctrl,
+  L0L1_source        = "fit contrôle j0-j21 étape 1",
   k1                 = k1_best,
-  k1_fixed           = TRUE,
   k2                 = k2_best,
   TSC_ugL            = tsc,
   MTT_days           = mtt,
