@@ -187,7 +187,7 @@ sim_ctrl_fn <- function(L0, L1, tv0, times_out) {
     )),
     error = function(e) NULL
   )
-  if (is.null(out)) return(rep(NA_real_, length(times_out)))
+  if (is.null(out) || nrow(out) < 2) return(rep(NA_real_, length(times_out)))
   w_tot <- out$x1 + out$x2 + out$x3 + out$x4
   approx(out$time, w_tot, xout = times_out, rule = 2)$y
 }
