@@ -192,61 +192,48 @@ sim_ctrl_fn <- function(L0, L1, tv0, times_out) {
   }, error = function(e) rep(NA_real_, length(times_out)))
 }
 
-# Redémarre l'intégrateur à chaque dose : plus robuste que lsoda events
+# events deSolve : le solveur redémarre proprement aux discontinuités de dose
 sim_treated <- function(dose_ugkg, tv0, params, times_out) {
   t_end  <- max(times_out)
-  breaks <- c(dose_days, t_end + 1)   # limites de chaque intervalle dose
+  t_grid <- sort(unique(c(dose_days[dose_days <= t_end], times_out)))
 
-  state <- c(A1 = dose_ugkg, A2 = 0,
-             x1 = tv0,       x2 = 0, x3 = 0, x4 = 0)
+  # J0 déjà dans les CI ; doses J14+ injectées comme events additifs sur A1
+  ev_times <- dose_days[dose_days > 0 & dose_days <= t_end]
+  ev <- if (length(ev_times) > 0)
+          data.frame(var = "A1", time = ev_times,
+                     value = dose_ugkg, method = "add")
+        else NULL
 
-  t_all <- numeric(0)
-  w_all <- numeric(0)
+  state <- c(A1 = dose_ugkg, A2 = 0, x1 = tv0, x2 = 0, x3 = 0, x4 = 0)
 
-  for (i in seq_along(dose_days)) {
-    t_start <- dose_days[i]
-    t_stop  <- min(breaks[i + 1], t_end)
-    if (t_start >= t_end) break
-
-    # Bolus additif à chaque dose (sauf la 1re déjà dans les CI)
-    if (i > 1) state["A1"] <- state["A1"] + dose_ugkg
-
-    t_seg <- sort(unique(c(t_start,
-                           times_out[times_out > t_start & times_out <= t_stop],
-                           t_stop)))
-    if (length(t_seg) < 2) t_seg <- c(t_start, t_stop)
-
-    seg <- tryCatch(
+  try_solve <- function(meth, rt, at) {
+    tryCatch(
       suppressWarnings(as.data.frame(ode(
         y      = state,
-        times  = t_seg,
+        times  = t_grid,
         func   = simeoni_rhs,
         parms  = params,
-        method = "bdf",
-        rtol   = 1e-4,
-        atol   = 1e-4
+        method = meth,
+        rtol   = rt,
+        atol   = at,
+        hmax   = 1,
+        events = list(data = ev)
       ))),
       error = function(e) NULL
     )
-    if (is.null(seg) || nrow(seg) < 2 || any(!is.finite(seg$x1)))
-      return(rep(NA_real_, length(times_out)))
-
-    w_seg <- pmax(seg$x1, 0) + pmax(seg$x2, 0) +
-             pmax(seg$x3, 0) + pmax(seg$x4, 0)
-
-    # Évite les doublons au raccord entre segments
-    keep   <- if (length(t_all) > 0) seg$time > tail(t_all, 1) else rep(TRUE, nrow(seg))
-    t_all  <- c(t_all, seg$time[keep])
-    w_all  <- c(w_all, w_seg[keep])
-
-    # État final → conditions initiales du segment suivant
-    last  <- seg[nrow(seg), ]
-    state <- c(A1 = last$A1, A2 = last$A2,
-               x1 = last$x1, x2 = last$x2, x3 = last$x3, x4 = last$x4)
   }
 
-  if (length(t_all) == 0) return(rep(NA_real_, length(times_out)))
-  approx(t_all, w_all, xout = times_out, rule = 2)$y
+  out <- try_solve("radau", 1e-4, 1e-4)
+  if (is.null(out) || nrow(out) < 2 || any(!is.finite(out$x1)))
+    out <- try_solve("bdf", 1e-3, 1e-3)
+  if (is.null(out) || nrow(out) < 2 || any(!is.finite(out$x1)))
+    return(rep(NA_real_, length(times_out)))
+
+  w_tot <- pmax(out$x1, 0) + pmax(out$x2, 0) +
+           pmax(out$x3, 0) + pmax(out$x4, 0)
+  ok <- is.finite(w_tot)
+  if (sum(ok) < 2) return(rep(NA_real_, length(times_out)))
+  approx(out$time[ok], w_tot[ok], xout = times_out, rule = 2)$y
 }
 
 # =============================================================================
