@@ -225,7 +225,7 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
         times = t_seg,
         func  = simeoni_rhs,
         parms = params,
-        atol  = 1e-3, rtol = 1e-3
+        atol  = 1e-2, rtol = 1e-2
       )),
       error = function(e) NULL
     )
@@ -277,9 +277,9 @@ obj_ctrl <- function(log_L0) {
 
 # ── Étape 2 : objectif traités (2 paramètres libres : k1, k2) ─────────────
 
-obj_treated <- function(log_k) {
-  k1 <- exp(log_k[1]); k2 <- exp(log_k[2])
-  params <- c(pk_fixed, L0 = L0_ctrl, L1 = L1_FIXED, k1 = k1, k2 = k2)
+obj_treated <- function(log_k2) {
+  k2 <- exp(log_k2)
+  params <- c(pk_fixed, L0 = L0_ctrl, L1 = L1_FIXED, k1 = K1_FIXED, k2 = k2)
 
   pred_d3 <- sim_treated(3000,  tv0_d3,  params, times_d[ok_d3])
   if (any(is.na(pred_d3))) return(1e12)
@@ -326,54 +326,56 @@ cat(sprintf("Objectif contrôle = %.8f\n", fit_ctrl$objective))
 # =============================================================================
 
 cat("\n══════════════════════════════════════════════════════════\n")
-cat("ÉTAPE 2 — Fit traités seuls (k1, k2 libres ; λ0, λ1 gelés)\n")
+cat("ÉTAPE 2 — Fit traités seuls (k2 libre ; λ0, λ1, k1 gelés)\n")
 cat("══════════════════════════════════════════════════════════\n")
+
+# k1 fixé : non-identifiable depuis 49 j de données (borne systématiquement atteinte)
+# MTT = 4/k1 ≈ 14 j — valeur typique pour anticorps en xénogreffe
+K1_FIXED <- 4 / 14
+cat(sprintf("k1 (K1_FIXED) = %.4f /j  (MTT = %.0f j — FIXÉ, non identifiable)\n",
+            K1_FIXED, 4/K1_FIXED))
 
 # Valeur initiale k2 : TSC ≈ Cmax du groupe 10 mg/kg
 Cmax_10 <- 10000 / as.numeric(pk_fixed["V1"])
 k2_init <- L0_ctrl / Cmax_10
-k1_init <- 4 / 14   # MTT initial ~ 14 j
-
-lower_k <- c(log(0.01), log(1e-8))   # k1 ∈ [0.01, 4] /j | k2 ∈ [1e-8, 1e-3]
-upper_k <- c(log(4.0),  log(1e-3))
-
-cat(sprintf("k1 init = %.4f /j (MTT = %.0f j)\n", k1_init, 4/k1_init))
 cat(sprintf("k2 init = %.2e L/µg/j (TSC ≈ %.0f µg/L)\n", k2_init, L0_ctrl/k2_init))
+
+lower_k2 <- log(1e-8)
+upper_k2 <- log(1e-3)
 
 set.seed(42)
 de_treated <- DEoptim(
   fn      = obj_treated,
-  lower   = lower_k,
-  upper   = upper_k,
+  lower   = lower_k2,
+  upper   = upper_k2,
   control = DEoptim.control(
-    NP      = 60,
-    itermax = 600,
+    NP      = 40,
+    itermax = 400,
     F       = 0.8, CR = 0.9,
     trace   = 100,
-    reltol  = 1e-8, steptol = 200
+    reltol  = 1e-8, steptol = 150
   )
 )
 
 loc_treated <- nlminb(
   start     = de_treated$optim$bestmem,
   objective = obj_treated,
-  lower     = lower_k,
-  upper     = upper_k,
+  lower     = lower_k2,
+  upper     = upper_k2,
   control   = list(eval.max = 2000, iter.max = 1000, rel.tol = 1e-12)
 )
 
-# Fallback : si nlminb s'éloigne du DEoptim, conserver le meilleur
 if (!is.finite(loc_treated$objective) ||
     loc_treated$objective > de_treated$optim$bestval * 10) {
-  best_log_k <- de_treated$optim$bestmem
-  best_obj_k <- de_treated$optim$bestval
+  best_log_k2 <- de_treated$optim$bestmem
+  best_obj_k  <- de_treated$optim$bestval
 } else {
-  best_log_k <- loc_treated$par
-  best_obj_k <- loc_treated$objective
+  best_log_k2 <- loc_treated$par
+  best_obj_k  <- loc_treated$objective
 }
 
-k1_best <- exp(unname(best_log_k[1]))
-k2_best <- exp(unname(best_log_k[2]))
+k1_best <- K1_FIXED
+k2_best <- exp(unname(best_log_k2))
 
 # =============================================================================
 # 8. PARAMÈTRES DÉRIVÉS
@@ -385,7 +387,7 @@ mtt <- 4 / k1_best
 cat("\n=== Paramètres PD finaux (Simeoni — fit 2 étapes) ===\n")
 cat(sprintf("λ0 (L0) = %.6f /j         (étape 1 — fit contrôle)\n", L0_ctrl))
 cat(sprintf("λ1 (L1) = %.0f mm³/j      (FIXÉ)\n",                    L1_FIXED))
-cat(sprintf("k1      = %.5f /j         (étape 2 — fit traités)\n",   k1_best))
+cat(sprintf("k1      = %.5f /j         (FIXÉ — MTT = %.0f j)\n",      k1_best, 4/k1_best))
 cat(sprintf("k2      = %.2e L/µg/j    (étape 2 — fit traités)\n",    k2_best))
 cat("─────────────────────────────────────────────────────────\n")
 cat(sprintf("TSC = %.1f µg/L  (= λ0/k2)\n", tsc))
@@ -503,6 +505,7 @@ simeoni_results <- list(
   L1                 = L1_FIXED,
   L1_fixed           = TRUE,
   k1                 = k1_best,
+  k1_fixed           = TRUE,
   k2                 = k2_best,
   TSC_ugL            = tsc,
   MTT_days           = mtt,
