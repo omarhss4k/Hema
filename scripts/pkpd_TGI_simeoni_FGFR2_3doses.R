@@ -132,8 +132,12 @@ simeoni_rhs <- function(t, state, parms) {
   # PD — fonction de croissance de Simeoni
   w <- x1 + x2 + x3 + x4
   if (is.finite(w) && w > 1e-12) {
-    gw          <- L0 * w / (1 + (L0 * w / L1)^PSI)^(1/PSI)
-    growth_rate <- gw / w
+    ratio <- (L0 * w / L1)^PSI
+    if (is.finite(ratio)) {
+      growth_rate <- L0 / (1 + ratio)^(1/PSI)
+    } else {
+      growth_rate <- as.numeric(L1) / w
+    }
   } else {
     growth_rate <- as.numeric(L0)
   }
@@ -156,8 +160,12 @@ simeoni_ctrl_rhs <- function(t, state, parms) {
 
   w <- x1 + x2 + x3 + x4
   if (is.finite(w) && w > 1e-12) {
-    gw          <- L0 * w / (1 + (L0 * w / L1)^PSI)^(1/PSI)
-    growth_rate <- gw / w
+    ratio <- (L0 * w / L1)^PSI
+    if (is.finite(ratio)) {
+      growth_rate <- L0 / (1 + ratio)^(1/PSI)
+    } else {
+      growth_rate <- as.numeric(L1) / w
+    }
   } else {
     growth_rate <- as.numeric(L0)
   }
@@ -220,7 +228,7 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
         times    = t_seg,
         func     = simeoni_rhs,
         parms    = params,
-        atol     = 1e-4, rtol = 1e-4,
+        atol     = 1e-3, rtol = 1e-3,
         maxsteps = 50000
       )),
       error = function(e) { message("lsoda erreur segment ", i, ": ", conditionMessage(e)); NULL }
