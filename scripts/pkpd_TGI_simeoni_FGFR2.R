@@ -226,7 +226,7 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
     )
   }
 
-  out <- try_solve("radau", 1e-4, 1e-4)
+  out <- try_solve("bdf", 1e-5, 1e-5)
   if (is.null(out) || nrow(out) < 2 || any(!is.finite(out$x1)))
     out <- try_solve("bdf", 1e-3, 1e-3)
   if (is.null(out) || nrow(out) < 2 || any(!is.finite(out$x1)))
