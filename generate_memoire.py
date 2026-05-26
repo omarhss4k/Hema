@@ -439,7 +439,35 @@ doc.add_page_break()
 # ══════════════════════════════════════════════════════════
 add_heading(doc, "II. Matériels & Méthodes", 1)
 
-add_heading(doc, "2.1 Modèle structurel de l'hématopoïèse", 2)
+add_heading(doc, "2.1 Sources de données", 2)
+add_paragraph(doc,
+    "Le pipeline repose sur quatre jeux de données distincts, résumés dans le tableau "
+    "ci-dessous. Les données précliniques NHP sont confidentielles et ne sont pas "
+    "reproduites dans ce document.",
+    first_line_indent=1.0)
+add_table_simple(doc,
+    ["Étape", "Espèce / contexte", "Composé", "Source", "Type de données", "n"],
+    [
+        ["1", "Rat (Sprague-Dawley)", "Carboplatine",
+         "Fornari et al. 2019 (publication)",
+         "Hématologie sanguine (Neut, Plt, Ret, RBC) — données digitalisées",
+         "5 animaux"],
+        ["2", "Humain sain", "—",
+         "Fornari et al. 2019 (publication)",
+         "Valeurs basales hématologiques humaines (paramètres d'équilibre)",
+         "Littérature"],
+        ["3 & 5", "Rat / Humain", "T-DXd (trastuzumab déruxtécan)",
+         "Yin et al. 2020 ; FDA BLA 761139 (DESTINY-Breast01)",
+         "Paramètres PK (allométrie rat) ; grades CTCAE cliniques humains",
+         "N=184 patients"],
+        ["4", "NHP (cynomolgus)", "Composé en développement interne",
+         "Données internes — confidentiel",
+         "Hématologie sanguine (Neut, Plt, Ret, RBC) — 4 niveaux de dose",
+         "n=8 animaux"],
+    ],
+    col_widths=[1.2, 3.0, 3.0, 4.5, 5.5, 2.0])
+
+add_heading(doc, "2.2 Modèle structurel de l'hématopoïèse", 2)
 add_paragraph(doc,
     "Le modèle repose sur une représentation compartimentale de la différenciation "
     "hématopoïétique, selon le schéma de Fornari (2019). L'hématopoïèse est représentée "
@@ -447,7 +475,7 @@ add_paragraph(doc,
     "différentielles ordinaires (ODE).",
     first_line_indent=1.0)
 
-add_heading(doc, "2.1.1 Architecture compartimentale", 3)
+add_heading(doc, "2.2.1 Architecture compartimentale", 3)
 add_paragraph(doc,
     "Le modèle distingue les compartiments suivants, organisés selon la hiérarchie "
     "hématopoïétique :",
@@ -462,7 +490,7 @@ add_bullet(doc, "Neut, Mono : neutrophiles et monocytes circulants")
 add_bullet(doc, "Ret, RBC : réticulocytes et érythrocytes circulants")
 add_bullet(doc, "Plt : plaquettes circulantes")
 
-add_heading(doc, "2.1.2 Équations différentielles", 3)
+add_heading(doc, "2.2.2 Équations différentielles", 3)
 add_paragraph(doc,
     "Pour chaque compartiment cellulaire C, la dynamique est décrite par :",
     first_line_indent=1.0)
@@ -487,13 +515,13 @@ add_equation(doc, "k_e = ln(2) / t_half_cell    [taux d'élimination des cellule
 add_equation(doc, "k_prol = k_e × (C_baseline / MPP_baseline)^(1/n_transits)")
 add_equation(doc, "τ = 1 / k_transit    [temps de transit moyen par compartiment]")
 
-add_heading(doc, "2.2 Modèle d'effet du médicament", 2)
+add_heading(doc, "2.3 Modèle d'effet du médicament", 2)
 add_paragraph(doc,
     "L'effet cytotoxique du médicament sur les cellules progénitrices est modélisé "
     "par un compartiment de dommage (Damage), représentant l'accumulation de l'effet "
     "toxique intracellulaire.",
     first_line_indent=1.0)
-add_heading(doc, "2.2.1 Équation de dommage", 3)
+add_heading(doc, "2.3.1 Équation de dommage", 3)
 add_equation(doc, "dDamage/dt = k_dam × C_drug(µM) − k_rep × Damage")
 add_paragraph(doc,
     "C_drug(µM) est la concentration plasmatique du médicament convertie en µM, "
@@ -501,7 +529,7 @@ add_paragraph(doc,
     "k_rep le taux de réparation cellulaire. À l'état stationnaire :",
     first_line_indent=1.0)
 add_equation(doc, "Damage_ss = (k_dam / k_rep) × C_drug")
-add_heading(doc, "2.2.2 Inhibition de la prolifération", 3)
+add_heading(doc, "2.3.2 Inhibition de la prolifération", 3)
 add_paragraph(doc,
     "Le dommage inhibe la prolifération des progéniteurs via un terme multiplicatif :",
     first_line_indent=1.0)
@@ -513,13 +541,13 @@ add_paragraph(doc,
     "hématologiques observées.",
     first_line_indent=1.0)
 
-add_heading(doc, "2.3 Modèle pharmacocinétique", 2)
+add_heading(doc, "2.4 Modèle pharmacocinétique", 2)
 add_paragraph(doc,
     "La pharmacocinétique de tous les composés étudiés est décrite par un modèle "
     "à 2 compartiments (central + périphérique) après administration intraveineuse (IV) "
     "en bolus.",
     first_line_indent=1.0)
-add_heading(doc, "2.3.1 Équations structurelles", 3)
+add_heading(doc, "2.4.1 Équations structurelles", 3)
 add_equation(doc, "dA1/dt = −(CL/V1 + Q/V1) × A1 + (Q/V2) × A2  [compartiment central]")
 add_equation(doc, "dA2/dt = (Q/V1) × A1 − (Q/V2) × A2              [compartiment périphérique]")
 add_equation(doc, "C1 = A1 / V1   [concentration centrale, ng/mL ou µg/mL]")
@@ -530,7 +558,7 @@ add_paragraph(doc,
     first_line_indent=1.0)
 add_equation(doc, "t½β = ln(2) / β    avec β = racine de l'équation caractéristique bi-exponentielle")
 
-add_heading(doc, "2.3.2 Ajustement individuel par optimisation", 3)
+add_heading(doc, "2.4.2 Ajustement individuel par optimisation", 3)
 add_paragraph(doc,
     "Pour chaque animal ou patient disposant de données de concentration temporelle, "
     "les quatre paramètres PK (CL, V1, Q, V2) sont estimés individuellement par "
@@ -590,7 +618,7 @@ add_paragraph(doc,
     "(biais) n'est observée sur l'échelle semi-logarithmique.",
     first_line_indent=1.0)
 
-add_heading(doc, "2.4 Simulation de population virtuelle", 2)
+add_heading(doc, "2.5 Simulation de population virtuelle", 2)
 add_paragraph(doc,
     "Afin d'évaluer la distribution des grades de toxicité hématologique attendus "
     "en population, une approche de simulation Monte-Carlo a été mise en œuvre. "
@@ -665,7 +693,7 @@ add_paragraph(doc,
     "et les publications d'essais cliniques.",
     first_line_indent=1.0)
 
-add_heading(doc, "2.5 Grading CTCAE v5", 2)
+add_heading(doc, "2.6 Grading CTCAE v5", 2)
 add_paragraph(doc,
     "L'évaluation de la toxicité hématologique prédicte repose sur la classification "
     "CTCAE v5 (Common Terminology Criteria for Adverse Events, version 5.0, NCI 2017), "
@@ -751,7 +779,7 @@ add_paragraph(doc,
     "des paramètres érythrocytaires.",
     first_line_indent=1.0)
 
-add_heading(doc, "2.6 Données de référence cliniques", 2)
+add_heading(doc, "2.7 Données de référence cliniques", 2)
 add_paragraph(doc,
     "La validation des simulations T-DXd repose sur les données de tolérance "
     "hématologique issues du BLA 761139 (FDA, 2019), correspondant à l'essai "
@@ -766,7 +794,7 @@ add_table_simple(doc,
     ],
     col_widths=[3.5, 1.7, 1.7, 1.7, 1.7, 1.7, 2.5, 2.0])
 
-add_heading(doc, "2.7 Environnement computationnel", 2)
+add_heading(doc, "2.8 Environnement computationnel", 2)
 add_paragraph(doc,
     "L'ensemble du pipeline a été développé sous R (version ≥ 4.3.0) avec les "
     "librairies suivantes :",
