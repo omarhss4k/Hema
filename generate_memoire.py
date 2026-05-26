@@ -1040,53 +1040,6 @@ run = p.add_run("Figure 3. Profils PD individuels NHP — modèle (lignes) vs do
 set_font(run, size=10, italic=True)
 doc.add_paragraph()
 
-# ── 3.4 ───────────────────────────────────────────────────
-add_heading(doc, "3.4 Étape 4 — Traduction clinique : perspectives", 2)
-add_paragraph(doc,
-    "Sur la base des paramètres PK/PD estimés chez le NHP, une transposition clinique "
-    "préliminaire a été explorée. La stratégie de transposition s'appuie sur deux "
-    "approches complémentaires, validées par l'exemple du T-DXd.",
-    first_line_indent=1.0)
-
-add_heading(doc, "3.4.1 Transposition PK NHP → humain", 3)
-add_paragraph(doc,
-    "La transposition des paramètres PK repose sur des lois d'allométrie inter-espèces, "
-    "calibrées sur les données T-DXd pour lesquelles les paramètres NHP et humains "
-    "sont tous deux disponibles :",
-    first_line_indent=1.0)
-add_equation(doc, "CL_humain = CL_NHP × (BW_humain / BW_NHP)^0.75    [allométrie standard]")
-add_equation(doc, "V1_humain = V1_NHP × (BW_humain / BW_NHP)^1.00    [proportionnel au poids]")
-add_paragraph(doc,
-    "Pour le T-DXd, la comparaison des prédictions allométriques aux paramètres "
-    "réels de la population humaine FDA confirme que cette approche donne une "
-    "estimation raisonnable en première approximation (facteur d'erreur < 2 sur CL).",
-    first_line_indent=1.0)
-
-add_heading(doc, "3.4.2 Transposition PD et simulation préliminaire", 3)
-add_paragraph(doc,
-    "La transposition des paramètres PD (Slopes) est plus complexe, car la sensibilité "
-    "des progéniteurs hématopoïétiques au payload peut varier entre espèces. "
-    "Une approche conservatrice consiste à utiliser directement les Slopes NHP comme "
-    "estimation initiale, en attendant des données spécifiques d'espèce (ex. IC50 CFU "
-    "sur cellules humaines).",
-    first_line_indent=1.0)
-add_paragraph(doc,
-    "La simulation préliminaire de la réponse hématologique humaine avec les paramètres "
-    "transposés indique un profil de toxicité attendu modéré, comparable à celui du "
-    "T-DXd aux doses thérapeutiques envisagées. Ces projections constituent une base "
-    "pour la définition de la dose de départ en Premier-en-Homme (FIH), en cohérence "
-    "avec le NOAEL identifié en NHP.",
-    first_line_indent=1.0)
-
-add_heading(doc, "3.4.3 Mise en perspective avec le NOAEL NHP", 3)
-add_paragraph(doc,
-    "Le NOAEL (No Observed Adverse Effect Level) identifié dans l'étude NHP correspond "
-    "à la dose à laquelle aucune cytopénie de grade ≥3 n'a été observée. "
-    "La simulation PK/PD permet de quantifier la marge de sécurité entre "
-    "le NOAEL et les doses humaines envisagées, en intégrant les différences "
-    "pharmacocinétiques inter-espèces de manière cohérente.",
-    first_line_indent=1.0)
-
 doc.add_page_break()
 
 # ══════════════════════════════════════════════════════════
@@ -1182,7 +1135,30 @@ add_bullet(doc, "Extension multi-doses et régimes répétés : le modèle actue
             "directement appliqué à des schémas Q2W ou Q4W pour explorer la fenêtre "
             "posologique optimale du composé interne")
 
-add_heading(doc, "4.5 Impact opérationnel et aide à la décision", 2)
+add_heading(doc, "4.5 Traduction clinique : perspectives de transposition NHP → humain", 2)
+add_paragraph(doc,
+    "Sur la base des paramètres PK/PD ajustés chez le NHP, une transposition clinique "
+    "préliminaire peut être envisagée. La transposition des paramètres PK repose sur "
+    "des lois d'allométrie inter-espèces :",
+    first_line_indent=1.0)
+add_equation(doc, "CL_humain = CL_NHP × (BW_humain / BW_NHP)^0.75    [allométrie standard]")
+add_equation(doc, "V1_humain = V1_NHP × (BW_humain / BW_NHP)^1.00    [proportionnel au poids]")
+add_paragraph(doc,
+    "La validité de cette approche a été vérifiée sur le T-DXd, pour lequel les "
+    "paramètres NHP et humains sont tous deux disponibles : le facteur d'erreur "
+    "sur CL reste inférieur à 2, ce qui est acceptable en première approximation.",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "La transposition des paramètres PD (Slopes) est plus délicate, car la sensibilité "
+    "des progéniteurs hématopoïétiques au payload peut varier entre espèces. Une approche "
+    "conservatrice consiste à utiliser directement les Slopes NHP comme estimation "
+    "initiale, en attendant des données d'IC50 sur progéniteurs humains (CFU). "
+    "Ces projections constituent une base de discussion pour la définition de la dose "
+    "de départ en Premier-en-Homme (FIH), en cohérence avec le NOAEL identifié en NHP "
+    "— défini comme la dose la plus élevée n'ayant entraîné aucune atteinte de grade ≥3.",
+    first_line_indent=1.0)
+
+add_heading(doc, "4.6 Impact opérationnel et aide à la décision", 2)
 add_paragraph(doc,
     "Au-delà de sa valeur scientifique, ce pipeline présente un intérêt opérationnel "
     "concret pour le développement du médicament :",
