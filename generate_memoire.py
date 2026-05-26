@@ -695,20 +695,79 @@ add_paragraph(doc,
 
 add_heading(doc, "2.6 Évaluation de la performance prédictive", 2)
 add_paragraph(doc,
-    "Pour chaque proportion prédite p, l'intervalle de confiance à 95% a été calculé "
-    "selon la méthode de Wilson : p ± 1,96 × √(p(1−p)/N), avec N=300.",
+    "La validation du modèle repose sur la comparaison systématique des proportions de "
+    "patients simulés atteignant chaque grade CTCAE aux proportions rapportées dans les "
+    "données cliniques de référence (étude DESTINY-Breast03, rapport FDA). Quatre outils "
+    "statistiques complémentaires ont été utilisés.",
     first_line_indent=1.0)
+
+add_heading(doc, "Intervalles de confiance de Wilson", 3)
 add_paragraph(doc,
-    "La performance du modèle a été évaluée sur 6 comparaisons (3 toxicités × 2 métriques : "
-    "tout grade et G3-4) par la RMSE et la MAE entre proportions prédites et observées.",
+    "Pour chaque proportion prédite p estimée sur N=300 patients simulés, un intervalle "
+    "de confiance à 95% a été calculé selon la méthode de Wilson, préférable à "
+    "l'approximation normale de Wald lorsque p est proche de 0 ou 1 :",
     first_line_indent=1.0)
+add_equation(doc, "IC₉₅% = p ± 1,96 × √( p(1−p) / N )")
 add_paragraph(doc,
-    "Une analyse de sensibilité par corrélation de Spearman et régression logistique a "
-    "identifié les paramètres les plus déterminants pour la prédiction du grade de neutropénie.",
+    "Cette méthode garantit que les bornes restent dans [0, 1] et est recommandée pour "
+    "les proportions issues de simulations Monte-Carlo. Elle permet de visualiser "
+    "graphiquement si les proportions observées cliniquement tombent dans l'intervalle "
+    "prédit par le modèle, fournissant ainsi un critère de validation quantitatif.",
     first_line_indent=1.0)
+
+add_heading(doc, "Métriques d'erreur : RMSE et MAE", 3)
 add_paragraph(doc,
-    "Un graphique de calibration (valeurs prédites vs observées FDA) a été généré pour "
-    "visualiser l'accord modèle-données.",
+    "La qualité globale des prédictions a été mesurée par deux métriques d'erreur "
+    "calculées sur l'ensemble des 6 comparaisons disponibles "
+    "(3 toxicités × 2 niveaux de sévérité : tout grade et grade ≥3) :",
+    first_line_indent=1.0)
+add_equation(doc,
+    "RMSE = √[ (1/n) × Σᵢ (p̂ᵢ − pᵢ)² ]     MAE = (1/n) × Σᵢ |p̂ᵢ − pᵢ|")
+add_paragraph(doc,
+    "où p̂ᵢ est la proportion prédite par le modèle et pᵢ la proportion observée dans "
+    "les données cliniques pour la comparaison i. La RMSE pénalise davantage les erreurs "
+    "importantes (sensibilité aux outliers), tandis que la MAE donne une estimation "
+    "plus robuste de l'erreur moyenne absolue. Ces deux métriques sont exprimées en "
+    "points de proportion (0–1) et permettent une interprétation directe de l'écart "
+    "cliniquement significatif entre modèle et données.",
+    first_line_indent=1.0)
+
+add_heading(doc, "Graphique de calibration", 3)
+add_paragraph(doc,
+    "Un graphique de calibration a été produit en portant les proportions prédites en "
+    "abscisse et les proportions observées en ordonnée, pour chacune des 6 comparaisons. "
+    "La droite d'identité (y = x) constitue la référence d'un modèle parfaitement "
+    "calibré. Les points situés au-dessus de cette droite indiquent une sous-prédiction "
+    "(le modèle sous-estime la toxicité observée) ; ceux situés en dessous indiquent une "
+    "sur-prédiction. Les barres d'erreur représentent les IC95% de Wilson sur les "
+    "proportions prédites. Ce graphique constitue un outil de diagnostic visuel "
+    "permettant d'identifier des biais systématiques par type de toxicité.",
+    first_line_indent=1.0)
+
+add_heading(doc, "Analyse de sensibilité paramétrique", 3)
+add_paragraph(doc,
+    "Une analyse de sensibilité a été conduite pour identifier les paramètres du modèle "
+    "les plus influents sur la prédiction du grade de neutropénie sévère (G≥3), "
+    "qui constitue la toxicité dose-limitante principale du T-DXd. Deux approches "
+    "complémentaires ont été utilisées :",
+    first_line_indent=1.0)
+add_bullet(doc,
+    "Corrélation de Spearman (ρ) : pour chacun des N=300 patients simulés, la valeur "
+    "individuelle de chaque paramètre PK/PD (CL, V1, Slope_MPP, k_rep, etc.) a été "
+    "corrélée au nadir de neutrophiles correspondant. Le coefficient ρ de Spearman, "
+    "non-paramétrique et robuste aux distributions asymétriques, quantifie la force "
+    "et le sens de cette relation. Un |ρ| > 0,3 a été retenu comme seuil de pertinence.")
+add_bullet(doc,
+    "Régression logistique : une régression logistique binaire a été ajustée en prenant "
+    "comme variable dépendante l'indicateur G≥3 (0/1) et comme prédicteurs les "
+    "paramètres standardisés (z-scores). Les odds-ratios et leurs IC95% permettent "
+    "d'estimer l'effet marginal de chaque paramètre sur la probabilité d'atteindre "
+    "un grade sévère, en contrôlant les effets des autres variables.")
+add_paragraph(doc,
+    "Les résultats sont synthétisés sous forme d'un diagramme en tornade (tornado plot) "
+    "classant les paramètres par ordre décroissant de |ρ|. Cette représentation "
+    "graphique facilite l'identification des leviers d'action prioritaires pour "
+    "la réduction du risque de neutropénie sévère.",
     first_line_indent=1.0)
 
 add_heading(doc, "2.7 Grading CTCAE v5", 2)
