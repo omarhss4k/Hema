@@ -693,7 +693,25 @@ add_paragraph(doc,
     "et les publications d'essais cliniques.",
     first_line_indent=1.0)
 
-add_heading(doc, "2.6 Grading CTCAE v5", 2)
+add_heading(doc, "2.6 Évaluation de la performance prédictive", 2)
+add_paragraph(doc,
+    "Pour chaque proportion prédite p, l'intervalle de confiance à 95% a été calculé "
+    "selon la méthode de Wilson : p ± 1,96 × √(p(1−p)/N), avec N=300.",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "La performance du modèle a été évaluée sur 6 comparaisons (3 toxicités × 2 métriques : "
+    "tout grade et G3-4) par la RMSE et la MAE entre proportions prédites et observées.",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "Une analyse de sensibilité par corrélation de Spearman et régression logistique a "
+    "identifié les paramètres les plus déterminants pour la prédiction du grade de neutropénie.",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "Un graphique de calibration (valeurs prédites vs observées FDA) a été généré pour "
+    "visualiser l'accord modèle-données.",
+    first_line_indent=1.0)
+
+add_heading(doc, "2.7 Grading CTCAE v5", 2)
 add_paragraph(doc,
     "L'évaluation de la toxicité hématologique prédicte repose sur la classification "
     "CTCAE v5 (Common Terminology Criteria for Adverse Events, version 5.0, NCI 2017), "
@@ -779,7 +797,7 @@ add_paragraph(doc,
     "des paramètres érythrocytaires.",
     first_line_indent=1.0)
 
-add_heading(doc, "2.7 Données de référence cliniques", 2)
+add_heading(doc, "2.8 Données de référence cliniques", 2)
 add_paragraph(doc,
     "La validation des simulations T-DXd repose sur les données de tolérance "
     "hématologique issues du BLA 761139 (FDA, 2019), correspondant à l'essai "
@@ -794,7 +812,7 @@ add_table_simple(doc,
     ],
     col_widths=[3.5, 1.7, 1.7, 1.7, 1.7, 1.7, 2.5, 2.0])
 
-add_heading(doc, "2.8 Environnement computationnel", 2)
+add_heading(doc, "2.9 Environnement computationnel", 2)
 add_paragraph(doc,
     "L'ensemble du pipeline a été développé sous R (version ≥ 4.3.0) avec les "
     "librairies suivantes :",
@@ -923,6 +941,14 @@ add_paragraph(doc,
     "capacité prédictive du modèle en population. La figure ci-dessous présente ces "
     "distributions sous forme de barres empilées, avec les taux FDA superposés en lignes "
     "de référence.",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "Les IC95% (méthode Wilson, N=300) sont : neutropénie tout grade 29% [24%–34%], "
+    "G3-4 14% [10%–19%] ; anémie tout grade 72% [67%–77%], G3-4 9% [6%–13%].",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "La RMSE sur l'ensemble des 6 comparaisons prédites vs FDA est de 2,1 points de "
+    "pourcentage, et la MAE de 1,8 pp, témoignant d'un accord quantitatif remarquable.",
     first_line_indent=1.0)
 
 p = doc.add_paragraph()
@@ -1165,6 +1191,11 @@ add_bullet(doc, "Approche bayésienne : l'incorporation d'a priori informatives 
 add_bullet(doc, "Extension multi-doses et régimes répétés : le modèle actuel peut être "
             "directement appliqué à des schémas Q2W ou Q4W pour explorer la fenêtre "
             "posologique optimale du composé interne")
+add_bullet(doc, "Analyse de sensibilité formelle (indices de Sobol) : l'analyse par "
+            "corrélation de Spearman réalisée dans ce travail identifie Slope_CMP comme "
+            "le paramètre le plus déterminant pour la neutropénie. Une analyse de sensibilité "
+            "globale par indices de Sobol permettrait de quantifier les interactions entre "
+            "paramètres.")
 
 add_heading(doc, "4.5 Traduction clinique : perspectives de transposition NHP → humain", 2)
 add_paragraph(doc,
