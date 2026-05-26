@@ -27,9 +27,10 @@ prs.slide_height = Inches(7.5)
 BLANK = prs.slide_layouts[6]
 
 # ── Chemins figures ───────────────────────────────────────
-FIG_PK = "etape6_fgfr2/results/pk_fit_all_animals.png"
-FIG_PD = "etape6_fgfr2/results/poster_PD_predicted_individual_noobs.png"
+FIG_PK     = "etape6_fgfr2/results/pk_fit_all_animals.png"
+FIG_PD     = "etape6_fgfr2/results/poster_PD_predicted_individual_noobs.png"
 FIG_PD_OBS = "etape6_fgfr2/results/ind_pred_profiles.png"
+FIG_SHIFT  = "etape6_fgfr2/results/pk_hema_shift.png"
 
 def add_slide():
     return prs.slides.add_slide(BLANK)
@@ -221,25 +222,62 @@ txbox(s4, "Lectures", 10.0, 1.3, 2.9, 0.4,
       size=15, bold=True, color=BLEU_FONCE)
 bullet(s4, [
     "✓ Neutrophiles :\nbonne concordance\nmodèle–données",
-    "✓ RBC & Plaquettes :\nsuppression modérée\nbien reproduite",
-    "⚠ Réticulocytes :\npics D2–D8 non\ncaptés par le modèle",
-    "→ Ces pics résultent\nde facteurs extérieurs\n(état préexistant,\nstress de manipulation)",
-], 10.0, 1.8, 2.9, size=11, spacing=1.1)
+    "✓ RBC & Plaquettes :\nsuppression bien\nreproduites",
+], 10.0, 1.78, 2.9, size=11, spacing=1.0)
+
+txbox(s4, "⚠ Pics réticulocytes (D2–D8)", 10.0, 3.9, 2.9, 0.38,
+      size=12, bold=True, color=ORANGE)
+txbox(s4, "Non captés par le modèle\n→ facteurs extérieurs :", 10.0, 4.28, 2.9, 0.55,
+      size=11, italic=True, color=NOIR)
+bullet(s4, [
+    "Anémie préexistante\n(réticulocytose compensatoire)",
+    "Stress de contention /\nmanipulation des animaux",
+    "Réponse à la phlébotomie\nrépétée",
+    "Variabilité biologique NHP\nnaturellement élevée",
+    "Indépendant du composé\n(survient dès J2)",
+], 10.0, 4.85, 2.9, size=10, color=NOIR, spacing=0.42)
 
 # ════════════════════════════════════════════════════════
-# SLIDE 5 — Résultats PD (prédictions seules, D0–D90)
+# SLIDE 5 — Décalage cinétique PK → Hématotoxicité
 # ════════════════════════════════════════════════════════
 s5 = add_slide()
-header_bar(s5, "Projections PD — Simulation Q3W × 3 cycles + récupération",
-           "Profils prédits D0–D90 | % de la baseline individuelle | Sans données observées")
+header_bar(s5, "Décalage cinétique PK → Hématotoxicité",
+           "Dissociation temporelle entre le pic plasmatique et le nadir hématologique")
 footer(s5)
 
-add_image(s5, FIG_PD, 0.3, 1.2, 9.5, 6.0)
+add_image(s5, FIG_SHIFT, 0.3, 1.2, 9.5, 6.0)
 
 rect(s5, 9.9, 1.2, 3.1, 6.0, fill=GRIS_CLAIR, line=GRIS_MED, line_w=Pt(0.5))
-txbox(s5, "Points clés", 10.0, 1.3, 2.9, 0.4,
+txbox(s5, "Message clé", 10.0, 1.3, 2.9, 0.4,
       size=15, bold=True, color=BLEU_FONCE)
 bullet(s5, [
+    "PK : Cmax atteint\ndès J1 (pic immédiat)",
+    "Nadir hématologique :\ndécalé de plusieurs jours\naprès le Cmax",
+    "Ce délai reflète la\ndurée de vie des\nprécurseurs médullaires",
+], 10.0, 1.8, 2.9, size=11, spacing=1.0)
+
+txbox(s5, "Pourquoi c'est important", 10.0, 5.0, 2.9, 0.38,
+      size=12, bold=True, color=ORANGE)
+bullet(s5, [
+    "Un modèle Emax direct\nserait inadapté ici",
+    "Le modèle semi-mécaniste\n(Fornari) capture ce\ndécalage explicitement",
+    "→ Justifie l'approche\nPK/PD mécaniste",
+], 10.0, 5.42, 2.9, size=10, color=NOIR, spacing=0.52)
+
+# ════════════════════════════════════════════════════════
+# SLIDE 6 — Résultats PD (prédictions seules, D0–D90)
+# ════════════════════════════════════════════════════════
+s6 = add_slide()
+header_bar(s6, "Projections PD — Simulation Q3W × 3 cycles + récupération",
+           "Profils prédits D0–D90 | % de la baseline individuelle | Sans données observées")
+footer(s6)
+
+add_image(s6, FIG_PD, 0.3, 1.2, 9.5, 6.0)
+
+rect(s6, 9.9, 1.2, 3.1, 6.0, fill=GRIS_CLAIR, line=GRIS_MED, line_w=Pt(0.5))
+txbox(s6, "Points clés", 10.0, 1.3, 2.9, 0.4,
+      size=15, bold=True, color=BLEU_FONCE)
+bullet(s6, [
     "Effet cumulatif sur\n3 cycles visible",
     "Nadir le plus profond\naprès la 3ᵉ dose (J42)",
     "Récupération partielle\nentre cycles",
@@ -247,18 +285,18 @@ bullet(s5, [
     "Retour à la baseline\nattendu ~J80–D90",
 ], 10.0, 1.8, 2.9, size=12, spacing=0.9)
 
-txbox(s5, "NOAEL", 10.0, 6.1, 2.9, 0.3,
+txbox(s6, "NOAEL", 10.0, 6.1, 2.9, 0.3,
       size=13, bold=True, color=VERT)
-txbox(s5, "Aucun grade ≥3 prédit\nà 4 mg/kg", 10.0, 6.4, 2.9, 0.55,
+txbox(s6, "Aucun grade ≥3 prédit\nà 4 mg/kg", 10.0, 6.4, 2.9, 0.55,
       size=12, color=VERT)
 
 # ════════════════════════════════════════════════════════
-# SLIDE 6 — Prochaines étapes
+# SLIDE 7 — Prochaines étapes
 # ════════════════════════════════════════════════════════
-s6 = add_slide()
-header_bar(s6, "Prochaines étapes",
+s7 = add_slide()
+header_bar(s7, "Prochaines étapes",
            "De la caractérisation NHP à la prédiction clinique (FIH)")
-footer(s6)
+footer(s7)
 
 boxes = [
     ("1. Estimation formelle des paramètres PD",
@@ -289,21 +327,21 @@ for i, (title, color, items) in enumerate(boxes):
     x = 0.3 + col * 6.5
     y = 1.35 + row * 2.85
 
-    rect(s6, x, y, 6.2, 2.65, fill=BLANC, line=color, line_w=Pt(2.5))
-    rect(s6, x, y, 6.2, 0.45, fill=color)
-    txbox(s6, title, x + 0.1, y + 0.04, 6.0, 0.38,
+    rect(s7, x, y, 6.2, 2.65, fill=BLANC, line=color, line_w=Pt(2.5))
+    rect(s7, x, y, 6.2, 0.45, fill=color)
+    txbox(s7, title, x + 0.1, y + 0.04, 6.0, 0.38,
           size=13, bold=True, color=BLANC)
     for j, item in enumerate(items):
-        txbox(s6, f"▸ {item}", x + 0.15, y + 0.52 + j * 0.62, 5.9, 0.58,
+        txbox(s7, f"▸ {item}", x + 0.15, y + 0.52 + j * 0.62, 5.9, 0.58,
               size=11.5, color=NOIR)
 
 # ════════════════════════════════════════════════════════
-# SLIDE 7 — Synthèse
+# SLIDE 8 — Synthèse
 # ════════════════════════════════════════════════════════
-s7 = add_slide()
-header_bar(s7, "Synthèse — Ce que le modèle apporte",
+s8 = add_slide()
+header_bar(s8, "Synthèse — Ce que le modèle apporte",
            "Valeur ajoutée de la modélisation PK/PD pour le développement interne")
-footer(s7)
+footer(s8)
 
 cols = [
     ("Réalisé ✓", VERT, [
@@ -328,22 +366,23 @@ cols = [
 
 for i, (title, color, items) in enumerate(cols):
     x = 0.3 + i * 4.3
-    rect(s7, x, 1.25, 4.1, 5.9, fill=BLANC, line=color, line_w=Pt(2))
-    rect(s7, x, 1.25, 4.1, 0.5, fill=color)
-    txbox(s7, title, x + 0.1, 1.28, 3.9, 0.42,
+    rect(s8, x, 1.25, 4.1, 5.9, fill=BLANC, line=color, line_w=Pt(2))
+    rect(s8, x, 1.25, 4.1, 0.5, fill=color)
+    txbox(s8, title, x + 0.1, 1.28, 3.9, 0.42,
           size=15, bold=True, color=BLANC, align=PP_ALIGN.CENTER)
     for j, item in enumerate(items):
-        rect(s7, x + 0.15, 1.85 + j * 1.18, 3.8, 1.1,
+        rect(s8, x + 0.15, 1.85 + j * 1.18, 3.8, 1.1,
              fill=GRIS_CLAIR, line=color, line_w=Pt(0.5))
-        txbox(s7, item, x + 0.25, 1.9 + j * 1.18, 3.6, 1.0,
+        txbox(s8, item, x + 0.25, 1.9 + j * 1.18, 3.6, 1.0,
               size=12, color=NOIR)
 
 # ── Export ────────────────────────────────────────────────
 out = "FGFR2_NHP_resultats.pptx"
 prs.save(out)
 print(f"✓ PowerPoint généré : {out}")
-print(f"  7 slides : Titre | Design | PK | PD obs | PD pred | Prochaines étapes | Synthèse")
+print(f"  8 slides : Titre | Design | PK | PD obs | Décalage cinétique | PD pred | Prochaines étapes | Synthèse")
 print(f"\n  Note : insérer les figures manuellement si les PNG ne sont pas générés :")
 print(f"    - Slide 3 : {FIG_PK}")
 print(f"    - Slide 4 : {FIG_PD_OBS}")
-print(f"    - Slide 5 : {FIG_PD}")
+print(f"    - Slide 5 : {FIG_SHIFT}")
+print(f"    - Slide 6 : {FIG_PD}")
