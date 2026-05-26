@@ -392,8 +392,9 @@ add_paragraph(doc,
     "du développement pharmaceutique, reconnus par les agences réglementaires FDA et EMA. "
     "La pharmacocinétique (PK) décrit l'évolution temporelle des concentrations du "
     "médicament dans l'organisme (absorption, distribution, métabolisme, élimination), "
-    "tandis que la pharmacodynamique (PD) quantifie la relation entre exposition et "
-    "effet — thérapeutique ou toxique.",
+    "tandis que la pharmacodynamique (PD) décrit les effets du médicament sur l'organisme — "
+    "efficacité, toxicité ou biomarqueurs. La modélisation PK/PD intègre ces deux composantes "
+    "pour quantifier la relation entre exposition et effet.",
     first_line_indent=1.0)
 add_paragraph(doc,
     "Les modèles PK/PD semi-mécanistes occupent une position intermédiaire entre les "
