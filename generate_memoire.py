@@ -1063,6 +1063,18 @@ add_paragraph(doc,
     "Il valide la transposabilité du cadre de Fornari au contexte clinique des ADCs "
     "et à de nouvelles molécules.",
     first_line_indent=1.0)
+add_paragraph(doc,
+    "D'un point de vue méthodologique, la validation sur DESTINY-Breast01 constitue "
+    "une validation externe prospective : le modèle a été calibré sur données "
+    "précliniques (rat, NHP) et sur des paramètres PK issus de la littérature, puis "
+    "ses prédictions ont été comparées à des données cliniques indépendantes jamais "
+    "utilisées pour la calibration. Ce type de démarche — proche de l'évaluation "
+    "d'un modèle prédictif en recherche bio-médicale — est la démonstration la plus "
+    "rigoureuse de la capacité généralisatrice du pipeline. La concordance obtenue "
+    "(neutropénie G3-4 : 14% modèle vs 16% FDA ; anémie tout grade : 72% vs 70%) "
+    "illustre la valeur prédictive clinique d'un modèle construit sans aucune donnée "
+    "clinique humaine propre au T-DXd.",
+    first_line_indent=1.0)
 
 add_heading(doc, "4.2 Apport de la modélisation mécaniste vs approches empiriques", 2)
 add_paragraph(doc,
@@ -1083,6 +1095,25 @@ add_bullet(doc, "Prédiction du nadir temporel : le décalage cinétique PK/PD e
 add_bullet(doc, "Simulation de schémas non testés : une fois calibré, le modèle permet "
             "d'explorer in silico des schémas posologiques alternatifs (dose, fréquence, "
             "durée) sans expérimentation supplémentaire")
+add_paragraph(doc,
+    "Une approche par apprentissage automatique (random forest, réseau de neurones, "
+    "gradient boosting) aurait en théorie pu être envisagée pour prédire les grades "
+    "CTCAE à partir des caractéristiques patient. Cependant, deux contraintes majeures "
+    "la rendent inadaptée dans ce contexte : (1) le volume de données disponibles est "
+    "très limité — n=5 rats, n=8 NHP — ce qui exclut tout apprentissage supervisé "
+    "robuste ; (2) un modèle boîte noire ne permettrait pas l'extrapolation inter-espèces "
+    "ni la simulation de doses non testées. La modélisation mécaniste, fondée sur des "
+    "équations différentielles biologiquement interprétables, est ici la seule approche "
+    "permettant à la fois l'inférence causale (dose → concentration → dommage → nadir) "
+    "et la généralisation à de nouvelles conditions expérimentales.",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "Cette logique causale est au cœur du modèle : chaque compartiment représente "
+    "une étape mécaniste de la chaîne dose-effet, et les paramètres encodent des "
+    "relations de cause à effet biologiquement fondées plutôt que des corrélations "
+    "statistiques. Cela confère au pipeline une robustesse en extrapolation que "
+    "les méthodes purement associatives ne peuvent pas offrir.",
+    first_line_indent=1.0)
 add_paragraph(doc,
     "En revanche, le modèle mécaniste requiert davantage de données pour la calibration "
     "et une expertise biologique pour l'interprétation des paramètres. C'est dans cette "
