@@ -989,12 +989,17 @@ run = p.add_run("Figure 2. Profils PK individuels NHP — modèle 2-compartiment
 set_font(run, size=10, italic=True)
 doc.add_paragraph()
 
-add_heading(doc, "3.3.3 Calibration pharmacodynamique NHP", 3)
+add_heading(doc, "3.3.3 Ajustement pharmacodynamique NHP", 3)
 add_paragraph(doc,
-    "Les paramètres PD (Slope_MPP, Slope_CMP, Slope_MEP) ont été calibrés pour chaque "
-    "animal en utilisant les concentrations prédites par le modèle PK individuel comme "
-    "entrée du modèle PD. Les paramètres biologiques de base NHP ont été dérivés des "
-    "valeurs hématologiques pré-dose de chaque animal.",
+    "Les paramètres de sensibilité (Slope_MPP, Slope_CMP, Slope_MEP) ont été ajustés "
+    "manuellement par comparaison visuelle entre les profils hématologiques simulés et "
+    "les données observées chez chaque animal NHP. Il ne s'agit pas d'une simulation "
+    "purement basée sur des données in vitro, ni d'une estimation formelle par "
+    "optimisation numérique : les valeurs ont été sélectionnées de façon itérative pour "
+    "reproduire au mieux l'amplitude et la cinétique des nadirs observés. Les "
+    "concentrations prédites par le modèle PK individuel ont été utilisées comme entrée "
+    "du modèle PD. Les paramètres biologiques de base NHP ont été dérivés des valeurs "
+    "hématologiques pré-dose de chaque animal.",
     first_line_indent=1.0)
 add_paragraph(doc,
     "Le modèle PD reproduit les principales caractéristiques de la réponse hématologique "
