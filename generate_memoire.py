@@ -406,9 +406,11 @@ add_paragraph(doc,
     first_line_indent=1.0)
 add_paragraph(doc,
     "Dans le domaine de l'hématotoxicité, le modèle de Friberg (2002) et ses extensions "
-    "constituent la référence méthodologique. Le modèle de Fornari (2019), développé "
-    "spécifiquement pour les ADCs, en représente une version étendue intégrant "
-    "explicitement les différentes lignées hématopoïétiques et leurs précurseurs.",
+    "constituent la référence méthodologique. Le modèle de Fornari (2019), validé sur "
+    "données de rat traitées au carboplatine, en représente une version étendue intégrant "
+    "explicitement les différentes lignées hématopoïétiques et leurs précurseurs. "
+    "Dans ce travail, ce modèle est appliqué à des agents cytotoxiques de nouvelle "
+    "génération, dont les ADCs.",
     first_line_indent=1.0)
 
 add_heading(doc, "1.4 Objectifs du stage", 2)
