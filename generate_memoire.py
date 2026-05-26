@@ -367,9 +367,10 @@ add_heading(doc, "1.2 L'hématotoxicité comme toxicité dose-limitante", 2)
 add_paragraph(doc,
     "Malgré leur sélectivité théorique, les ADCs induisent des toxicités systémiques "
     "significatives, parmi lesquelles l'hématotoxicité occupe une place centrale. "
-    "La cytopénie hématologique — neutropénie, anémie et thrombocytopénie — résulte "
-    "d'une atteinte des cellules progénitrices hématopoïétiques dans la moelle osseuse, "
-    "sensibles au payload cytotoxique libéré de façon non entièrement spécifique.",
+    "La décroissance du nombre de cellules sanguines circulantes — neutrophiles, érythrocytes "
+    "et plaquettes — résulte d'une atteinte des cellules progénitrices hématopoïétiques "
+    "dans la moelle osseuse, sensibles au payload cytotoxique libéré de façon non "
+    "entièrement spécifique.",
     first_line_indent=1.0)
 add_paragraph(doc,
     "Dans l'essai DESTINY-Breast01, la neutropénie de grade ≥3 a été rapportée chez "
