@@ -893,7 +893,7 @@ add_paragraph(doc,
     "point de départ pour la calibration des Slopes humains.",
     first_line_indent=1.0)
 
-add_heading(doc, "3.2.2 Simulation de population humaine (N=300)", 3)
+add_heading(doc, "3.2.2 Simulation de population humaine (N=300) et validation", 3)
 add_paragraph(doc,
     "La simulation de population virtuelle (N=300 patients, T-DXd 5,4 mg/kg Q3W × 6) "
     "a été réalisée en intégrant la variabilité inter-individuelle sur les paramètres PK "
@@ -902,9 +902,11 @@ add_paragraph(doc,
     "70 kg).",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Pour chaque patient simulé, le nadir de chaque lignée cellulaire a été extrait "
-    "sur les 126 jours de suivi (6 cycles), et classifié selon les critères CTCAE v5. "
-    "Les résultats sont présentés ci-dessous :",
+    "Les données cliniques disponibles (BLA 761139, DESTINY-Breast01) ne comportent pas "
+    "de profils individuels de cytopénie en fonction du temps, mais uniquement des "
+    "pourcentages de grades agrégés sur l'ensemble du traitement. La validation repose "
+    "donc sur la comparaison des distributions de grades CTCAE v5 au nadir, extraites "
+    "pour chaque patient simulé sur les 126 jours de suivi (6 cycles).",
     first_line_indent=1.0)
 add_table_simple(doc,
     ["Toxicité", "G0 — Modèle (%)", "G1 (%)", "G2 (%)", "G3 (%)", "G4 (%)", "Tout grade (%)", "G3-4 (%)"],
@@ -915,18 +917,12 @@ add_table_simple(doc,
     ],
     col_widths=[3.5, 2.5, 1.7, 1.7, 1.7, 1.7, 2.5, 2.0])
 add_paragraph(doc,
-    "La concordance avec les données FDA (BLA 761139, DESTINY-Breast01) est "
-    "remarquable : neutropénie tout grade 29% (modèle) vs 29% (FDA), G3-4 16% vs 16% ; "
-    "anémie tout grade 72% vs 70%, G3-4 9% vs 9% ; thrombocytopénie tout grade 40% vs 37%, "
-    "G3-4 3% vs 3%. Ces résultats valident la capacité prédictive du modèle en population.",
-    first_line_indent=1.0)
-
-add_heading(doc, "3.2.3 Visualisation comparative", 3)
-add_paragraph(doc,
-    "La figure principale de cette étape (poster_grades_tdxd) présente les distributions "
-    "de grades sous forme de barres empilées (G4 en bas, G0 en haut) pour les trois "
-    "toxicités hématologiques, avec les données FDA superposées. Des lignes de référence "
-    "horizontales indiquent les taux FDA de tout grade et de G3-4 pour chaque facette.",
+    "La concordance avec les données FDA est remarquable : neutropénie tout grade 29% "
+    "(modèle) vs 29% (FDA), G3-4 16% vs 16% ; anémie tout grade 72% vs 70%, G3-4 9% vs 9% ; "
+    "thrombocytopénie tout grade 40% vs 37%, G3-4 3% vs 3%. Ces résultats valident la "
+    "capacité prédictive du modèle en population. La figure ci-dessous présente ces "
+    "distributions sous forme de barres empilées, avec les taux FDA superposés en lignes "
+    "de référence.",
     first_line_indent=1.0)
 
 p = doc.add_paragraph()
