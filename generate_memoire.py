@@ -885,9 +885,12 @@ add_paragraph(doc,
     "paramètres cohérents avec les données publiées (t½β ≈ 3–5 jours chez le rat).",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Les paramètres Slope calibrés sur données rat ont ensuite fourni la base de "
-    "référence pour l'estimation des Slopes humains, en tenant compte du ratio "
-    "de puissance entre les espèces et de la différence de sensibilité des progéniteurs.",
+    "Pour la pharmacodynamique, les paramètres Slope_MPP et Slope_CMP ont été conservés "
+    "tels quels depuis Fornari (2019) (carboplatine rat). Seul Slope_MEP a été recalibré "
+    "visuellement sur les profils réticulocytaires simulés (valeur ajustée : 1,00 µM⁻¹, "
+    "contre 2,19 µM⁻¹ dans Fornari 2019), afin de corriger une surestimation de la "
+    "suppression érythroïde spécifique au T-DXd. Ces valeurs rat ont ensuite servi de "
+    "point de départ pour la calibration des Slopes humains.",
     first_line_indent=1.0)
 
 add_heading(doc, "3.2.2 Simulation de population humaine (N=300)", 3)
