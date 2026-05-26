@@ -241,3 +241,7 @@ cat(sprintf(fmt, "Thrombo — Modèle",
 cat(sprintf(fmt, "Thrombo — FDA",
             100 - fda_plt["G0"], fda_plt["G3"] + fda_plt["G4"]))
 cat("\n")
+
+# Lancer analyses de performance
+source("plot_model_performance.R")
+source("sensitivity_analysis.R")
