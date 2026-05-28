@@ -1050,8 +1050,17 @@ add_paragraph(doc,
     first_line_indent=1.0)
 add_paragraph(doc,
     "Les paramètres PK estimés pour les 8 animaux sont résumés dans le tableau ci-dessous. "
-    "La variabilité inter-animale (CV%) reste modérée pour tous les paramètres, "
-    "indiquant une homogénéité PK cohérente entre les 4 niveaux de dose :",
+    "Le coefficient de variation inter-animale (CV%) est calculé de façon empirique "
+    "à partir des n=8 estimations individuelles :",
+    first_line_indent=1.0)
+add_equation(doc, "CV% = (σ / μ) × 100    avec μ = moyenne des θᵢ,  σ = écart-type des θᵢ")
+add_paragraph(doc,
+    "Contrairement au CV de population issu d'un modèle NLME (CV% ≈ ω × 100, §2.5), "
+    "ce CV empirique ne suppose aucune distribution log-normale : il reflète directement "
+    "la dispersion observée entre les valeurs individuelles estimées par Nelder-Mead. "
+    "Un CV < 25% est généralement considéré comme une variabilité modérée en "
+    "pharmacocinétique préclinique. Les valeurs obtenues indiquent une homogénéité PK "
+    "cohérente entre les 4 niveaux de dose :",
     first_line_indent=1.0)
 add_table_simple(doc,
     ["Paramètre", "Moyenne (n=8)", "CV (%)", "Interprétation"],
