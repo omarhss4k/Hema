@@ -15,7 +15,7 @@
 #   TSC = λ0/k2   (µg/L — doit être entre Cmax(1.2mg/kg) et Cmax(5.6mg/kg))
 #   MTT = 4/k1    (jours)
 #
-# Paramètres PD estimés (4) : λ0, λ1, k1, k2
+# Paramètres PD estimés (4) : λ0, λ1, k1, TSC  (k2 = λ0/TSC dérivé)
 #
 # Schéma : dose unique (j0)
 # Groupes : Vehicule | 1.2 mg/kg (Group 4) | 5.6 mg/kg (Group 5) | 11.8 mg/kg (Group 7)
@@ -197,14 +197,16 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
 }
 
 # =============================================================================
-# 5. FONCTION OBJECTIVE  (L0, L1, k1, k2 — log-espace)
+# 5. FONCTION OBJECTIVE  (L0, L1, k1, TSC — log-espace)
+#    TSC borné dans [Cmax_1p2, Cmax_5p6] → k2 = L0/TSC dérivé
 # =============================================================================
 
 objective_simeoni <- function(logpar) {
   par <- exp(logpar)
   L0 <- unname(par[1]); L1 <- unname(par[2])
-  k1 <- unname(par[3]); k2 <- unname(par[4])
-  if (any(par <= 0)) return(1e12)
+  k1 <- unname(par[3]); TSC <- unname(par[4])
+  k2 <- L0 / TSC
+  if (any(par <= 0) || k2 <= 0) return(1e12)
 
   params_all <- c(pk_fixed, L0 = L0, L1 = L1, k1 = k1, k2 = k2)
 
@@ -233,45 +235,36 @@ objective_simeoni <- function(logpar) {
 # =============================================================================
 # 6. VALEURS INITIALES
 #
-# Clé : k2_init ciblé pour que TSC ≈ moyenne géométrique(Cmax_1p2, Cmax_5p6)
-#   → TSC entre les deux doses "seuil" de la réponse
+#   Paramètre 4 = TSC (µg/L), borné dur dans [Cmax_1p2, Cmax_5p6]
+#   Initialisation = moyenne géométrique des deux Cmax
 # =============================================================================
 
 lm_ctrl <- lm(log(tv_ctrl[ok_ctrl]) ~ times_d[ok_ctrl])
-L0_init <- max(coef(lm_ctrl)[2], 0.005)
-L1_init <- max(tv_ctrl[ok_ctrl], na.rm = TRUE) * L0_init * 50
-k1_init <- 4 / 7
-
-# TSC cible = moyenne géométrique entre Cmax(1.2) et Cmax(5.6)
-tsc_target <- sqrt(Cmax_1p2 * Cmax_5p6)
-k2_init    <- L0_init / tsc_target
-
-init_pd <- c(L0 = L0_init, L1 = L1_init, k1 = k1_init, k2 = k2_init)
+L0_init  <- max(coef(lm_ctrl)[2], 0.005)
+L1_init  <- max(tv_ctrl[ok_ctrl], na.rm = TRUE) * L0_init * 50
+k1_init  <- 4 / 7
+TSC_init <- sqrt(Cmax_1p2 * Cmax_5p6)   # moyenne géométrique
 
 cat("\n=== Valeurs initiales PD ===\n")
-cat(sprintf("L0  = %.5f /j\n",       init_pd["L0"]))
-cat(sprintf("L1  = %.2f mm³/j\n",    init_pd["L1"]))
-cat(sprintf("k1  = %.4f /j  (MTT = %.1f j)\n", init_pd["k1"], 4/init_pd["k1"]))
-cat(sprintf("k2  = %.3e L/µg/j\n",   init_pd["k2"]))
-cat(sprintf("TSC initiale = %.0f µg/L (entre Cmax_1.2=%.0f et Cmax_5.6=%.0f)\n",
-            L0_init/k2_init, Cmax_1p2, Cmax_5p6))
+cat(sprintf("L0  = %.5f /j\n",    L0_init))
+cat(sprintf("L1  = %.2f mm³/j\n", L1_init))
+cat(sprintf("k1  = %.4f /j  (MTT = %.1f j)\n", k1_init, 4/k1_init))
+cat(sprintf("TSC = %.0f µg/L  (entre Cmax_1.2=%.0f et Cmax_5.6=%.0f)\n",
+            TSC_init, Cmax_1p2, Cmax_5p6))
 
 # =============================================================================
 # 7. OPTIMISATION — DEoptim + affinage nlminb
 #
-#   Bornes k2 : TSC ∈ [Cmax_1p2 / 5, Cmax_5p6 × 5]
-#     → k2 ∈ [L0/(Cmax_5p6×5),  L0/(Cmax_1p2/5)]
+#   Bornes TSC : [Cmax_1p2, Cmax_5p6] — contrainte dure et directe
+#     → 1.2 mg/kg toujours en-dessous du seuil (croissance possible)
+#     → 5.6 mg/kg toujours au-dessus du seuil (régression possible)
 # =============================================================================
 
-k2_lower <- L0_init / (Cmax_5p6 * 5)
-k2_upper <- L0_init / (Cmax_1p2 / 5)
+lower_log <- c(log(0.005), log(10),   log(0.2), log(Cmax_1p2))
+upper_log <- c(log(1.0),   log(1e6),  log(4.0), log(Cmax_5p6))
 
-lower_log <- c(log(0.005), log(10),   log(0.2), log(k2_lower))
-upper_log <- c(log(1.0),   log(1e6),  log(4.0), log(k2_upper))
-
-cat(sprintf("\nBornes k2 : [%.2e, %.2e]  →  TSC ∈ [%.0f, %.0f] µg/L\n",
-            k2_lower, k2_upper,
-            L0_init/k2_upper, L0_init/k2_lower))
+cat(sprintf("\nBornes TSC : [%.0f, %.0f] µg/L  (= [Cmax_1.2, Cmax_5.6])\n",
+            Cmax_1p2, Cmax_5p6))
 
 cat("Optimisation DEoptim en cours...\n")
 set.seed(42)
@@ -299,23 +292,29 @@ fit_local <- nlminb(
                    rel.tol = 1e-12, x.tol = 1e-12)
 )
 
-best_pd        <- exp(fit_local$par)
-names(best_pd) <- c("L0", "L1", "k1", "k2")
+best_log       <- fit_local$par
+best_pd_raw    <- exp(best_log)
+# [L0, L1, k1, TSC]
+L0_est  <- best_pd_raw[1]; L1_est  <- best_pd_raw[2]
+k1_est  <- best_pd_raw[3]; TSC_est <- best_pd_raw[4]
+k2_est  <- L0_est / TSC_est
+
+best_pd <- c(L0 = L0_est, L1 = L1_est, k1 = k1_est, k2 = k2_est)
 
 # =============================================================================
 # 8. PARAMÈTRES DÉRIVÉS
 # =============================================================================
 
-tsc <- unname(best_pd["L0"] / best_pd["k2"])
-mtt <- 4 / unname(best_pd["k1"])
+tsc <- TSC_est
+mtt <- 4 / k1_est
 
 cat("\n=== Paramètres PD estimés — SNU ===\n")
-cat(sprintf("λ0 (L0) = %.6f /j\n",       best_pd["L0"]))
-cat(sprintf("λ1 (L1) = %.2f mm³/j\n",    best_pd["L1"]))
-cat(sprintf("k1      = %.5f /j\n",        best_pd["k1"]))
-cat(sprintf("k2      = %.3e L/µg/j\n",   best_pd["k2"]))
+cat(sprintf("λ0 (L0) = %.6f /j\n",       L0_est))
+cat(sprintf("λ1 (L1) = %.2f mm³/j\n",    L1_est))
+cat(sprintf("k1      = %.5f /j\n",        k1_est))
+cat(sprintf("k2      = %.3e L/µg/j  (= L0/TSC)\n", k2_est))
 cat("──────────────────────────────────────────────────\n")
-cat(sprintf("TSC = %.0f µg/L  (Cmax_1.2=%.0f | Cmax_5.6=%.0f)\n",
+cat(sprintf("TSC = %.0f µg/L  (bornes [%.0f, %.0f])\n",
             tsc, Cmax_1p2, Cmax_5p6))
 cat(sprintf("MTT = %.1f j\n", mtt))
 cat(sprintf("Objectif DEoptim = %.6f\n", fit_de$optim$bestval))
@@ -422,11 +421,11 @@ cat("\nGraphique → scripts/plot_PKPD_simeoni_SNU.png\n")
 
 simeoni_results_SNU <- list(
   pk_fixed          = pk_fixed,
-  L0                = unname(best_pd["L0"]),
-  L1                = unname(best_pd["L1"]),
-  k1                = unname(best_pd["k1"]),
-  k2                = unname(best_pd["k2"]),
-  TSC_ugL           = tsc,
+  L0                = L0_est,
+  L1                = L1_est,
+  k1                = k1_est,
+  k2                = k2_est,
+  TSC_ugL           = TSC_est,
   MTT_days          = mtt,
   objective_deoptim = fit_de$optim$bestval,
   objective_final   = fit_local$objective
