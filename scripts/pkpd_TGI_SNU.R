@@ -1,12 +1,22 @@
 # =============================================================================
 # Modèle PK/PD TGI — Fc-silent FGFR2-huBPA-LP1
-# Cohorte : SNU (xénogreffe)
+# Cohorte : SNU (xénogreffe souris)
 #
-# PK  : 2 compartiments IV bolus (paramètres fixés depuis fit singe)
-# PD  : dTV/dt = kg·TV − ke·[C1/(EC50+C1)]·TV
+# PK  : 1 compartiment IV bolus — paramètres estimés depuis les données souris
+#         dA1/dt = -ke_drug · A1      A1 en µg/kg
+#
+# PD  : dTV/dt = kg · TV − ki · [A1/(EC50_dose + A1)] · TV
+#
+#   Tous les paramètres PK/PD estimés depuis les données tumorales.
+#   EC50_dose et A1 sont en µg/kg (unités de dose) — pas besoin de V1.
+#
+# Paramètres estimés (4) : kg, ki, EC50_dose, ke_drug
+#
+#   TSC_dose = kg · EC50_dose / (ki − kg)  [µg/kg, si ki > kg]
+#   t½_drug  = ln2 / ke_drug               [jours]
 #
 # Schéma : dose unique (j0)
-# Groupes : Vehicule (contrôle) | 1.2 mg/kg (Group 4) | 5.6 mg/kg (Group 5) | 11.8 mg/kg (Group 7)
+# Groupes : Vehicule | 1.2 mg/kg (Group 4) | 5.6 mg/kg (Group 5) | 11.8 mg/kg (Group 7)
 #
 # Structure Excel (Tumor_volum_SNU.xlsx) — 2 blocs séparés par une ligne vide :
 #   Bloc 1 : moyennes  — colonnes A=Temps, B=Vehicule, C=Group4, D=Group5, F=Group7
@@ -19,26 +29,7 @@ library(ggplot2)
 library(readxl)
 
 # =============================================================================
-# 1. PARAMÈTRES PK FIXÉS (conversion h → j)
-# =============================================================================
-
-load("scripts/resultats_PK2comp_rxode2_FGFR2.RData")   # → pk2comp_rxode2
-
-pk_fixed <- c(
-  CL = unname(pk2comp_rxode2$CL) * 24,
-  V1 = unname(pk2comp_rxode2$V1),
-  V2 = unname(pk2comp_rxode2$V2),
-  Q  = unname(pk2comp_rxode2$Q)  * 24
-)
-
-cat("=== Paramètres PK fixés (jours) ===\n")
-cat(sprintf("CL = %.5f L/j/kg\n", pk_fixed["CL"]))
-cat(sprintf("V1 = %.5f L/kg\n",   pk_fixed["V1"]))
-cat(sprintf("V2 = %.5f L/kg\n",   pk_fixed["V2"]))
-cat(sprintf("Q  = %.5f L/j/kg\n", pk_fixed["Q"]))
-
-# =============================================================================
-# 2. DONNÉES TUMORALES — SNU
+# 1. DONNÉES TUMORALES — SNU
 #
 # Colonnes attendues dans chaque bloc :
 #   1 (A) = Temps (jours)
@@ -53,26 +44,23 @@ raw_snu <- suppressMessages(
   read_xlsx("Tumor_volum_SNU.xlsx", col_names = FALSE, .name_repair = "minimal")
 )
 
-# Repérer les deux lignes d'en-tête (contiennent "Time")
 header_rows <- which(grepl("Time", trimws(as.character(raw_snu[[1]])), ignore.case = TRUE))
 stopifnot("2 blocs attendus (moyennes + SEM)" = length(header_rows) == 2)
 
-# Bloc 1 : moyennes
 b1 <- raw_snu[seq(header_rows[1] + 1, header_rows[2] - 1), ]
 b1 <- b1[!is.na(suppressWarnings(as.numeric(as.character(b1[[1]])))), ]
 
-# Bloc 2 : SEM
 b2 <- raw_snu[seq(header_rows[2] + 1, nrow(raw_snu)), ]
 b2 <- b2[!is.na(suppressWarnings(as.numeric(as.character(b2[[1]])))), ]
 
-num_col  <- function(df, j) suppressWarnings(as.numeric(as.character(df[[j]])))
-fix_sem  <- function(x) ifelse(is.na(x) | x <= 0, 1, x)
+num_col <- function(df, j) suppressWarnings(as.numeric(as.character(df[[j]])))
+fix_sem <- function(x) ifelse(is.na(x) | x <= 0, 1, x)
 
 times_d   <- num_col(b1, 1)
-tv_ctrl   <- num_col(b1, 2)   # Vehicule
-tv_d1p2   <- num_col(b1, 3)   # Group 4 = 1.2 mg/kg
-tv_d5p6   <- num_col(b1, 4)   # Group 5 = 5.6 mg/kg
-tv_d11p8  <- num_col(b1, 6)   # Group 7 = 11.8 mg/kg  (col 5 vide)
+tv_ctrl   <- num_col(b1, 2)
+tv_d1p2   <- num_col(b1, 3)   # 1.2 mg/kg
+tv_d5p6   <- num_col(b1, 4)   # 5.6 mg/kg
+tv_d11p8  <- num_col(b1, 6)   # 11.8 mg/kg  (col 5 vide)
 
 sem_ctrl  <- fix_sem(num_col(b2, 2))
 sem_d1p2  <- fix_sem(num_col(b2, 3))
@@ -94,35 +82,35 @@ ok_d1p2  <- !is.na(tv_d1p2)
 ok_d5p6  <- !is.na(tv_d5p6)
 ok_d11p8 <- !is.na(tv_d11p8)
 
-cat(sprintf("\nTV initiale (j0) : Ctrl=%.0f | 1.2mg=%.0f | 5.6mg=%.0f | 11.8mg=%.0f mm³\n",
+cat(sprintf("TV initiale (j0) : Ctrl=%.0f | 1.2mg=%.0f | 5.6mg=%.0f | 11.8mg=%.0f mm³\n",
             tv0_ctrl, tv0_d1p2, tv0_d5p6, tv0_d11p8))
 
 # =============================================================================
-# 3. ÉQUATIONS DU MODÈLE PK/PD
+# 2. ÉQUATIONS DU MODÈLE PK/PD
 #
-#   dA1/dt = -(CL/V1 + Q/V1)·A1 + (Q/V2)·A2
-#   dA2/dt =  (Q/V1)·A1 - (Q/V2)·A2
-#   C1     = A1/V1
-#   dTV/dt =  kg·TV - ke·[C1/(EC50+C1)]·TV
+#   dA1/dt = -ke_drug · A1
+#   dTV/dt =  kg · TV − ki · [A1/(EC50_dose + A1)] · TV
 # =============================================================================
 
 pkpd_rhs <- function(t, state, parms) {
-  A1 <- state["A1"]; A2 <- state["A2"]; TV <- state["TV"]
-  CL <- parms["CL"]; V1 <- parms["V1"]; V2 <- parms["V2"]; Q <- parms["Q"]
-  kg <- parms["kg"]; ke <- parms["ke"]; EC50 <- parms["EC50"]
+  A1 <- max(state["A1"], 0)
+  TV <- max(state["TV"], 0)
 
-  C1  <- A1 / V1
-  Inh <- C1 / (EC50 + C1)
+  kg      <- parms["kg"]
+  ki      <- parms["ki"]
+  EC50d   <- parms["EC50_dose"]
+  ke_drug <- parms["ke_drug"]
+
+  Inh <- A1 / (EC50d + A1)
 
   list(c(
-    A1 = -(CL/V1 + Q/V1)*A1 + (Q/V2)*A2,
-    A2 =  (Q/V1)*A1 - (Q/V2)*A2,
-    TV =  kg*TV - ke*Inh*TV
+    A1 = -ke_drug * A1,
+    TV =  kg * TV - ki * Inh * TV
   ))
 }
 
 # =============================================================================
-# 4. FONCTIONS DE SIMULATION
+# 3. FONCTIONS DE SIMULATION
 # =============================================================================
 
 sim_ctrl_fn <- function(kg, tv0, times_out) tv0 * exp(kg * times_out)
@@ -131,7 +119,7 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
   t_all <- sort(unique(c(0, times_out)))
   out <- tryCatch(
     as.data.frame(lsoda(
-      y     = c(A1 = dose_ugkg, A2 = 0, TV = tv0),
+      y     = c(A1 = dose_ugkg, TV = tv0),
       times = t_all,
       func  = pkpd_rhs,
       parms = params
@@ -144,62 +132,66 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
 }
 
 # =============================================================================
-# 5. FONCTION OBJECTIVE
-#    Paramètres libres : kg, ke, EC50 (log-espace)
-#    Pondération par 1/SEM² sur log(TV)
+# 4. FONCTION OBJECTIVE
+#    Paramètres : kg, ki, EC50_dose, ke_drug  (log-espace)
 # =============================================================================
 
 objective_pkpd <- function(logpar) {
-  par  <- exp(logpar)
-  kg   <- par[1]; ke <- par[2]; EC50 <- par[3]
+  par     <- exp(logpar)
+  kg      <- par[1]; ki      <- par[2]
+  EC50d   <- par[3]; ke_drug <- par[4]
   if (any(par <= 0)) return(1e12)
 
-  params_all <- c(pk_fixed, kg = kg, ke = ke, EC50 = EC50)
+  params_all <- c(kg = kg, ki = ki, EC50_dose = EC50d, ke_drug = ke_drug)
 
-  # Contrôle
   pc <- sim_ctrl_fn(kg, tv0_ctrl, times_d[ok_ctrl])
   if (any(pc <= 0 | is.na(pc))) return(1e12)
 
-  # 1.2 mg/kg
-  p1 <- sim_treated(1200, tv0_d1p2, params_all, times_d[ok_d1p2])
+  p1 <- sim_treated(1200,  tv0_d1p2,  params_all, times_d[ok_d1p2])
   if (any(is.na(p1) | p1 <= 0)) return(1e12)
 
-  # 5.6 mg/kg
-  p5 <- sim_treated(5600, tv0_d5p6, params_all, times_d[ok_d5p6])
+  p5 <- sim_treated(5600,  tv0_d5p6,  params_all, times_d[ok_d5p6])
   if (any(is.na(p5) | p5 <= 0)) return(1e12)
 
-  # 11.8 mg/kg
   p11 <- sim_treated(11800, tv0_d11p8, params_all, times_d[ok_d11p8])
   if (any(is.na(p11) | p11 <= 0)) return(1e12)
 
-  sum(1/sem_ctrl[ok_ctrl]^2  * (log(tv_ctrl[ok_ctrl])   - log(pc))^2,  na.rm = TRUE) +
-  sum(1/sem_d1p2[ok_d1p2]^2  * (log(tv_d1p2[ok_d1p2])  - log(p1))^2,  na.rm = TRUE) +
-  sum(1/sem_d5p6[ok_d5p6]^2  * (log(tv_d5p6[ok_d5p6])  - log(p5))^2,  na.rm = TRUE) +
+  sum(1/sem_ctrl[ok_ctrl]^2    * (log(tv_ctrl[ok_ctrl])    - log(pc))^2,  na.rm = TRUE) +
+  sum(1/sem_d1p2[ok_d1p2]^2   * (log(tv_d1p2[ok_d1p2])   - log(p1))^2,  na.rm = TRUE) +
+  sum(1/sem_d5p6[ok_d5p6]^2   * (log(tv_d5p6[ok_d5p6])   - log(p5))^2,  na.rm = TRUE) +
   sum(1/sem_d11p8[ok_d11p8]^2 * (log(tv_d11p8[ok_d11p8]) - log(p11))^2, na.rm = TRUE)
 }
 
 # =============================================================================
-# 6. VALEURS INITIALES PD
+# 5. VALEURS INITIALES
 # =============================================================================
 
-lm_ctrl   <- lm(log(tv_ctrl[ok_ctrl]) ~ times_d[ok_ctrl])
-kg_init   <- max(coef(lm_ctrl)[2], 0.005)
-EC50_init <- 11800 / as.numeric(pk_fixed["V1"]) * 0.10
-ke_init   <- kg_init * 3
+lm_ctrl    <- lm(log(tv_ctrl[ok_ctrl]) ~ times_d[ok_ctrl])
+kg_init    <- max(coef(lm_ctrl)[2], 0.005)
+ki_init    <- kg_init * 3
+ke_drug_init <- log(2) / 7       # t½ ~ 7 j (mAb chez la souris)
+EC50d_init   <- 2500             # µg/kg — entre 1.2 et 5.6 mg/kg
 
-init_pd <- c(kg = kg_init, ke = ke_init, EC50 = EC50_init)
+init_pd <- c(kg = kg_init, ki = ki_init, EC50_dose = EC50d_init, ke_drug = ke_drug_init)
 
-cat("\n=== Valeurs initiales PD ===\n")
-cat(sprintf("kg   = %.5f /j  (t½ = %.1f j)\n", init_pd["kg"],   log(2)/init_pd["kg"]))
-cat(sprintf("ke   = %.5f /j\n",                  init_pd["ke"]))
-cat(sprintf("EC50 = %.1f µg/L\n",                init_pd["EC50"]))
+cat("\n=== Valeurs initiales ===\n")
+cat(sprintf("kg       = %.5f /j  (t½ tumeur = %.1f j)\n", init_pd["kg"], log(2)/init_pd["kg"]))
+cat(sprintf("ki       = %.5f /j\n",                         init_pd["ki"]))
+cat(sprintf("EC50_dose= %.0f µg/kg = %.2f mg/kg\n",         init_pd["EC50_dose"], init_pd["EC50_dose"]/1000))
+cat(sprintf("ke_drug  = %.4f /j  (t½ drug = %.1f j)\n",    init_pd["ke_drug"], log(2)/init_pd["ke_drug"]))
 
 # =============================================================================
-# 7. OPTIMISATION — DEoptim (global) + affinage nlminb (local)
+# 6. OPTIMISATION — DEoptim + affinage nlminb
+#
+#   Bornes (log-espace) :
+#     kg        ∈ [0.005, 1.0]    /j
+#     ki        ∈ [0.01, 10.0]    /j
+#     EC50_dose ∈ [100, 1e5]      µg/kg  (0.1 – 100 mg/kg)
+#     ke_drug   ∈ [0.03, 2.0]     /j     (t½ 8h – 23j)
 # =============================================================================
 
-lower_log <- c(log(0.005), log(0.01),  log(1))
-upper_log <- c(log(1.0),   log(10.0),  log(1e6))
+lower_log <- c(log(0.005), log(0.01), log(100),  log(0.03))
+upper_log <- c(log(1.0),   log(10.0), log(1e5),  log(2.0))
 
 cat("\nOptimisation DEoptim en cours...\n")
 set.seed(42)
@@ -208,8 +200,8 @@ fit_de <- DEoptim(
   lower   = lower_log,
   upper   = upper_log,
   control = DEoptim.control(
-    NP      = 90,
-    itermax = 500,
+    NP      = 120,
+    itermax = 600,
     F       = 0.8,
     CR      = 0.9,
     trace   = 100,
@@ -228,41 +220,46 @@ fit_local <- nlminb(
 )
 
 best_pd        <- exp(fit_local$par)
-names(best_pd) <- c("kg", "ke", "EC50")
+names(best_pd) <- c("kg", "ki", "EC50_dose", "ke_drug")
 
 # =============================================================================
-# 8. PARAMÈTRES DÉRIVÉS
+# 7. PARAMÈTRES DÉRIVÉS
 # =============================================================================
 
-ratio_ke_kg <- unname(best_pd["ke"] / best_pd["kg"])
+ratio_ki_kg <- unname(best_pd["ki"] / best_pd["kg"])
+t_half_drug <- log(2) / unname(best_pd["ke_drug"])
 
-tsc <- if (best_pd["ke"] > best_pd["kg"])
-  unname(best_pd["kg"] * best_pd["EC50"] / (best_pd["ke"] - best_pd["kg"]))
+tsc_dose <- if (best_pd["ki"] > best_pd["kg"])
+  unname(best_pd["kg"] * best_pd["EC50_dose"] / (best_pd["ki"] - best_pd["kg"]))
 else NA_real_
 
-cat("\n=== Paramètres PD estimés — SNU ===\n")
-cat(sprintf("kg   = %.6f /j   (t½ = %.1f j)\n", best_pd["kg"], log(2)/best_pd["kg"]))
-cat(sprintf("ke   = %.6f /j\n",                   best_pd["ke"]))
-cat(sprintf("EC50 = %.2f µg/L\n",                 best_pd["EC50"]))
+tsc_mgkg <- if (!is.na(tsc_dose)) tsc_dose / 1000 else NA_real_
+
+cat("\n=== Paramètres estimés — SNU ===\n")
+cat(sprintf("kg       = %.6f /j   (t½ tumeur = %.1f j)\n", best_pd["kg"], log(2)/best_pd["kg"]))
+cat(sprintf("ki       = %.6f /j\n",                          best_pd["ki"]))
+cat(sprintf("EC50_dose= %.0f µg/kg = %.2f mg/kg\n",
+            best_pd["EC50_dose"], best_pd["EC50_dose"]/1000))
+cat(sprintf("ke_drug  = %.5f /j   (t½ drug = %.1f j)\n",   best_pd["ke_drug"], t_half_drug))
 cat("──────────────────────────────────────────────────────────\n")
-cat(sprintf("ke/kg = %.2f  →  %s\n",
-            ratio_ke_kg,
-            ifelse(ratio_ke_kg > 1,
-                   "régression tumorale atteignable (ke > kg)",
-                   "ralentissement sans régression (ke ≤ kg)")))
-if (!is.na(tsc))
-  cat(sprintf("TSC   = %.1f µg/L  (concentration statique tumorale)\n", tsc))
+cat(sprintf("ki/kg = %.2f  →  %s\n",
+            ratio_ki_kg,
+            ifelse(ratio_ki_kg > 1,
+                   "régression tumorale atteignable (ki > kg)",
+                   "ralentissement sans régression (ki ≤ kg)")))
+if (!is.na(tsc_mgkg))
+  cat(sprintf("TSC   = %.2f mg/kg\n", tsc_mgkg))
 cat(sprintf("Objectif DEoptim = %.6f\n", fit_de$optim$bestval))
 cat(sprintf("Objectif final   = %.6f\n", fit_local$objective))
 
 # =============================================================================
-# 9. SIMULATION FINALE
+# 8. SIMULATION FINALE
 # =============================================================================
 
-params_best <- c(pk_fixed,
-                 kg   = best_pd["kg"],
-                 ke   = best_pd["ke"],
-                 EC50 = best_pd["EC50"])
+params_best <- c(kg      = best_pd["kg"],
+                 ki      = best_pd["ki"],
+                 EC50_dose = best_pd["EC50_dose"],
+                 ke_drug = best_pd["ke_drug"])
 
 times_sim <- seq(0, max(times_d, na.rm = TRUE) * 1.05, by = 0.5)
 
@@ -290,7 +287,7 @@ df_sim$Groupe <- factor(df_sim$Groupe, levels = niv)
 df_obs$Groupe <- factor(df_obs$Groupe, levels = niv)
 
 # =============================================================================
-# 10. GRAPHIQUE
+# 9. GRAPHIQUE
 # =============================================================================
 
 cols <- c("Vehicule"    = "#888888",
@@ -301,11 +298,12 @@ cols <- c("Vehicule"    = "#888888",
 ymax <- max(df_obs$TV + df_obs$sem, na.rm = TRUE)
 
 subtitle_txt <- paste0(
-  "kg = ", round(best_pd["kg"], 4),  " /j  |  ",
-  "ke = ", round(best_pd["ke"], 4),  " /j  |  ",
-  "EC50 = ", round(best_pd["EC50"], 0), " µg/L  |  ",
-  "ke/kg = ", round(ratio_ke_kg, 2),
-  if (!is.na(tsc)) paste0("  |  TSC = ", round(tsc, 0), " µg/L") else ""
+  "kg = ", round(best_pd["kg"], 4), " /j  |  ",
+  "ki = ", round(best_pd["ki"], 4), " /j  |  ",
+  "EC50 = ", round(best_pd["EC50_dose"]/1000, 2), " mg/kg  |  ",
+  "ke = ", round(best_pd["ke_drug"], 3), " /j  |  ",
+  "t½_drug = ", round(t_half_drug, 1), " j",
+  if (!is.na(tsc_mgkg)) paste0("  |  TSC = ", round(tsc_mgkg, 2), " mg/kg") else ""
 )
 
 p_pkpd <- ggplot() +
@@ -337,7 +335,7 @@ p_pkpd <- ggplot() +
   theme_bw(base_size = 13) +
   theme(
     legend.position = "right",
-    plot.subtitle   = element_text(size = 9, color = "grey50"),
+    plot.subtitle   = element_text(size = 8, color = "grey50"),
     plot.margin     = margin(t = 5, r = 10, b = 25, l = 5)
   )
 
@@ -347,19 +345,21 @@ ggsave("scripts/plot_PKPD_TGI_SNU.png", p_pkpd,
 cat("\nGraphique → scripts/plot_PKPD_TGI_SNU.png\n")
 
 # =============================================================================
-# 11. SAUVEGARDE
+# 10. SAUVEGARDE
 # =============================================================================
 
 pkpd_results_SNU <- list(
-  pk_fixed    = pk_fixed,
-  kg          = unname(best_pd["kg"]),
-  ke          = unname(best_pd["ke"]),
-  EC50        = unname(best_pd["EC50"]),
-  ratio_ke_kg = ratio_ke_kg,
-  TSC_ugL     = tsc,
+  kg           = unname(best_pd["kg"]),
+  ki           = unname(best_pd["ki"]),
+  EC50_dose_ugkg = unname(best_pd["EC50_dose"]),
+  EC50_mgkg    = unname(best_pd["EC50_dose"]) / 1000,
+  ke_drug      = unname(best_pd["ke_drug"]),
+  ratio_ki_kg  = ratio_ki_kg,
+  TSC_mgkg     = tsc_mgkg,
+  t_half_drug  = t_half_drug,
   t_half_tumor = log(2) / unname(best_pd["kg"]),
-  objective   = fit_local$objective,
-  convergence = fit_local$convergence
+  objective    = fit_local$objective,
+  convergence  = fit_local$convergence
 )
 
 save(pkpd_results_SNU, file = "scripts/resultats_PKPD_TGI_SNU.RData")
