@@ -16,7 +16,7 @@
 #   TSC  ≈ λ0 / k2   (Tumor Static Concentration)
 #   MTT  = 4 / k1    (Mean Transit Time)
 #
-# Schéma : Q2W × 4 (j0, j14, j28, j42)
+# Schéma : dose unique (j0)
 # Groupes : Vehicule | 1.2 mg/kg (Group 4) | 5.6 mg/kg (Group 5) | 11.8 mg/kg (Group 7)
 #
 # Structure Excel (Tumor_volum_SNU.xlsx) — 2 blocs séparés par une ligne vide :
@@ -156,8 +156,6 @@ simeoni_ctrl_rhs <- function(t, state, parms) {
 # 4. FONCTIONS DE SIMULATION
 # =============================================================================
 
-dose_days <- c(0, 14, 28, 42)   # Q2W × 4
-
 sim_ctrl_fn <- function(L0, L1, tv0, times_out) {
   t_all <- sort(unique(c(0, times_out)))
   out <- tryCatch(
@@ -175,49 +173,20 @@ sim_ctrl_fn <- function(L0, L1, tv0, times_out) {
 }
 
 sim_treated <- function(dose_ugkg, tv0, params, times_out) {
-  t_end  <- max(times_out)
-  breaks <- c(dose_days, t_end + 1)
-
-  state <- c(A1 = dose_ugkg, A2 = 0, x1 = tv0, x2 = 0, x3 = 0, x4 = 0)
-  t_all <- numeric(0)
-  w_all <- numeric(0)
-
-  for (i in seq_along(dose_days)) {
-    t_start <- dose_days[i]
-    t_stop  <- min(breaks[i + 1], t_end)
-    if (t_start >= t_end) break
-
-    if (i > 1) state["A1"] <- state["A1"] + dose_ugkg
-
-    t_seg <- sort(unique(c(t_start,
-                           times_out[times_out > t_start & times_out <= t_stop],
-                           t_stop)))
-    if (length(t_seg) < 2) t_seg <- c(t_start, t_stop)
-
-    seg <- tryCatch(
-      as.data.frame(lsoda(
-        y     = state,
-        times = t_seg,
-        func  = simeoni_rhs,
-        parms = params,
-        atol  = 1e-6, rtol = 1e-6
-      )),
-      error = function(e) NULL
-    )
-    if (is.null(seg) || any(is.na(seg$x1))) return(rep(NA_real_, length(times_out)))
-
-    w_seg <- pmax(seg$x1, 0) + pmax(seg$x2, 0) + pmax(seg$x3, 0) + pmax(seg$x4, 0)
-    keep  <- if (length(t_all) > 0) seg$time > tail(t_all, 1) else rep(TRUE, nrow(seg))
-    t_all <- c(t_all, seg$time[keep])
-    w_all <- c(w_all, w_seg[keep])
-
-    last  <- seg[nrow(seg), ]
-    state <- c(A1 = last$A1, A2 = last$A2,
-               x1 = last$x1, x2 = last$x2, x3 = last$x3, x4 = last$x4)
-  }
-
-  if (length(t_all) == 0) return(rep(NA_real_, length(times_out)))
-  approx(t_all, w_all, xout = times_out, rule = 2)$y
+  t_all <- sort(unique(c(0, times_out)))
+  out <- tryCatch(
+    as.data.frame(lsoda(
+      y     = c(A1 = dose_ugkg, A2 = 0, x1 = tv0, x2 = 0, x3 = 0, x4 = 0),
+      times = t_all,
+      func  = simeoni_rhs,
+      parms = params,
+      atol  = 1e-6, rtol = 1e-6
+    )),
+    error = function(e) NULL
+  )
+  if (is.null(out) || any(is.na(out$x1))) return(rep(NA_real_, length(times_out)))
+  w_tot <- pmax(out$x1, 0) + pmax(out$x2, 0) + pmax(out$x3, 0) + pmax(out$x4, 0)
+  approx(out$time, w_tot, xout = times_out, rule = 2)$y
 }
 
 # =============================================================================
@@ -429,7 +398,7 @@ subtitle_txt <- paste0(
 )
 
 p_simeoni <- ggplot() +
-  geom_vline(xintercept = dose_days, linetype = "dashed",
+  geom_vline(xintercept = 0, linetype = "dashed",
              color = "grey70", linewidth = 0.4) +
   geom_line(data = df_sim[df_sim$Groupe != "Vehicule", ],
             aes(x = jour, y = TV, color = Groupe, group = Groupe),
@@ -443,10 +412,10 @@ p_simeoni <- ggplot() +
   geom_point(data = df_obs,
              aes(x = jour, y = TV, color = Groupe),
              size = 2.5) +
-  annotate("point", x = dose_days, y = -ymax * 0.06,
+  annotate("point", x = 0, y = -ymax * 0.06,
            shape = 17, size = 3.5, color = "#CC0000") +
-  annotate("text",  x = max(dose_days) + 1.5, y = -ymax * 0.06,
-           label = "= Traitement", hjust = 0, size = 3.2, color = "#CC0000") +
+  annotate("text",  x = 1.5, y = -ymax * 0.06,
+           label = "= Dose unique (j0)", hjust = 0, size = 3.2, color = "#CC0000") +
   scale_x_continuous(breaks = seq(0, max(times_d, na.rm = TRUE), by = 7)) +
   scale_color_manual(values = cols) +
   coord_cartesian(ylim = c(-ymax * 0.12, ymax * 1.1), clip = "off") +

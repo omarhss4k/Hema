@@ -5,7 +5,7 @@
 # PK  : 2 compartiments IV bolus (paramètres fixés depuis fit singe)
 # PD  : dTV/dt = kg·TV − ke·[C1/(EC50+C1)]·TV
 #
-# Schéma : Q2W × 4 (j0, j14, j28, j42)
+# Schéma : dose unique (j0)
 # Groupes : Vehicule (contrôle) | 1.2 mg/kg (Group 4) | 5.6 mg/kg (Group 5) | 11.8 mg/kg (Group 7)
 #
 # Structure Excel (Tumor_volum_SNU.xlsx) — 2 blocs séparés par une ligne vide :
@@ -125,25 +125,16 @@ pkpd_rhs <- function(t, state, parms) {
 # 4. FONCTIONS DE SIMULATION
 # =============================================================================
 
-dose_days <- c(0, 14, 28, 42)   # Q2W × 4
-
 sim_ctrl_fn <- function(kg, tv0, times_out) tv0 * exp(kg * times_out)
 
 sim_treated <- function(dose_ugkg, tv0, params, times_out) {
-  ev_doses <- data.frame(
-    var    = "A1",
-    time   = dose_days[-1],
-    value  = dose_ugkg,
-    method = "add"
-  )
   t_all <- sort(unique(c(0, times_out)))
   out <- tryCatch(
     as.data.frame(lsoda(
-      y      = c(A1 = dose_ugkg, A2 = 0, TV = tv0),
-      times  = t_all,
-      func   = pkpd_rhs,
-      parms  = params,
-      events = list(data = ev_doses)
+      y     = c(A1 = dose_ugkg, A2 = 0, TV = tv0),
+      times = t_all,
+      func  = pkpd_rhs,
+      parms = params
     )),
     error = function(e) NULL
   )
@@ -318,7 +309,7 @@ subtitle_txt <- paste0(
 )
 
 p_pkpd <- ggplot() +
-  geom_vline(xintercept = dose_days, linetype = "dashed",
+  geom_vline(xintercept = 0, linetype = "dashed",
              color = "grey70", linewidth = 0.4) +
   geom_line(data  = df_sim,
             aes(x = jour, y = TV, color = Groupe, group = Groupe),
@@ -329,10 +320,10 @@ p_pkpd <- ggplot() +
   geom_point(data = df_obs,
              aes(x = jour, y = TV, color = Groupe),
              size = 2.5) +
-  annotate("point", x = dose_days, y = -ymax * 0.06,
+  annotate("point", x = 0, y = -ymax * 0.06,
            shape = 17, size = 3.5, color = "#CC0000") +
-  annotate("text",  x = max(dose_days) + 1.5, y = -ymax * 0.06,
-           label = "= Traitement", hjust = 0, size = 3.2, color = "#CC0000") +
+  annotate("text",  x = 1.5, y = -ymax * 0.06,
+           label = "= Dose unique (j0)", hjust = 0, size = 3.2, color = "#CC0000") +
   scale_x_continuous(breaks = seq(0, max(times_d, na.rm = TRUE), by = 7)) +
   scale_color_manual(values = cols) +
   coord_cartesian(ylim = c(-ymax * 0.12, ymax * 1.1), clip = "off") +
