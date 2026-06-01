@@ -109,19 +109,27 @@ plot_all_cells <- function(sim, pars,
                     pars$RBC0,  dose_days, get_obs("RBC"))
   )
 
-  grid.arrange(grobs = panels, ncol = 2,
-               top = textGrob(titre, gp = gpar(fontface = "bold", fontsize = 15)))
+  arrangeGrob(grobs = panels, ncol = 2,
+              top = textGrob(titre, gp = gpar(fontface = "bold", fontsize = 15)))
 }
 
-# ── Sauvegarder en PDF ───────────────────────────────────
+# ── Sauvegarder en PDF + PNG ─────────────────────────────
 save_all_cells <- function(sim, pars, file, titre,
                            dose_days = NULL, obs_list = NULL,
                            width = 12, height = 11) {
+  p <- plot_all_cells(sim, pars, titre = titre,
+                      dose_days = dose_days, obs_list = obs_list)
+
   pdf(file, width = width, height = height)
-  plot_all_cells(sim, pars, titre = titre,
-                 dose_days = dose_days, obs_list = obs_list)
+  grid::grid.draw(p)
   dev.off()
   message("✓ Sauvegardé : ", file)
+
+  png_file <- sub("\\.pdf$", ".png", file)
+  png(png_file, width = width, height = height, units = "in", res = 300)
+  grid::grid.draw(p)
+  dev.off()
+  message("✓ Sauvegardé : ", png_file)
 }
 
 # ── Résumé nadir/peak ────────────────────────────────────
