@@ -70,12 +70,12 @@ plot_cell_panel <- function(sim, yvar, title, color,
                   labels = trans_format("log10", math_format(10^.x))) +
     labs(title = title, x = "Time (d)",
          y = expression(10^9~cells~L^{-1})) +
-    theme_bw(base_size = 9.5) +
+    theme_bw(base_size = 13) +
     theme(panel.grid.minor = element_blank(),
           panel.grid.major = element_line(color = "grey92"),
-          plot.title  = element_text(face = "bold", size = 9, hjust = 0.5),
-          axis.title  = element_text(size = 7.5),
-          axis.text   = element_text(size = 7))
+          plot.title  = element_text(face = "bold", size = 13, hjust = 0.5),
+          axis.title  = element_text(size = 11),
+          axis.text   = element_text(size = 10))
 }
 
 # ── Grille 4×2 ───────────────────────────────────────────
@@ -110,7 +110,7 @@ plot_all_cells <- function(sim, pars,
   )
 
   grid.arrange(grobs = panels, ncol = 2,
-               top = textGrob(titre, gp = gpar(fontface = "bold", fontsize = 11)))
+               top = textGrob(titre, gp = gpar(fontface = "bold", fontsize = 15)))
 }
 
 # ── Sauvegarder en PDF ───────────────────────────────────
