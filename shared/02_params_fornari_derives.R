@@ -1,7 +1,7 @@
 ############################################################
-# parameters_FORNARI_CORRECT.R
+# 02_params_fornari_derives.R
 # Paramètres DÉRIVÉS — Equation S4 exacte (Fornari 2019)
-# Sources parameters_rat.R
+# Sources 11_params_pd_rat.R ou 21_params_pd_humain.R
 ############################################################
 
 # Les paramètres de base (rat ou humain) doivent être chargés avant ce fichier

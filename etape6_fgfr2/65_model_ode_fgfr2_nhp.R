@@ -1,5 +1,5 @@
 ############################################################
-# pkpd_fgfr2_nhp.R
+# 65_model_ode_fgfr2_nhp.R
 # ODE PK/PD — Inhibiteur FGFR2 — SINGE CYNOMOLGUS (NHP)
 #
 # Modèle (23 états) :

@@ -1,5 +1,5 @@
 ############################################################
-# parameters_human.R
+# 21_params_pd_humain.R
 # Paramètres physiologiques de base — HUMAIN
 # Référence : Fornari 2019, Table 1 & Table 2
 # Tous les paramètres vérifiés contre le papier
@@ -47,7 +47,7 @@ init_pars$k_circ_Neut <- 0.100    # ref. 22
 init_pars$k_circ_Mono <- 0.040    # ref. 41
 init_pars$k_circ_Plt  <- 0.0052   # ref. 5
 init_pars$k_circ_RBC  <- 0.00037  # ref. 13
-# k_circ_Ret est dérivé dans parameters_FORNARI_CORRECT.R (Eq S4)
+# k_circ_Ret est dérivé dans 02_params_fornari_derives.R (Eq S4)
 
 # ── Drug effects (Table 2) ──
 # Slopes ajustés pour la sensibilité espèce-spécifique (Eq. 10)
@@ -74,7 +74,7 @@ init_pars$gamma_prolTrans <- 0.70  # Table 1 : "as in the rat"
 init_pars$MW_carboplatin <- 371.25
 init_pars$mgL_to_uM      <- 1000 / init_pars$MW_carboplatin
 
-# ── Placeholder état initial (complété dans parameters_FORNARI_CORRECT.R) ──
+# ── Placeholder état initial (complété dans 02_params_fornari_derives.R) ──
 init_state <- c(
   C1 = 0, C2 = 0, Damage = 0,
   MPP = init_pars$MPP0,

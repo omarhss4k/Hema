@@ -1,5 +1,5 @@
 ############################################################
-# run_fgfr2_nhp.R
+# 68_run_fgfr2_nhp.R
 # Simulation PK/PD — FGFR2 — SINGE CYNOMOLGUS (NHP)
 #
 # Modèle (25 états) :
@@ -13,10 +13,10 @@
 ############################################################
 library(deSolve)
 
-source("parameters_fgfr2_nhp.R")
-source("parameters_nhp.R")
-source("../shared/parameters_FORNARI_CORRECT.R")
-source("pkpd_fgfr2_nhp.R")
+source("64_params_pk_fgfr2_nhp.R")
+source("63_params_pd_nhp.R")
+source("../shared/02_params_fornari_derives.R")
+source("65_model_ode_fgfr2_nhp.R")
 
 if (!dir.exists("results")) dir.create("results")
 

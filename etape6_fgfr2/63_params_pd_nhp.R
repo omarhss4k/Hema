@@ -1,8 +1,8 @@
 ############################################################
-# parameters_nhp.R
+# 63_params_pd_nhp.R
 # Paramètres physiologiques — NHP (macaque cynomolgus/rhésus)
 # PK : issus du fit rxode2 2-compartiments sur données NHP
-#       (nca_analysis.R — Animal_01 / Animal_02)
+#       (62_nca_pk_nhp.R — Animal_01 / Animal_02)
 ############################################################
 
 init_pars <- list()
@@ -18,8 +18,8 @@ BW_nhp <- 5.0   # kg  ← REMPLACEZ par le poids réel du NHP
 # ══════════════════════════════════════════════════════════
 # PK CARBOPLATIN — modèle 2 compartiments IV bolus
 # ══════════════════════════════════════════════════════════
-# Source : fit rxode2 (nca_analysis.R) sur Animal_01 / Animal_02
-# Paramètres lus depuis pk2cmt_params.csv (généré par nca_analysis.R).
+# Source : fit rxode2 (62_nca_pk_nhp.R) sur Animal_01 / Animal_02
+# Paramètres lus depuis pk2cmt_params.csv (généré par 62_nca_pk_nhp.R).
 # Si le fichier est absent, des valeurs de secours sont utilisées.
 #
 # IMPORTANT : ces concentrations mesurent le PLATINE TOTAL.
@@ -35,7 +35,7 @@ if (file.exists(pk2cmt_file_nhp)) {
   Q_mL_h_kg  <- anim_pars$Q_mL_h_kg
   V2_mL_kg   <- anim_pars$V2_mL_kg
 } else {
-  warning("pk2cmt_params.csv introuvable — valeurs de secours. Lancez nca_analysis.R d'abord.")
+  warning("pk2cmt_params.csv introuvable — valeurs de secours. Lancez 62_nca_pk_nhp.R d'abord.")
   CL_mL_h_kg <- 1.73
   V1_mL_kg   <- 43.0
   Q_mL_h_kg  <- NA
@@ -125,7 +125,7 @@ init_pars$MW_carboplatin <- 371.25
 init_pars$mgL_to_uM      <- 1000 / init_pars$MW_carboplatin
 
 # ══════════════════════════════════════════════════════════
-# ÉTAT INITIAL (complété par parameters_FORNARI_CORRECT.R)
+# ÉTAT INITIAL (complété par 02_params_fornari_derives.R)
 # ══════════════════════════════════════════════════════════
 init_state <- c(
   C1 = 0, C2 = 0, Damage = 0,

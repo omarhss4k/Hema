@@ -1,14 +1,14 @@
 ############################################################
-# run_human.R
+# 25_run_carboplatin_humain.R
 # Simulation humaine — Carboplatine AUC=5, Q21D x 2 cycles
 # Figure 4 + VPC + Figure 4c grades (Fornari 2019)
 ############################################################
-source("../shared/pkpd_model_FORNARI.R")
-source("parameters_human.R")
-source("../shared/parameters_FORNARI_CORRECT.R")
-source("plots_human.R")
-source("../shared/plots_grades.R")
-source("../shared/vpc.R")
+source("../shared/01_model_ode_fornari.R")
+source("21_params_pd_humain.R")
+source("../shared/02_params_fornari_derives.R")
+source("22_plots_carboplatin_humain.R")
+source("../shared/04_plots_grades_nci.R")
+source("../shared/05_vpc_simulation.R")
 
 if (!dir.exists("results")) dir.create("results")
 

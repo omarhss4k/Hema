@@ -1,5 +1,5 @@
 ############################################################
-# parameters_tdxd_human.R
+# 51_params_pk_tdxd_humain.R
 # Paramètres PK/PD — T-DXd (Trastuzumab deruxtecan) — HUMAIN
 #
 # PK ADC : FDA BLA 761139 p.89/93 (= Yin et al. 2020 popPK 2-cpt)
@@ -16,8 +16,8 @@
 ############################################################
 
 # ── Baselines PD humains (Fornari 2019 Table 1) ──────────
-source("../etape2_carboplatin_humain/parameters_human.R")
-source("../shared/parameters_FORNARI_CORRECT.R")
+source("../etape2_carboplatin_humain/21_params_pd_humain.R")
+source("../shared/02_params_fornari_derives.R")
 
 # ── Paramètres PK T-DXd humain ───────────────────────────
 # Source : Yin et al. 2020, PopPK estimés sur patients HER2+

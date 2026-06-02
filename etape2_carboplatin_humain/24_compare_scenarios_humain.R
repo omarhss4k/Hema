@@ -1,5 +1,5 @@
 ############################################################
-# compare_options.R
+# 24_compare_scenarios_humain.R
 # Comparaison 3 options pour reproduire Figure 4c (Fornari 2019)
 #
 # Option 1 : Dose fixe (GFR_ref=125 → 750 mg), IIV sur CL + Slopes
@@ -12,10 +12,10 @@
 ############################################################
 setwd("/home/user/Hema/scripts")
 
-source("pkpd_model_FORNARI.R")
-source("parameters_human.R")
-source("parameters_FORNARI_CORRECT.R")
-source("plots_grades.R")
+source("../shared/01_model_ode_fornari.R")
+source("21_params_pd_humain.R")
+source("../shared/02_params_fornari_derives.R")
+source("../shared/04_plots_grades_nci.R")
 
 library(ggplot2)
 library(dplyr)

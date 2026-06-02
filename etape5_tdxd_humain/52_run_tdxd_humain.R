@@ -1,5 +1,5 @@
 ############################################################
-# run_pkpd_tdxd_human.R
+# 52_run_tdxd_humain.R
 # Simulation PK/PD T-DXd — HUMAIN
 #
 # Scénarios :
@@ -11,9 +11,9 @@
 ############################################################
 library(deSolve)
 
-source("../etape3_tdxd_rat/parameters_tdxd_rat.R")
-source("parameters_tdxd_human.R")
-source("../etape3_tdxd_rat/pkpd_tdxd_rat.R")
+source("../etape3_tdxd_rat/31_params_pk_tdxd_rat.R")
+source("51_params_pk_tdxd_humain.R")
+source("../etape3_tdxd_rat/32_model_ode_tdxd_rat.R")
 
 dir.create("results", showWarnings = FALSE)
 

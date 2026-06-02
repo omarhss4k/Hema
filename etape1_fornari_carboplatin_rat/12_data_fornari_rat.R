@@ -1,5 +1,5 @@
 ############################################################
-# data_fornari.R
+# 12_data_fornari_rat.R
 # Données digitalisées depuis Figure 3 — Fornari 2019
 # Carboplatin 40 mg/kg Q14D × 8 cycles
 # x = jours, y = 10⁹ cells/L

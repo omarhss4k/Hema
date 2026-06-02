@@ -1,18 +1,18 @@
 ############################################################
-# plot_grades_human.R
+# 54_plots_grades_humain.R
 # Graphique grades CTCAE — Neutropénie + Anémie
 # T-DXd 5.4 mg/kg Q3W × 6 — N=300 patients
 # Charge depuis RDS si disponible, sinon re-simule
 ############################################################
 
-rds_path <- "results/population_results.rds"
+rds_path <- "results/53_population_tdxd_humain.rds"
 
 if (!exists("results") || nrow(results) == 0) {
   if (file.exists(rds_path)) {
     results <- readRDS(rds_path)
     n_ok    <- nrow(results)
   } else {
-    stop("Lancez d'abord run_pkpd_tdxd_human_population.R")
+    stop("Lancez d'abord 53_run_population_tdxd_humain.R")
   }
 }
 

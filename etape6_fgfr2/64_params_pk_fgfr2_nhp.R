@@ -1,5 +1,5 @@
 ############################################################
-# parameters_fgfr2_nhp.R
+# 64_params_pk_fgfr2_nhp.R
 # Paramètres PK — Inhibiteur FGFR2 — SINGE CYNOMOLGUS (NHP)
 #
 # Méthode :
@@ -177,10 +177,10 @@ make_nhp_infusion <- function(dose_mgkg, BW_kg = 4.0,
 }
 
 # ════════════════════════════════════════════════════════
-# CARBOPLATIN NHP PK — fit rxode2 (nca_analysis.R)
+# CARBOPLATIN NHP PK — fit rxode2 (62_nca_pk_nhp.R)
 # Animaux : Animal_01 / Animal_02  |  Dose : 3 mg/kg IV bolus
 # ════════════════════════════════════════════════════════
-# Paramètres lus depuis pk2cmt_params.csv (généré par nca_analysis.R)
+# Paramètres lus depuis pk2cmt_params.csv (généré par 62_nca_pk_nhp.R)
 # Si le fichier n'existe pas, des valeurs de secours sont utilisées.
 
 pk2cmt_file <- "pk2cmt_params.csv"
@@ -196,7 +196,7 @@ if (file.exists(pk2cmt_file)) {
   cat(sprintf("  CL=%.4f  V1=%.4f  Q=%.4f  V2=%.4f  mL/h/kg ou mL/kg\n",
               CL_carbo_mLhkg, V1_carbo_mLkg, Q_carbo_mLhkg, V2_carbo_mLkg))
 } else {
-  warning("pk2cmt_params.csv introuvable — valeurs de secours utilisées. Lancez nca_analysis.R d'abord.")
+  warning("pk2cmt_params.csv introuvable — valeurs de secours utilisées. Lancez 62_nca_pk_nhp.R d'abord.")
   CL_carbo_mLhkg <- 1.73
   V1_carbo_mLkg  <- 43.0
   Q_carbo_mLhkg  <- NA

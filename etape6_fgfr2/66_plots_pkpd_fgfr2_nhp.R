@@ -1,7 +1,7 @@
 ############################################################
-# plots_fgfr2_nhp.R
+# 66_plots_pkpd_fgfr2_nhp.R
 # Graphiques publication-ready — ggplot2 uniquement
-# Prérequis : run_fgfr2_nhp.R déjà sourcé
+# Prérequis : 68_run_fgfr2_nhp.R déjà sourcé
 ############################################################
 library(ggplot2)
 library(dplyr)
@@ -9,17 +9,17 @@ library(tidyr)
 
 # ── Auto-source si objets manquants ─────────────────────
 if (!exists("sims_fgfr2") || !exists("doses_fgfr2")) {
-  cat("Lancement de run_fgfr2_nhp.R...\n")
-  source("run_fgfr2_nhp.R")
+  cat("Lancement de 68_run_fgfr2_nhp.R...\n")
+  source("68_run_fgfr2_nhp.R")
 }
 
 if (!dir.exists("results")) dir.create("results")
 
 # ════════════════════════════════════════════════════════
 # DONNÉES OBSERVÉES — chargées depuis nhp_hema_data.csv
-# Remplir le CSV avec les valeurs réelles (cf. data_nhp.R)
+# Remplir le CSV avec les valeurs réelles (cf. 61_data_hema_nhp.R)
 # ════════════════════════════════════════════════════════
-source("data_nhp.R")
+source("61_data_hema_nhp.R")
 
 # ── Palette ─────────────────────────────────────────────
 dose_cols <- c("4 mg/kg"  = "#2166ac",

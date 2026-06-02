@@ -1,5 +1,5 @@
 ############################################################
-# vpc.R
+# 05_vpc_simulation.R
 # Visual Predictive Check — Fornari 2019
 # Erreur log-additive (Table S4) sur 1000 simulations
 # sigma : MPP=0.33, CMP=0.19, MEP=0.33, Neut=0.17,

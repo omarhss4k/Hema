@@ -1,23 +1,23 @@
 ############################################################
-# sensitivity_analysis.R
+# 56_analyse_sensibilite.R
 # Analyse de sensibilité — paramètres PK/PD → nadirs / grades
 #
-# Utilise les données existantes : results/population_results.rds
+# Utilise les données existantes : results/53_population_tdxd_humain.rds
 # (pas de re-simulation)
 #
-# Prérequis : run_pkpd_tdxd_human_population.R
-#             (→ results/population_results.rds)
+# Prérequis : 53_run_population_tdxd_humain.R
+#             (→ results/53_population_tdxd_humain.rds)
 ############################################################
 
 library(ggplot2)
 
 # ── Chargement résultats modèle ───────────────────────────
-rds_path <- "results/population_results.rds"
+rds_path <- "results/53_population_tdxd_humain.rds"
 
 if (!file.exists(rds_path)) {
   stop(paste0(
     "Fichier manquant : ", rds_path, "\n",
-    "Lancez d'abord run_pkpd_tdxd_human_population.R"
+    "Lancez d'abord 53_run_population_tdxd_humain.R"
   ))
 }
 
@@ -33,7 +33,7 @@ nadirs <- c("Neut_nadir", "RBC_nadir", "Plt_nadir")
 all_cols <- c(params, nadirs, "Grade_Neut")
 missing_cols <- setdiff(all_cols, colnames(results))
 if (length(missing_cols) > 0) {
-  warning(paste("Colonnes manquantes dans population_results.rds :",
+  warning(paste("Colonnes manquantes dans 53_population_tdxd_humain.rds :",
                 paste(missing_cols, collapse = ", ")))
   # Filtrer pour ne garder que les colonnes disponibles
   params <- intersect(params, colnames(results))

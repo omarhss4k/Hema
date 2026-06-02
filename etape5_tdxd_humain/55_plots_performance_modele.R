@@ -1,22 +1,22 @@
 ############################################################
-# plot_model_performance.R
+# 55_plots_performance_modele.R
 # Évaluation de la performance prédictive du modèle PK/PD
 # IC95% Wilson, RMSE/MAE, graphique de calibration
 #
-# Prérequis : run_pkpd_tdxd_human_population.R
-#             (→ results/population_results.rds)
+# Prérequis : 53_run_population_tdxd_humain.R
+#             (→ results/53_population_tdxd_humain.rds)
 ############################################################
 
 library(ggplot2)
 library(ggrepel)
 
 # ── Chargement résultats modèle ───────────────────────────
-rds_path <- "results/population_results.rds"
+rds_path <- "results/53_population_tdxd_humain.rds"
 
 if (!file.exists(rds_path)) {
   stop(paste0(
     "Fichier manquant : ", rds_path, "\n",
-    "Lancez d'abord run_pkpd_tdxd_human_population.R"
+    "Lancez d'abord 53_run_population_tdxd_humain.R"
   ))
 }
 

@@ -1,5 +1,5 @@
 ############################################################
-# plot_grades_poster.R
+# 57_plots_grades_poster.R
 # Figure poster : grades CTCAE — T-DXd 5.4 mg/kg Q3W × 6
 # Neutropénie | Anémie | Thrombocytopénie
 # Modèle semi-mécaniste (N=300) vs FDA DESTINY-Breast01
@@ -8,7 +8,7 @@
 #   --- FDA tout grade (G≥1)
 #   ··· FDA G3-4
 #
-# Prérequis : run_pkpd_tdxd_human_population.R (→ results/population_results.rds)
+# Prérequis : 53_run_population_tdxd_humain.R (→ results/53_population_tdxd_humain.rds)
 ############################################################
 
 library(ggplot2)
@@ -58,12 +58,12 @@ fda_plt    <- c(G0=63, G1=30, G2=4,  G3=2,  G4=1)
 tox_levels <- c("Neutropénie", "Anémie", "Thrombocytopénie")
 
 # ── Chargement résultats modèle ───────────────────────────
-rds_path <- "results/population_results.rds"
+rds_path <- "results/53_population_tdxd_humain.rds"
 
 if (!file.exists(rds_path)) {
   stop(paste0(
     "Fichier manquant : ", rds_path, "\n",
-    "Lancez d'abord run_pkpd_tdxd_human_population.R"
+    "Lancez d'abord 53_run_population_tdxd_humain.R"
   ))
 }
 
@@ -243,5 +243,5 @@ cat(sprintf(fmt, "Thrombo — FDA",
 cat("\n")
 
 # Lancer analyses de performance
-source("plot_model_performance.R")
-source("sensitivity_analysis.R")
+source("55_plots_performance_modele.R")
+source("56_analyse_sensibilite.R")

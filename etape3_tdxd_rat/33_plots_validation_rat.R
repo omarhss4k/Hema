@@ -1,14 +1,14 @@
 ############################################################
-# plot_rat_validation.R
+# 33_plots_validation_rat.R
 # Figure de présentation — Validation rat vs FDA BLA 761139
 # 3 doses clés : 20, 60, 197 mg/kg Q3W × 3 cycles
 ############################################################
 library(deSolve)
 
-source("../etape1_fornari_carboplatin_rat/parameters_rat.R")
-source("../shared/parameters_FORNARI_CORRECT.R")
-source("parameters_tdxd_rat.R")
-source("pkpd_tdxd_rat.R")
+source("../etape1_fornari_carboplatin_rat/11_params_pd_rat.R")
+source("../shared/02_params_fornari_derives.R")
+source("31_params_pk_tdxd_rat.R")
+source("32_model_ode_tdxd_rat.R")
 
 # ── Paramètres ────────────────────────────────────────────
 pars_fornari_pd <- init_pars

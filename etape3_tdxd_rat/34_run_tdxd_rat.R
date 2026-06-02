@@ -1,13 +1,13 @@
 ############################################################
-# run_pkpd_tdxd_rat.R
+# 34_run_tdxd_rat.R
 # Simulation complète PK/PD T-DXd — RAT
 #
 # Sources :
-#   ../scripts/parameters_rat.R             (baselines PD, rat)
-#   ../scripts/parameters_FORNARI_CORRECT.R (constantes PD dérivées)
-#   parameters_tdxd_rat.R                   (PK T-DXd)
-#   pkpd_tdxd_rat.R                         (ODE fusionné)
-#   ../scripts/plots.R                      (graphiques Fornari)
+#   ../etape1_fornari_carboplatin_rat/11_params_pd_rat.R   (baselines PD, rat)
+#   ../shared/02_params_fornari_derives.R                  (constantes PD dérivées)
+#   31_params_pk_tdxd_rat.R                                (PK T-DXd)
+#   32_model_ode_tdxd_rat.R                                (ODE fusionné)
+#   ../shared/03_plots_cellules.R                          (graphiques Fornari)
 #
 # Scénarios :
 #   1. Dose unique 5 mg/kg IV Q3W × 3 cycles
@@ -16,11 +16,11 @@
 library(deSolve)
 
 # ── Chargement des paramètres ────────────────────────────
-source("../etape1_fornari_carboplatin_rat/parameters_rat.R")
-source("../shared/parameters_FORNARI_CORRECT.R")
-source("parameters_tdxd_rat.R")
-source("pkpd_tdxd_rat.R")
-source("../shared/plots.R")
+source("../etape1_fornari_carboplatin_rat/11_params_pd_rat.R")
+source("../shared/02_params_fornari_derives.R")
+source("31_params_pk_tdxd_rat.R")
+source("32_model_ode_tdxd_rat.R")
+source("../shared/03_plots_cellules.R")
 
 if (!dir.exists("results")) dir.create("results")
 
@@ -37,7 +37,7 @@ pars_full <- c(pars_fornari_pd, tdxd_pars)
 # ── Override Slope_MEP calibré T-DXd ────────────────────
 # Slope_MEP carboplatin (2.19) produit MEP@20=-14% → au-dessus du seuil
 # histopathologique n=4. Calibré à 1.00 : MEP@20=-9.8%, MEP@60=-23.7%
-pars_full$Slope_MEP <- Slope_MEP_tdxd_rat   # 1.00, depuis parameters_tdxd_rat.R
+pars_full$Slope_MEP <- Slope_MEP_tdxd_rat   # 1.00, depuis 31_params_pk_tdxd_rat.R
 
 # ── Fusion des états initiaux ────────────────────────────
 # PK T-DXd : C_ADC1, C_ADC2, C_DXd, C_DXd_ic, Damage (= 0 à t=0)

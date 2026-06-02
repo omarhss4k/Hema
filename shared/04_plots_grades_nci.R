@@ -1,5 +1,5 @@
 ############################################################
-# plots_grades.R
+# 04_plots_grades_nci.R
 # Grades NCI-CTCAE v5.0 — Neutropénie + Thrombocytopénie
 # Fonctions :
 #   save_grade_plots()    → rat  (Figure 3 style)

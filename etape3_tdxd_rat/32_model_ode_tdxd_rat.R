@@ -1,5 +1,5 @@
 ############################################################
-# pkpd_tdxd_rat.R
+# 32_model_ode_tdxd_rat.R
 # ODE fusionné : T-DXd PK + Fornari PD
 #
 # STATES (25) :

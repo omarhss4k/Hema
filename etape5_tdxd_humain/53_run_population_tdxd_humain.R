@@ -1,5 +1,5 @@
 ############################################################
-# run_pkpd_tdxd_human_population.R
+# 53_run_population_tdxd_humain.R
 # Simulation de population — T-DXd 5.4 mg/kg Q3W × 6 cycles
 #
 # Objectif : reproduire la distribution de toxicité CTCAE
@@ -21,9 +21,9 @@
 ############################################################
 library(deSolve)
 
-source("../etape3_tdxd_rat/parameters_tdxd_rat.R")
-source("parameters_tdxd_human.R")
-source("../etape3_tdxd_rat/pkpd_tdxd_rat.R")
+source("../etape3_tdxd_rat/31_params_pk_tdxd_rat.R")
+source("51_params_pk_tdxd_humain.R")
+source("../etape3_tdxd_rat/32_model_ode_tdxd_rat.R")
 
 dir.create("results", showWarnings = FALSE)
 
@@ -219,7 +219,7 @@ for (i in 1:N_patients) {
 
 results <- results[!is.na(results$Neut_nadir), ]
 n_ok <- nrow(results)
-saveRDS(results, "results/population_results.rds")
+saveRDS(results, "results/53_population_tdxd_humain.rds")
 
 # ══════════════════════════════════════════════════════════
 # Résultats
@@ -406,4 +406,4 @@ cat("  -> results_PKPD_human/PKPD_human_population_VPC.pdf\n")
 # ══════════════════════════════════════════════════════════
 # Graphique focalisé : grades Neutropénie + Anémie
 # ══════════════════════════════════════════════════════════
-source("plot_grades_human.R")
+source("54_plots_grades_humain.R")

@@ -1,5 +1,5 @@
 ############################################################
-# pkpd_model_FORNARI.R
+# 01_model_ode_fornari.R
 # ODE système complet — Équations 1–9 (Fornari 2019)
 # Feedbacks Eq. 11, 12, 13
 ############################################################

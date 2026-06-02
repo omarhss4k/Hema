@@ -1,5 +1,5 @@
 ############################################################
-# plot_poster_pd_predicted_only.R
+# 67_plots_pd_poster_nhp.R
 # Poster figure — PD predicted profiles ONLY (no observed data)
 # FGFR2 inhibitor NHP  |  Q3W × 3 cycles + recovery
 #
@@ -8,7 +8,7 @@
 #   B. poster_PD_pred_alldoses.pdf/png — 4 cell types, lines per dose
 #   C. poster_PD_pred_nadir.pdf/png    — nadir barplot % vs baseline
 #
-# Prérequis : run_fgfr2_nhp.R sourcé (objets sims_fgfr2, doses_fgfr2, init_pars)
+# Prérequis : 68_run_fgfr2_nhp.R sourcé (objets sims_fgfr2, doses_fgfr2, init_pars)
 ############################################################
 
 library(ggplot2)
@@ -16,8 +16,8 @@ library(dplyr)
 library(tidyr)
 
 if (!exists("sims_fgfr2") || !exists("doses_fgfr2")) {
-  cat("Lancement de run_fgfr2_nhp.R...\n")
-  source("run_fgfr2_nhp.R")
+  cat("Lancement de 68_run_fgfr2_nhp.R...\n")
+  source("68_run_fgfr2_nhp.R")
 }
 
 if (!dir.exists("results")) dir.create("results")

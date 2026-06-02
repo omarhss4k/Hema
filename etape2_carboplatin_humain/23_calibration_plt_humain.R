@@ -1,5 +1,5 @@
 ############################################################
-# calibrate_plt.R — Calibration 2D : delta_Plt + gamma_prolTrans
+# 23_calibration_plt_humain.R — Calibration 2D : delta_Plt + gamma_prolTrans
 # Stratégie :
 #   Phase 1 : delta_Plt pour mettre nadir1 dans [127.5, 172.5]
 #   Phase 2 : gamma_prolTrans pour mettre nadir2 dans [110.5, 149.5]
@@ -8,9 +8,9 @@
 
 if (interactive()) setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
-source("pkpd_model_FORNARI.R")
-source("parameters_human.R")
-source("parameters_FORNARI_CORRECT.R")
+source("../shared/01_model_ode_fornari.R")
+source("21_params_pd_humain.R")
+source("../shared/02_params_fornari_derives.R")
 
 # ── Dose Calvert (AUC=5, GFR=125 mL/min — normal renal function, Fornari 2019 S11) ──
 AUC_target   <- 5
@@ -149,9 +149,9 @@ cat(sprintf("  Asymétrie       = %.1f  (nadir1 - nadir2)\n", n1-n2))
 cat(sprintf("  Convergence     : %s\n", ifelse(ok, "OUI ✓", "NON ✗")))
 cat(sprintf("══════════════════════════════════════════════════\n\n"))
 
-# ── Mise à jour de parameters_human.R si convergé ──
+# ── Mise à jour de 21_params_pd_humain.R si convergé ──
 if (ok) {
-  lines <- readLines("parameters_human.R")
+  lines <- readLines("21_params_pd_humain.R")
   lines <- gsub(
     "^(init_pars\\$delta_Plt\\s*<-).*",
     sprintf("\\1 %.2f  # calibration auto : nadir1~%.0f nadir2~%.0f", dp, n1, n2),
@@ -162,8 +162,8 @@ if (ok) {
     sprintf("\\1 %.2f", gpt),
     lines, perl=TRUE
   )
-  writeLines(lines, "parameters_human.R")
-  cat(sprintf("  ✓ parameters_human.R mis à jour :\n"))
+  writeLines(lines, "21_params_pd_humain.R")
+  cat(sprintf("  ✓ 21_params_pd_humain.R mis à jour :\n"))
   cat(sprintf("      delta_Plt       = %.2f\n", dp))
   cat(sprintf("      gamma_prolTrans = %.2f\n\n", gpt))
 } else {

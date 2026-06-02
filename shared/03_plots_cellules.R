@@ -1,5 +1,5 @@
 ############################################################
-# plots.R
+# 03_plots_cellules.R
 # Fonctions de visualisation — axes adaptatifs par panneau
 # Avec superposition des données observées (Fornari 2019)
 ############################################################

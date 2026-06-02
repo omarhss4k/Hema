@@ -1,5 +1,5 @@
 ############################################################
-# parameters_tdxd_rat.R
+# 31_params_pk_tdxd_rat.R
 # Paramètres PK — T-DXd (Trastuzumab deruxtecan) — RAT
 #
 # Sources :

@@ -1,5 +1,5 @@
 ############################################################
-# parameters_rat.R
+# 11_params_pd_rat.R
 # Paramètres physiologiques de base — RAT
 # Baselines, MTTs, circulating rates, fu, damage
 ############################################################
@@ -44,7 +44,7 @@ init_pars$k_circ_Neut <- 0.17
 init_pars$k_circ_Mono <- 0.06
 init_pars$k_circ_Plt  <- 0.01
 init_pars$k_circ_RBC  <- 0.0007
-# k_circ_Ret est dérivé dans parameters_FORNARI_CORRECT.R (Eq S4)
+# k_circ_Ret est dérivé dans 02_params_fornari_derives.R (Eq S4)
 
 # ── Drug effects (Table 2) ──
 init_pars$Slope_MPP <- 2.05
@@ -69,7 +69,7 @@ init_pars$gamma_prolTrans <- 0.70
 init_pars$MW_carboplatin <- 371.25
 init_pars$mgL_to_uM      <- 1000 / init_pars$MW_carboplatin
 
-# ── Placeholder état initial (complété dans parameters_FORNARI_CORRECT.R) ──
+# ── Placeholder état initial (complété dans 02_params_fornari_derives.R) ──
 init_state <- c(
   C1 = 0, C2 = 0, Damage = 0,
   MPP = init_pars$MPP0,

@@ -1,14 +1,14 @@
 ############################################################
-# run_CORRECT.R
+# 13_run_carboplatin_rat.R
 # Simulations rat + VPC + grades NCI-CTCAE
 ############################################################
-source("../shared/pkpd_model_FORNARI.R")
-source("parameters_rat.R")
-source("../shared/parameters_FORNARI_CORRECT.R")
-source("../shared/plots.R")
-source("../shared/plots_grades.R")
-source("../shared/vpc.R")
-source("data_fornari.R")
+source("../shared/01_model_ode_fornari.R")
+source("11_params_pd_rat.R")
+source("../shared/02_params_fornari_derives.R")
+source("../shared/03_plots_cellules.R")
+source("../shared/04_plots_grades_nci.R")
+source("../shared/05_vpc_simulation.R")
+source("12_data_fornari_rat.R")
 if (!dir.exists("results")) dir.create("results")
 
 # ============================================================
