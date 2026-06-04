@@ -1,13 +1,15 @@
 # =============================================================================
 # PK 2-compartiments — Fc-silent B/C huBPA-LP1 (FGFR2) — Singe
-# rxode2 + nlminb  |  IV bolus unique  |  4 groupes : 3, 10, 20, 30 mg/kg
+# rxode2 + nlminb  |  IV bolus unique  |  6 groupes : 3, 3.5, 10, 11.8, 20, 30 mg/kg
 #
 # Structure Excel (PK_singe_FGFR2.xlsx) :
-#   4 blocs séparés par des lignes d'en-tête "Time (h)"
-#   Bloc 1 : 3 mg/kg  (animaux 1001, 1002)
-#   Bloc 2 : 10 mg/kg (animaux 2001, 2002)
-#   Bloc 3 : 30 mg/kg (animaux 3002, 3101)
-#   Bloc 4 : 20 mg/kg (animaux 4001, 4002)
+#   6 blocs séparés par des lignes d'en-tête "Time (h)"
+#   Bloc 1 : 3    mg/kg  (animaux 1001, 1002)
+#   Bloc 2 : 10   mg/kg  (animaux 2001, 2002)
+#   Bloc 3 : 30   mg/kg  (animaux 3002, 3101)
+#   Bloc 4 : 20   mg/kg  (animaux 4001, 4002)
+#   Bloc 5 : 3.5  mg/kg
+#   Bloc 6 : 11.8 mg/kg
 #
 # Unités : temps en heures | dose en µg/kg | concentration en ng/mL (= µg/L)
 # =============================================================================
@@ -33,7 +35,7 @@ raw <- suppressMessages(
 header_rows <- grep("Time.*\\(h\\)", trimws(as.character(raw[[1]])),
                     ignore.case = TRUE, perl = TRUE)
 cat("Lignes 'Time (h)' trouvées :", header_rows, "\n")
-stopifnot("4 blocs attendus" = length(header_rows) == 4)
+stopifnot("6 blocs attendus" = length(header_rows) == 6)
 
 # Bornes de chaque bloc (données = lignes entre header+1 et prochain header-1)
 block_ends <- c(header_rows[-1] - 1, nrow(raw))
@@ -55,7 +57,7 @@ parse_block <- function(header_row, data_rows) {
 
   # Extraire la dose depuis le nom de colonne (nombre avant "mg/kg")
   dose_str <- regmatches(hdr[2],
-                         regexpr("[0-9]+(?=\\s*mg/kg)", hdr[2], perl = TRUE))
+                         regexpr("[0-9]+(?:\\.[0-9]+)?(?=\\s*mg/kg)", hdr[2], perl = TRUE))
   dose_mgkg <- as.numeric(dose_str)
 
   blk   <- raw[data_rows[1]:data_rows[2], ]
@@ -77,16 +79,20 @@ parse_block <- function(header_row, data_rows) {
   df[!is.na(df$time), ]
 }
 
-# Lire les 4 blocs
-blk1 <- parse_block(header_rows[1], blocks_range[[1]])  # 3  mg/kg
-blk2 <- parse_block(header_rows[2], blocks_range[[2]])  # 10 mg/kg
-blk3 <- parse_block(header_rows[3], blocks_range[[3]])  # 30 mg/kg
-blk4 <- parse_block(header_rows[4], blocks_range[[4]])  # 20 mg/kg
+# Lire les 6 blocs
+blk1 <- parse_block(header_rows[1], blocks_range[[1]])  # 3    mg/kg
+blk2 <- parse_block(header_rows[2], blocks_range[[2]])  # 10   mg/kg
+blk3 <- parse_block(header_rows[3], blocks_range[[3]])  # 30   mg/kg
+blk4 <- parse_block(header_rows[4], blocks_range[[4]])  # 20   mg/kg
+blk5 <- parse_block(header_rows[5], blocks_range[[5]])  # 3.5  mg/kg
+blk6 <- parse_block(header_rows[6], blocks_range[[6]])  # 11.8 mg/kg
 
-cat("\nBloc 1 (3  mg/kg) :", nrow(blk1), "lignes, colonnes:", names(blk1), "\n")
-cat("Bloc 2 (10 mg/kg) :", nrow(blk2), "lignes, colonnes:", names(blk2), "\n")
-cat("Bloc 3 (30 mg/kg) :", nrow(blk3), "lignes, colonnes:", names(blk3), "\n")
-cat("Bloc 4 (20 mg/kg) :", nrow(blk4), "lignes, colonnes:", names(blk4), "\n")
+cat("\nBloc 1 (3    mg/kg) :", nrow(blk1), "lignes, colonnes:", names(blk1), "\n")
+cat("Bloc 2 (10   mg/kg) :", nrow(blk2), "lignes, colonnes:", names(blk2), "\n")
+cat("Bloc 3 (30   mg/kg) :", nrow(blk3), "lignes, colonnes:", names(blk3), "\n")
+cat("Bloc 4 (20   mg/kg) :", nrow(blk4), "lignes, colonnes:", names(blk4), "\n")
+cat("Bloc 5 (3.5  mg/kg) :", nrow(blk5), "lignes, colonnes:", names(blk5), "\n")
+cat("Bloc 6 (11.8 mg/kg) :", nrow(blk6), "lignes, colonnes:", names(blk6), "\n")
 
 # =============================================================================
 # 3. MOYENNE GÉOMÉTRIQUE PAR GROUPE DE DOSE + NETTOYAGE
@@ -112,16 +118,20 @@ agg_group <- function(blk) {
   )
 }
 
-d3  <- agg_group(blk1)   # 3  mg/kg
-d10 <- agg_group(blk2)   # 10 mg/kg
-d30 <- agg_group(blk3)   # 30 mg/kg
-d20 <- agg_group(blk4)   # 20 mg/kg
+d3   <- agg_group(blk1)   # 3    mg/kg
+d10  <- agg_group(blk2)   # 10   mg/kg
+d30  <- agg_group(blk3)   # 30   mg/kg
+d20  <- agg_group(blk4)   # 20   mg/kg
+d35  <- agg_group(blk5)   # 3.5  mg/kg
+d118 <- agg_group(blk6)   # 11.8 mg/kg
 
 cat("\nPoints retenus par groupe :\n")
-cat("  3  mg/kg :", nrow(d3),  "points  | dose =", d3$dose[1],  "µg/kg\n")
-cat("  10 mg/kg :", nrow(d10), "points  | dose =", d10$dose[1], "µg/kg\n")
-cat("  20 mg/kg :", nrow(d20), "points  | dose =", d20$dose[1], "µg/kg\n")
-cat("  30 mg/kg :", nrow(d30), "points  | dose =", d30$dose[1], "µg/kg\n")
+cat("  3    mg/kg :", nrow(d3),   "points  | dose =", d3$dose[1],   "µg/kg\n")
+cat("  3.5  mg/kg :", nrow(d35),  "points  | dose =", d35$dose[1],  "µg/kg\n")
+cat("  10   mg/kg :", nrow(d10),  "points  | dose =", d10$dose[1],  "µg/kg\n")
+cat("  11.8 mg/kg :", nrow(d118), "points  | dose =", d118$dose[1], "µg/kg\n")
+cat("  20   mg/kg :", nrow(d20),  "points  | dose =", d20$dose[1],  "µg/kg\n")
+cat("  30   mg/kg :", nrow(d30),  "points  | dose =", d30$dose[1],  "µg/kg\n")
 
 # Jeu complet pour le graphique (moyenne géom. + flag BLQ)
 make_obs_df <- function(blk) {
@@ -137,7 +147,9 @@ make_obs_df <- function(blk) {
 
 df_obs_all <- do.call(rbind, list(
   make_obs_df(blk1),
+  make_obs_df(blk5),
   make_obs_df(blk2),
+  make_obs_df(blk6),
   make_obs_df(blk4),
   make_obs_df(blk3)
 ))
@@ -195,20 +207,26 @@ objective <- function(logpar) {
   names(par) <- c("CL", "V1", "V2", "Q")
   if (any(par <= 0)) return(1e10)
 
-  p3  <- tryCatch(sim_dose(d3$dose[1],  par, d3$t),  error = function(e) NULL)
-  p10 <- tryCatch(sim_dose(d10$dose[1], par, d10$t), error = function(e) NULL)
-  p20 <- tryCatch(sim_dose(d20$dose[1], par, d20$t), error = function(e) NULL)
-  p30 <- tryCatch(sim_dose(d30$dose[1], par, d30$t), error = function(e) NULL)
+  p3   <- tryCatch(sim_dose(d3$dose[1],   par, d3$t),   error = function(e) NULL)
+  p35  <- tryCatch(sim_dose(d35$dose[1],  par, d35$t),  error = function(e) NULL)
+  p10  <- tryCatch(sim_dose(d10$dose[1],  par, d10$t),  error = function(e) NULL)
+  p118 <- tryCatch(sim_dose(d118$dose[1], par, d118$t), error = function(e) NULL)
+  p20  <- tryCatch(sim_dose(d20$dose[1],  par, d20$t),  error = function(e) NULL)
+  p30  <- tryCatch(sim_dose(d30$dose[1],  par, d30$t),  error = function(e) NULL)
 
-  if (is.null(p3)  || any(is.na(p3)  | p3  <= 0)) return(1e10)
-  if (is.null(p10) || any(is.na(p10) | p10 <= 0)) return(1e10)
-  if (is.null(p20) || any(is.na(p20) | p20 <= 0)) return(1e10)
-  if (is.null(p30) || any(is.na(p30) | p30 <= 0)) return(1e10)
+  if (is.null(p3)   || any(is.na(p3)   | p3   <= 0)) return(1e10)
+  if (is.null(p35)  || any(is.na(p35)  | p35  <= 0)) return(1e10)
+  if (is.null(p10)  || any(is.na(p10)  | p10  <= 0)) return(1e10)
+  if (is.null(p118) || any(is.na(p118) | p118 <= 0)) return(1e10)
+  if (is.null(p20)  || any(is.na(p20)  | p20  <= 0)) return(1e10)
+  if (is.null(p30)  || any(is.na(p30)  | p30  <= 0)) return(1e10)
 
-  mean((log(d3$C)  - log(p3))^2)  +
-  mean((log(d10$C) - log(p10))^2) +
-  mean((log(d20$C) - log(p20))^2) +
-  mean((log(d30$C) - log(p30))^2)
+  mean((log(d3$C)   - log(p3))^2)   +
+  mean((log(d35$C)  - log(p35))^2)  +
+  mean((log(d10$C)  - log(p10))^2)  +
+  mean((log(d118$C) - log(p118))^2) +
+  mean((log(d20$C)  - log(p20))^2)  +
+  mean((log(d30$C)  - log(p30))^2)
 }
 
 # =============================================================================
@@ -271,12 +289,14 @@ cat(sprintf("Convergence    : %s (code %d)\n", fit$message, fit$convergence))
 # 9. SIMULATION FINALE
 # =============================================================================
 
-t_max  <- max(d3$t, d10$t, d20$t, d30$t) * 1.05
+t_max  <- max(d3$t, d35$t, d10$t, d118$t, d20$t, d30$t) * 1.05
 t_sim  <- seq(0, t_max, by = 1)
 
 sim_all <- do.call(rbind, lapply(
   list(c(d3$dose[1],   "3 mg/kg"),
+       c(d35$dose[1],  "3.5 mg/kg"),
        c(d10$dose[1],  "10 mg/kg"),
+       c(d118$dose[1], "11.8 mg/kg"),
        c(d20$dose[1],  "20 mg/kg"),
        c(d30$dose[1],  "30 mg/kg")),
   function(x) data.frame(
@@ -286,7 +306,7 @@ sim_all <- do.call(rbind, lapply(
   )
 ))
 
-niv <- c("3 mg/kg", "10 mg/kg", "20 mg/kg", "30 mg/kg")
+niv <- c("3 mg/kg", "3.5 mg/kg", "10 mg/kg", "11.8 mg/kg", "20 mg/kg", "30 mg/kg")
 sim_all$Dose      <- factor(sim_all$Dose,      levels = niv)
 df_obs_all$Dose   <- factor(df_obs_all$Dose,   levels = niv)
 
@@ -297,10 +317,12 @@ df_pts <- df_obs_all[df_obs_all$t > 0 & !df_obs_all$BLQ & !is.na(df_obs_all$C), 
 # 10. GRAPHIQUE
 # =============================================================================
 
-cols <- c("3 mg/kg"  = "#74ADD1",
-          "10 mg/kg" = "#4393C3",
-          "20 mg/kg" = "#2166AC",
-          "30 mg/kg" = "#053061")
+cols <- c("3 mg/kg"    = "#C6DBEF",
+          "3.5 mg/kg"  = "#74ADD1",
+          "10 mg/kg"   = "#4393C3",
+          "11.8 mg/kg" = "#2166AC",
+          "20 mg/kg"   = "#08519C",
+          "30 mg/kg"   = "#053061")
 
 p <- ggplot() +
   geom_line(data  = sim_all,
@@ -314,7 +336,7 @@ p <- ggplot() +
   ) +
   scale_color_manual(values = cols) +
   labs(
-    title    = "PK 2-compartiments (rxode2) — Fc-silent B/C huBPA-LP1 (FGFR2) — Singe",
+    title    = "PK 2-compartiments (rxode2) — hBPA-LP1 (FGFR2) — Singe",
     subtitle = paste0(
       "V1 = ", round(best_par["V1"], 4), " L/kg",
       "   V2 = ", round(best_par["V2"], 4), " L/kg",
