@@ -1,5 +1,5 @@
 # =============================================================================
-# PK 2-compartiments — hBPA-LP1 (FGFR2) — Singe
+# PK 2-compartiments — hBPA-LP1 (FGFR2) — Souris
 # rxode2 + nlminb  |  IV bolus unique
 #
 # Structure Excel (PK_singe_FGFR2.xlsx) :
@@ -122,7 +122,7 @@ sim_dose <- function(dose_ugkg, params, times) {
 }
 
 # =============================================================================
-# 5. VALEURS INITIALES — mAb IV chez le singe (typiques)
+# 5. VALEURS INITIALES — mAb IV chez la souris (typiques)
 # =============================================================================
 
 init_params <- c(
@@ -190,7 +190,7 @@ beta  <- (sum_k - disc) / 2
 t_half_alpha <- log(2) / alpha
 t_half_beta  <- log(2) / beta
 
-cat("\n=== Paramètres PK 2-compartiments — Singe (rxode2 + nlminb) ===\n")
+cat("\n=== Paramètres PK 2-compartiments — Souris (rxode2 + nlminb) ===\n")
 cat("--- Paramètres macro ---\n")
 cat(sprintf("CL  = %.6f L/h/kg   = %.4f L/j/kg\n",
             best_par["CL"], best_par["CL"] * 24))
@@ -252,7 +252,7 @@ p <- ggplot() +
   scale_y_log10(labels = scales::label_number(accuracy = 0.1)) +
   scale_color_manual(values = cols) +
   labs(
-    title    = "PK 2-compartiments (rxode2) — hBPA-LP1 (FGFR2) — Singe",
+    title    = "PK 2-compartiments (rxode2) — hBPA-LP1 (FGFR2) — Souris",
     subtitle = paste0(
       "V1 = ", round(best_par["V1"], 4), " L/kg",
       "   V2 = ", round(best_par["V2"], 4), " L/kg",
@@ -271,16 +271,16 @@ p <- ggplot() +
   )
 
 print(p)
-ggsave("scripts/plot_PK2comp_rxode2_singe_FGFR2.png",
+ggsave("scripts/plot_PK2comp_rxode2_souris_FGFR2.png",
        p, width = 9, height = 5.5, dpi = 150)
-cat("\nGraphique → scripts/plot_PK2comp_rxode2_singe_FGFR2.png\n")
+cat("\nGraphique → scripts/plot_PK2comp_rxode2_souris_FGFR2.png\n")
 
 # =============================================================================
 # 11. SAUVEGARDE
 # =============================================================================
 
-pk2comp_singe <- list(
-  espece       = "singe",
+pk2comp_souris <- list(
+  espece       = "souris",
   CL           = unname(best_par["CL"]),
   V1           = unname(best_par["V1"]),
   V2           = unname(best_par["V2"]),
@@ -297,6 +297,6 @@ pk2comp_singe <- list(
   convergence  = fit$convergence
 )
 
-save(pk2comp_singe,
-     file = "scripts/resultats_PK2comp_rxode2_singe_FGFR2.RData")
-cat("Résultats → scripts/resultats_PK2comp_rxode2_singe_FGFR2.RData\n")
+save(pk2comp_souris,
+     file = "scripts/resultats_PK2comp_rxode2_souris_FGFR2.RData")
+cat("Résultats → scripts/resultats_PK2comp_rxode2_souris_FGFR2.RData\n")
