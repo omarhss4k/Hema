@@ -18,6 +18,9 @@ library(rxode2)
 library(ggplot2)
 library(readxl)
 
+options(encoding = "UTF-8")
+if (.Platform$OS.type == "unix") Sys.setlocale("LC_ALL", "C.UTF-8")
+
 # =============================================================================
 # 1. LECTURE BRUTE DU FICHIER MULTI-BLOCS
 # =============================================================================
