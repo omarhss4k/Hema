@@ -126,10 +126,10 @@ sim_dose <- function(dose_ugkg, params, times) {
 # =============================================================================
 
 init_params <- c(
-  CL = 0.003,   # L/h/kg
-  V1 = 0.050,   # L/kg
-  V2 = 0.060,   # L/kg
-  Q  = 0.004    # L/h/kg
+  CL = 0.001,   # L/h/kg
+  V1 = 0.033,   # L/kg
+  V2 = 0.025,   # L/kg
+  Q  = 0.002    # L/h/kg
 )
 
 cat("\n=== Valeurs initiales ===\n")
