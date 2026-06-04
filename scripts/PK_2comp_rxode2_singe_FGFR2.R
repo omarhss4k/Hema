@@ -3,9 +3,10 @@
 # rxode2 + nlminb  |  IV bolus unique
 #
 # Structure Excel (PK_singe_FGFR2.xlsx) :
-#   Table plate — 1 ligne d'en-tête, col 1 = Time (h), col 2+ = 1 groupe/colonne
-#   Ex. : "Group 07, Fc-silent B/C huBPA-LP1, 10mg/kg"  /  "hBPA-LP1 3.5 mg/kg"
+#   Multi-blocs verticaux séparés par des lignes "Time (h)"
+#   Col 1 = temps (h), col 2 = concentration (ng/mL) — 1 colonne par groupe
 #   Temps : 0.5, 4, 24, 48, 168, 336, 504, 648 h
+#   Groupes : 1, 3, 3.5, 5, 10, 11.8 mg/kg (ordre libre dans le fichier)
 #
 # Unités : temps en heures | dose en µg/kg | concentration en ng/mL (= µg/L)
 # =============================================================================
@@ -18,24 +19,29 @@ options(encoding = "UTF-8")
 if (.Platform$OS.type == "unix") Sys.setlocale("LC_ALL", "C.UTF-8")
 
 # =============================================================================
-# 1. LECTURE — TABLE PLATE (1 en-tête, col 1 = temps, col 2+ = groupes)
+# 1. LECTURE BRUTE — multi-blocs verticaux
 # =============================================================================
 
 raw <- suppressMessages(
   read_xlsx("PK_singe_FGFR2.xlsx",
             sheet        = "Sheet1",
-            col_names    = TRUE,
+            col_names    = FALSE,
             .name_repair = "minimal")
 )
 
-col_names <- names(raw)
-t_raw     <- suppressWarnings(as.numeric(as.character(raw[[1]])))
+# Repérer les lignes d'en-tête "Time (h)" dans la colonne 1
+header_rows <- grep("Time.*\\(h\\)", trimws(as.character(raw[[1]])),
+                    ignore.case = TRUE, perl = TRUE)
+cat("Blocs 'Time (h)' trouvés :", length(header_rows), "→", header_rows, "\n")
+stopifnot("Au moins 1 bloc attendu" = length(header_rows) >= 1)
 
-cat("Colonnes détectées :", paste(col_names, collapse = " | "), "\n")
-cat("Lignes de données  :", sum(!is.na(t_raw)), "\n")
+# Bornes de chaque bloc
+block_ends   <- c(header_rows[-1] - 1, nrow(raw))
+blocks_range <- mapply(function(h, e) c(h + 1, e),
+                       header_rows, block_ends, SIMPLIFY = FALSE)
 
 # =============================================================================
-# 2. PARSING — extraction dose + concentrations par colonne
+# 2. PARSING — 1 colonne temps + 1 colonne concentration par bloc
 # =============================================================================
 
 extract_dose_mgkg <- function(s) {
@@ -50,40 +56,41 @@ to_num <- function(x) {
   suppressWarnings(as.numeric(x))
 }
 
-# Un data.frame par groupe (colonnes 2+)
-groups_raw <- lapply(seq_along(col_names)[-1], function(j) {
-  dose_mgkg <- extract_dose_mgkg(col_names[j])
+parse_bloc <- function(header_row, data_rows) {
+  hdr       <- trimws(as.character(unlist(raw[header_row, ])))
+  dose_mgkg <- extract_dose_mgkg(hdr[2])
   if (is.na(dose_mgkg)) return(NULL)
-  conc <- to_num(raw[[j]])
-  data.frame(
-    t         = t_raw,
-    C         = conc,
-    BLQ       = is.na(conc),
-    dose_ugkg = dose_mgkg * 1000,
-    Dose      = paste0(dose_mgkg, " mg/kg")
+
+  blk  <- raw[data_rows[1]:data_rows[2], ]
+  t    <- suppressWarnings(as.numeric(as.character(blk[[1]])))
+  conc <- to_num(blk[[2]])
+
+  ok_fit <- !is.na(t) & t > 0 & !is.na(conc) & conc > 0
+  ok_obs <- !is.na(t)
+
+  list(
+    fit = data.frame(t = t[ok_fit], C = conc[ok_fit],
+                     dose_ugkg = dose_mgkg * 1000,
+                     Dose = paste0(dose_mgkg, " mg/kg")),
+    obs = data.frame(t = t[ok_obs], C = conc[ok_obs],
+                     BLQ = is.na(conc[ok_obs]),
+                     Dose = paste0(dose_mgkg, " mg/kg"))
   )
-})
-groups_raw <- Filter(Negate(is.null), groups_raw)
+}
 
-# Tri par dose croissante
-dose_order <- order(sapply(groups_raw, function(g) g$dose_ugkg[1]))
-groups_raw <- groups_raw[dose_order]
+blocs <- lapply(seq_along(header_rows), function(i)
+  parse_bloc(header_rows[i], blocks_range[[i]]))
+blocs <- Filter(Negate(is.null), blocs)
 
 # =============================================================================
-# 3. NETTOYAGE — jeu pour le fit (t > 0, non-BLQ) + jeu pour le graphique
+# 3. NETTOYAGE — tri par dose, vérification
 # =============================================================================
 
-# fit_groups : points valides uniquement
-fit_groups <- lapply(groups_raw, function(g) {
-  ok <- !is.na(g$t) & g$t > 0 & !g$BLQ & !is.na(g$C) & g$C > 0
-  data.frame(t = g$t[ok], C = g$C[ok], dose_ugkg = g$dose_ugkg[1], Dose = g$Dose[1])
-})
+dose_vals  <- sapply(blocs, function(b) b$fit$dose_ugkg[1])
+blocs      <- blocs[order(dose_vals)]
 
-# df_obs_all : tous les temps >= 0 (pour le graphique)
-df_obs_all <- do.call(rbind, lapply(groups_raw, function(g) {
-  ok <- !is.na(g$t) & g$t >= 0
-  data.frame(t = g$t[ok], C = g$C[ok], BLQ = g$BLQ[ok], Dose = g$Dose[1])
-}))
+fit_groups <- lapply(blocs, function(b) b$fit)
+df_obs_all <- do.call(rbind, lapply(blocs, function(b) b$obs))
 
 cat("\nPoints retenus par groupe :\n")
 for (g in fit_groups)
@@ -210,16 +217,15 @@ cat(sprintf("Convergence    : %s (code %d)\n", fit$message, fit$convergence))
 # 9. SIMULATION FINALE
 # =============================================================================
 
-t_max  <- max(sapply(fit_groups, function(g) max(g$t))) * 1.05
-t_sim  <- seq(0, t_max, by = 1)
+t_max <- max(sapply(fit_groups, function(g) max(g$t))) * 1.05
+t_sim <- seq(0, t_max, by = 1)
+niv   <- sapply(blocs, function(b) b$fit$Dose[1])   # trié par dose
 
-niv <- sapply(groups_raw, function(g) g$Dose[1])   # déjà trié par dose
-
-sim_all <- do.call(rbind, lapply(groups_raw, function(g) {
+sim_all <- do.call(rbind, lapply(blocs, function(b) {
   data.frame(
     t    = t_sim,
-    C    = sim_dose(g$dose_ugkg[1], best_par, t_sim),
-    Dose = g$Dose[1]
+    C    = sim_dose(b$fit$dose_ugkg[1], best_par, t_sim),
+    Dose = b$fit$Dose[1]
   )
 }))
 
