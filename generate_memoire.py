@@ -228,7 +228,9 @@ add_paragraph(doc,
     "implémenté sous R avec la librairie rxode2, permettant de simuler la dynamique "
     "hématologique de patients traités par des ADCs. Le cadre théorique repose sur le "
     "modèle de Fornari (2019), qui décrit l'hématopoïèse en compartiments successifs "
-    "(MPP, CMP/MEP, neutrophiles, monocytes, réticulocytes, érythrocytes, plaquettes) "
+    "(progéniteurs multipotents — MPP, progéniteurs myéloïdes communs — CMP, "
+    "progéniteurs érythroïdes-mégacaryocytaires — MEP, neutrophiles, monocytes, "
+    "réticulocytes, érythrocytes, plaquettes) "
     "régulés par des feedbacks homéostatiques.",
     first_line_indent=1.0)
 add_paragraph(doc,
@@ -271,7 +273,9 @@ add_paragraph(doc,
     "pipeline, implemented in R using the rxode2 library, to simulate the hematological "
     "dynamics of patients treated with ADCs. The theoretical framework is based on the "
     "Fornari (2019) model, which describes hematopoiesis through successive compartments "
-    "(MPP, CMP/MEP, neutrophils, monocytes, reticulocytes, red blood cells, platelets) "
+    "(multipotent progenitors — MPP, common myeloid progenitors — CMP, "
+    "megakaryocyte-erythroid progenitors — MEP, neutrophils, monocytes, "
+    "reticulocytes, red blood cells, platelets) "
     "regulated by homeostatic feedbacks.",
     first_line_indent=1.0)
 add_paragraph(doc,
