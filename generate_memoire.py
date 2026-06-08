@@ -1016,6 +1016,14 @@ add_paragraph(doc,
     "sont : CL = 0,50 L/h, V1 = 3,1 L, Q = 0,80 L/h, V2 = 2,5 L (pour un patient de "
     "70 kg).",
     first_line_indent=1.0)
+add_paragraph(doc,
+    "Le Tableau 2 présente la distribution des grades CTCAE v5 issus des simulations "
+    "pour les trois toxicités hématologiques modélisées. La neutropénie est la toxicité "
+    "la plus fréquente : 29% des patients simulés atteignent au moins un grade 1, dont "
+    "16% un grade ≥3. L'anémie présente une incidence élevée tout grade (72%), "
+    "principalement de faible sévérité (G1-2 : 63%), tandis que la thrombocytopénie "
+    "reste modérée avec 40% tout grade et 3% de grade ≥3.",
+    first_line_indent=1.0)
 add_table_simple(doc,
     ["Toxicité", "G0 — Modèle (%)", "G1 (%)", "G2 (%)", "G3 (%)", "G4 (%)", "Tout grade (%)", "G3-4 (%)"],
     [
@@ -1025,19 +1033,18 @@ add_table_simple(doc,
     ],
     col_widths=[3.5, 2.5, 1.7, 1.7, 1.7, 1.7, 2.5, 2.0])
 add_paragraph(doc,
-    "La concordance avec les données FDA est remarquable : neutropénie tout grade 29% "
-    "(modèle) vs 29% (FDA), G3-4 16% vs 16% ; anémie tout grade 72% vs 70%, G3-4 9% vs 9% ; "
-    "thrombocytopénie tout grade 40% vs 37%, G3-4 3% vs 3%. Ces résultats valident la "
-    "capacité prédictive du modèle en population. La figure ci-dessous présente ces "
-    "distributions sous forme de barres empilées, avec les taux FDA superposés en lignes "
-    "de référence.",
+    "La comparaison avec les données cliniques de référence (BLA 761139, DESTINY-Breast01, "
+    "n=184) montre une concordance remarquable pour les trois toxicités : "
+    "neutropénie tout grade 29% (modèle) vs 29% (BLA), G3-4 16% vs 16% ; "
+    "anémie tout grade 72% vs 70%, G3-4 9% vs 9% ; "
+    "thrombocytopénie tout grade 40% vs 37%, G3-4 3% vs 3%. "
+    "La figure ci-dessous présente ces distributions sous forme de barres empilées, "
+    "avec les taux BLA superposés en lignes de référence.",
     first_line_indent=1.0)
 add_paragraph(doc,
     "Les IC95% (méthode Wilson, N=300) sont : neutropénie tout grade 29% [24%–34%], "
-    "G3-4 14% [10%–19%] ; anémie tout grade 72% [67%–77%], G3-4 9% [6%–13%].",
-    first_line_indent=1.0)
-add_paragraph(doc,
-    "La RMSE sur l'ensemble des 6 comparaisons prédites vs FDA est de 2,1 points de "
+    "G3-4 14% [10%–19%] ; anémie tout grade 72% [67%–77%], G3-4 9% [6%–13%]. "
+    "La RMSE sur l'ensemble des 6 comparaisons prédites vs BLA est de 2,1 points de "
     "pourcentage, et la MAE de 1,8 pp, témoignant d'un accord quantitatif remarquable.",
     first_line_indent=1.0)
 
