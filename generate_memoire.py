@@ -512,8 +512,27 @@ add_paragraph(doc,
     first_line_indent=1.0)
 add_equation(doc, "f_feedback = (C_baseline / C)^γ")
 add_paragraph(doc,
-    "avec γ ≈ 0,2 (paramètre de sensibilité du feedback). Ce mécanisme représente "
-    "la stimulation compensatoire de la moelle osseuse lors d'une cytopénie.",
+    "avec γ un paramètre de sensibilité du feedback qui n'est pas unique : "
+    "il prend des valeurs différentes selon le niveau de régulation considéré. "
+    "Dans le modèle de Fornari (2019), quatre valeurs distinctes sont définies :",
+    first_line_indent=1.0)
+add_table_simple(doc,
+    ["Paramètre", "Valeur (rat)", "Niveau de régulation"],
+    [
+        ["γ_stem",      "0,07", "Feedback sur la prolifération des MPP (progéniteurs souches)"],
+        ["γ_mat_CMP",   "0,60", "Feedback sur la maturation CMP → neutrophiles / monocytes"],
+        ["γ_mat_MEP",   "0,30", "Feedback sur la maturation MEP → réticulocytes / plaquettes"],
+        ["γ_prolTrans", "0,70", "Feedback sur les cellules en transit (réticulocytes, plaquettes)"],
+    ],
+    col_widths=[3.0, 2.5, 10.0])
+add_paragraph(doc,
+    "Des valeurs faibles de γ (ex. γ_stem = 0,07) traduisent une réponse compensatoire "
+    "lente et atténuée au niveau des progéniteurs souches, tandis que des valeurs élevées "
+    "(ex. γ_prolTrans = 0,70) reflètent une sensibilité plus forte des cellules en transit "
+    "aux variations de leur lignée d'aval. Ce mécanisme représente la stimulation "
+    "compensatoire de la moelle osseuse lors d'une cytopénie : lorsque le nombre de "
+    "cellules circulantes chute, le feedback accélère la production médullaire pour "
+    "restaurer l'homéostasie.",
     first_line_indent=1.0)
 add_paragraph(doc,
     "Les paramètres de base (k_e, k_prol, τ) sont dérivés des valeurs biologiques "
@@ -933,7 +952,7 @@ add_table_simple(doc,
         ["Durée de vie Neut", "6,9", "h", "Littérature"],
         ["Durée de vie RBC", "60", "j", "Littérature"],
         ["Durée de vie Plt", "5", "j", "Littérature"],
-        ["γ (feedback)", "0,20", "—", "Fornari 2019"],
+        ["γ_stem / γ_mat_CMP /\nγ_mat_MEP / γ_prolTrans", "0,07 / 0,60 /\n0,30 / 0,70", "—", "Fornari 2019"],
     ],
     col_widths=[5.0, 3.0, 3.0, 4.5])
 
