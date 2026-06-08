@@ -1057,8 +1057,9 @@ set_font(run, size=10, italic=True, color=(100,100,100))
 
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run = p.add_run("Figure 1. Distribution des grades CTCAE v5 (T-DXd 5,4 mg/kg Q3W × 6, N=300) "
-                "vs données cliniques FDA (DESTINY-Breast01, n=184).")
+run = p.add_run("Figure 1. Distribution simulée des grades CTCAE v5 (T-DXd 5,4 mg/kg Q3W × 6, "
+                "N=300 patients virtuels). Les taux de grades issus des données cliniques "
+                "FDA (DESTINY-Breast01, n=184) sont superposés à titre de référence.")
 set_font(run, size=10, italic=True)
 doc.add_paragraph()
 
