@@ -889,6 +889,17 @@ add_paragraph(doc,
     "hématologique issues du BLA 761139 (FDA, 2019), correspondant à l'essai "
     "DESTINY-Breast01 (n=184, T-DXd 5,4 mg/kg Q3W) :",
     first_line_indent=1.0)
+add_paragraph(doc,
+    "Ces données ne comportent pas de profils individuels de cytopénie en fonction "
+    "du temps, mais uniquement des pourcentages de grades agrégés sur l'ensemble "
+    "du traitement (grade maximal observé par patient, worst-case grading). "
+    "La validation repose donc sur la comparaison des distributions de grades CTCAE v5 "
+    "au nadir simulé — et non sur des profils temporels — ce qui constitue la seule "
+    "métrique disponible dans les rapports réglementaires publics. Cette métrique "
+    "est par ailleurs directement pertinente sur le plan clinique, car c'est le grade "
+    "maximal atteint qui conditionne les décisions de gestion thérapeutique "
+    "(réduction de dose, interruption, hospitalisation).",
+    first_line_indent=1.0)
 add_table_simple(doc,
     ["Toxicité", "G0 (%)", "G1 (%)", "G2 (%)", "G3 (%)", "G4 (%)", "Tout grade (%)", "G3-4 (%)"],
     [
@@ -1004,13 +1015,6 @@ add_paragraph(doc,
     "et PD. Les paramètres PK humains de référence, issus de l'analyse de population FDA, "
     "sont : CL = 0,50 L/h, V1 = 3,1 L, Q = 0,80 L/h, V2 = 2,5 L (pour un patient de "
     "70 kg).",
-    first_line_indent=1.0)
-add_paragraph(doc,
-    "Les données cliniques disponibles (BLA 761139, DESTINY-Breast01) ne comportent pas "
-    "de profils individuels de cytopénie en fonction du temps, mais uniquement des "
-    "pourcentages de grades agrégés sur l'ensemble du traitement. La validation repose "
-    "donc sur la comparaison des distributions de grades CTCAE v5 au nadir, extraites "
-    "pour chaque patient simulé sur les 126 jours de suivi (6 cycles).",
     first_line_indent=1.0)
 add_table_simple(doc,
     ["Toxicité", "G0 — Modèle (%)", "G1 (%)", "G2 (%)", "G3 (%)", "G4 (%)", "Tout grade (%)", "G3-4 (%)"],
