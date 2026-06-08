@@ -1354,8 +1354,13 @@ add_paragraph(doc,
     "conservatrice consiste à utiliser directement les Slopes NHP comme estimation "
     "initiale, en attendant des données d'IC50 sur progéniteurs humains (CFU). "
     "Ces projections constituent une base de discussion pour la définition de la dose "
-    "de départ en Premier-en-Homme (FIH), en cohérence avec le NOAEL identifié en NHP "
-    "— défini comme la dose la plus élevée n'ayant entraîné aucune atteinte de grade ≥3.",
+    "de départ en Premier-en-Homme (FIH), en cohérence avec le NOAEL identifié en NHP. "
+    "Dans l'étude préclinique NHP, le NOAEL est défini selon les critères toxicologiques "
+    "standards — absence d'effet indésirable significatif sur les valeurs hématologiques "
+    "absolues (nadir des neutrophiles, plaquettes, érythrocytes) par rapport à la baseline "
+    "individuelle, et absence de signe clinique de détresse. Les grades CTCAE v5 sont une "
+    "classification propre aux essais cliniques humains et ne s'appliquent pas directement "
+    "aux études précliniques NHP.",
     first_line_indent=1.0)
 
 add_heading(doc, "4.6 Impact opérationnel et aide à la décision", 2)
