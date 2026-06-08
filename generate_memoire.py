@@ -1241,14 +1241,21 @@ add_bullet(doc, "Simulation de schémas non testés : une fois calibré, le mod�
 add_paragraph(doc,
     "Une approche par apprentissage automatique (random forest, réseau de neurones, "
     "gradient boosting) aurait en théorie pu être envisagée pour prédire les grades "
-    "CTCAE à partir des caractéristiques patient. Cependant, deux contraintes majeures "
-    "la rendent inadaptée dans ce contexte : (1) le volume de données disponibles est "
-    "très limité — n=5 rats, n=8 NHP — ce qui exclut tout apprentissage supervisé "
-    "robuste ; (2) un modèle boîte noire ne permettrait pas l'extrapolation inter-espèces "
-    "ni la simulation de doses non testées. La modélisation mécaniste, fondée sur des "
-    "équations différentielles biologiquement interprétables, est ici la seule approche "
-    "permettant à la fois l'inférence causale (dose → concentration → dommage → nadir) "
-    "et la généralisation à de nouvelles conditions expérimentales.",
+    "CTCAE à partir des caractéristiques patient. Cependant, plusieurs contraintes "
+    "la rendent inadaptée dans ce contexte. "
+    "D'une part, les données de calibration précliniques sont très limitées "
+    "(n=5 rats, n=8 NHP), ce qui exclut tout apprentissage supervisé robuste à ce stade. "
+    "Si les données cliniques de l'essai DESTINY-Breast01 (n=184) offrent un volume "
+    "plus conséquent, elles ne comportent que des grades agrégés — sans profils "
+    "individuels de concentration ni de dynamique cellulaire — insuffisants pour "
+    "entraîner un modèle prédictif temporel. "
+    "D'autre part, et c'est la limite fondamentale, un modèle boîte noire entraîné "
+    "sur des données d'un composé et d'une espèce donnés ne permettrait pas "
+    "l'extrapolation inter-espèces ni la simulation de doses ou schémas non testés. "
+    "La modélisation mécaniste, fondée sur des équations différentielles "
+    "biologiquement interprétables, est ici la seule approche permettant à la fois "
+    "l'inférence causale (dose → concentration → dommage → nadir) et la "
+    "généralisation à de nouvelles conditions expérimentales.",
     first_line_indent=1.0)
 add_paragraph(doc,
     "Cette logique causale est au cœur du modèle : chaque compartiment représente "
