@@ -1257,6 +1257,20 @@ add_bullet(doc, "Transposition PD inter-espèces : la conservation des paramètr
 add_bullet(doc, "Absence de données d'efficacité : le modèle actuel est centré sur "
             "la prédiction de la toxicité hématologique. L'intégration d'un modèle "
             "d'efficacité tumorale permettrait une analyse bénéfice-risque complète.")
+add_bullet(doc, "Mécanisme d'hématotoxicité supposé off-target : le pipeline actuel "
+            "modélise exclusivement l'hématotoxicité off-target, c'est-à-dire la "
+            "toxicité induite par le payload cytotoxique libéré de façon non spécifique "
+            "et atteignant les cellules progénitrices hématopoïétiques. Cependant, "
+            "certains ADCs peuvent induire une hématotoxicité on-target, lorsque "
+            "l'antigène ciblé par l'anticorps est exprimé à la surface des cellules "
+            "hématopoïétiques elles-mêmes. Dans ce cas, l'ADC se lie directement aux "
+            "progéniteurs médullaires et délivre son payload de façon ciblée, "
+            "amplifiant la toxicité indépendamment de toute libération systémique. "
+            "Ce mécanisme, documenté pour certaines cibles (ex. CD33, CD123, FLT3 "
+            "exprimés sur les cellules myéloïdes), n'est pas pris en compte dans la "
+            "structure actuelle du modèle et pourrait conduire à une sous-estimation "
+            "de la toxicité pour les composés présentant un profil antigénique "
+            "hématopoïétique.")
 
 add_heading(doc, "4.4 Perspectives méthodologiques", 2)
 add_paragraph(doc,
