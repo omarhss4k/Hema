@@ -385,9 +385,13 @@ add_paragraph(doc,
     first_line_indent=1.0)
 add_paragraph(doc,
     "La prédiction précoce et quantitative de l'hématotoxicité est donc un enjeu "
-    "double : (1) assurer la sécurité des patients en essais cliniques de phase I "
-    "en identifiant des doses sûres ; (2) optimiser les schémas posologiques pour "
-    "maximiser l'efficacité tout en maintenant une toxicité acceptable.",
+    "à la fois clinique et opérationnel. Sur le plan clinique, elle conditionne "
+    "directement le choix de la première dose administrée chez l'homme (first-in-human, "
+    "FIH) : une dose de départ trop élevée expose les patients à des toxicités sévères "
+    "potentiellement irréversibles, tandis qu'une dose trop faible retarde l'accès à "
+    "l'efficacité thérapeutique. Sur le plan opérationnel, elle permet d'optimiser les "
+    "schémas posologiques pour maximiser le bénéfice clinique tout en maintenant un "
+    "profil de tolérance acceptable.",
     first_line_indent=1.0)
 
 add_heading(doc, "1.3 La modélisation PK/PD dans le développement du médicament", 2)
