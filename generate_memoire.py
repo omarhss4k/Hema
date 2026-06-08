@@ -352,7 +352,7 @@ add_paragraph(doc,
     "conçue pour délivrer de manière ciblée un agent cytotoxique puissant directement "
     "aux cellules tumorales. Leur structure combine trois éléments : un anticorps monoclonal "
     "reconnaissant un antigène spécifique exprimé à la surface des cellules cancéreuses, "
-    "un lieur chimique (linker) et une molécule cytotoxique (payload). Après liaison à "
+    "un liant chimique (linker) et une molécule cytotoxique (payload). Après liaison à "
     "l'antigène cible et internalisation cellulaire, le payload est libéré et exerce son "
     "effet antiprolifératif, principalement par inhibition de la polymérisation des "
     "microtubules ou par dommages à l'ADN.",
