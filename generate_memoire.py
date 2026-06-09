@@ -236,7 +236,7 @@ add_paragraph(doc,
 add_paragraph(doc,
     "Le pipeline a été développé en quatre étapes progressives : (1) reproduction et "
     "validation du modèle Fornari sur données de rat traitées au carboplatine ; "
-    "(2) application au T-DXd (trastuzumab déruxtécan) avec simulation de population "
+    "(2) application au T-DXd (trastuzumab deruxtecan) avec simulation de population "
     "virtuelle de 300 patients, aboutissant à une prédiction des grades CTCAE v5 en "
     "accord avec les données cliniques issues du dossier soumis à la FDA (BLA 761139, DESTINY-Breast01, n=184) ; "
     "(3) application à un composé en développement interne sur données NHP précliniques "
@@ -329,7 +329,7 @@ abbrevs = [
     ("Q3W",    "Every 3 weeks (toutes les 3 semaines)"),
     ("RBC",    "Red Blood Cells (érythrocytes)"),
     ("RMSE",   "Root Mean Square Error"),
-    ("T-DXd",  "Trastuzumab déruxtécan (Enhertu®)"),
+    ("T-DXd",  "Trastuzumab deruxtecan (Enhertu®)"),
     ("V1/V2",  "Volume de distribution central/périphérique"),
     ("VPC",    "Visual Predictive Check"),
 ]
@@ -358,7 +358,7 @@ add_paragraph(doc,
     "microtubules ou par dommages à l'ADN.",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Le trastuzumab déruxtécan (T-DXd, Enhertu®), développé conjointement par AstraZeneca "
+    "Le trastuzumab deruxtecan (T-DXd, Enhertu®), développé conjointement par AstraZeneca "
     "et Daiichi Sankyo, représente l'ADC de référence dans le traitement du cancer du sein "
     "HER2-positif. Son approbation par la FDA en 2019 (BLA 761139) sur la base des résultats "
     "de l'essai DESTINY-Breast01 (ORR 60,9%, n=184) a marqué une avancée majeure en oncologie. "
@@ -464,7 +464,7 @@ add_table_simple(doc,
          "Fornari et al. 2019 (publication)",
          "Valeurs basales hématologiques humaines (paramètres d'équilibre)",
          "Littérature"],
-        ["3 & 5", "Rat / Humain", "T-DXd (trastuzumab déruxtécan)",
+        ["3 & 5", "Rat / Humain", "T-DXd (trastuzumab deruxtecan)",
          "Yin et al. 2020 ; FDA BLA 761139 (DESTINY-Breast01)",
          "Paramètres PK (allométrie rat) ; grades CTCAE cliniques humains",
          "N=184 patients"],
