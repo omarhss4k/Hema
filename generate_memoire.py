@@ -735,7 +735,8 @@ add_bullet(doc,
     "via rxode2 (solveur LSODA, pas adaptatif) sur 126 jours, "
     "avec administration IV aux jours 1, 22, 43, 64, 85, 106")
 add_bullet(doc,
-    "Extraction du nadir pour chaque lignée : "
+    "Extraction du nadir (valeur minimale atteinte par la lignée cellulaire "
+    "au cours du traitement) pour chaque lignée : "
     "min(Neut(t)), min(Plt(t)), min(RBC(t)) sur t ∈ [0, 126 jours]")
 add_bullet(doc,
     "Attribution du grade CTCAE v5 par comparaison du nadir aux seuils "
