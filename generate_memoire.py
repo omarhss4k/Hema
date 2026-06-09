@@ -1053,11 +1053,14 @@ add_paragraph(doc,
     "Fornari) ont remplacé ceux du rat.",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Les proportions de patients par grade CTCAE simulées reproduisent fidèlement la "
-    "Figure 4c de Fornari : la neutropénie tout grade (~40%) et la thrombocytopénie "
-    "modérée sont cohérentes avec les données de référence. Cette concordance valide "
-    "la transposabilité inter-espèces du cadre pour le carboplatine et autorise "
-    "son extension à d'autres composés.",
+    "Les profils de neutrophiles simulés reproduisent fidèlement la Figure 4c de "
+    "Fornari, validant la transposabilité inter-espèces du cadre pour le carboplatine. "
+    "En revanche, le profil thrombocytaire présente un accord moins satisfaisant : "
+    "le nadir prédit est décalé temporellement par rapport aux données de référence, "
+    "reflet d'une limitation connue du modèle de Fornari pour les plaquettes — dont la "
+    "cinétique est plus complexe (régulation thrombopoïétine, durée de vie hétérogène "
+    "des populations plaquettaires). Ce point constitue une limite de la transposition "
+    "directe des paramètres δ_Plt du rat à l'humain sans recalibration.",
     first_line_indent=1.0)
 
 p = doc.add_paragraph()
