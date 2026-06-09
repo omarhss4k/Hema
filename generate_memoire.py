@@ -1004,7 +1004,8 @@ add_table_simple(doc,
 add_heading(doc, "3.1.2 Qualité de l'ajustement", 3)
 add_paragraph(doc,
     "Les profils hématologiques simulés reproduisent fidèlement les données observées "
-    "publiées par Fornari (2019) pour le rat traité au carboplatine. Les principales "
+    "publiées par Fornari (2019) pour le rat traité au carboplatine "
+    "(40 mg/kg IV, toutes les 2 semaines, 8 cycles). Les principales "
     "caractéristiques cinétiques sont retrouvées :",
     first_line_indent=1.0)
 add_bullet(doc, "Neutrophiles : nadir au jour 10–12 post-dose, retour à la ligne de base "
