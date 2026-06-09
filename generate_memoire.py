@@ -1406,8 +1406,8 @@ add_heading(doc, "4.5 Traduction clinique : perspectives de transposition NHP �
 add_heading(doc, "Mise en perspective avec la dose tolérée chez l'animal", 3)
 add_paragraph(doc,
     "La dose tolérée identifiée dans l'étude NHP correspond à la dose la plus élevée "
-    "à laquelle aucune cytopénie sévère — définie par un nadir hématologique "
-    "franchissant les seuils biologiquement significatifs — n'a été observée. "
+    "à laquelle aucune cytopénie sévère (définie par un nadir hématologique "
+    "franchissant les seuils biologiquement significatifs) n'a été observée. "
     "La simulation PK/PD permet de quantifier la marge de sécurité entre cette dose "
     "tolérée chez l'animal et les doses humaines envisagées, en intégrant les différences "
     "pharmacocinétiques inter-espèces de manière cohérente via l'extrapolation allométrique.",
