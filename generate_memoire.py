@@ -1283,6 +1283,11 @@ add_bullet(doc, "Prédiction du nadir temporel : le décalage cinétique PK/PD e
 add_bullet(doc, "Simulation de schémas non testés : une fois calibré, le modèle permet "
             "d'explorer in silico des schémas posologiques alternatifs (dose, fréquence, "
             "durée) sans expérimentation supplémentaire")
+add_bullet(doc, "Intégration des données in vitro : le modèle peut être affiné en "
+            "intégrant des mesures d'IC50 sur lignées hématopoïétiques spécifiques "
+            "(CFU-GM, BFU-E), ancrant mécanistiquement le paramètre Slope dans une "
+            "donnée expérimentale directe et réduisant l'incertitude sur la transposition "
+            "inter-espèces")
 add_paragraph(doc,
     "Une approche par apprentissage automatique (random forest, réseau de neurones, "
     "gradient boosting) aurait en théorie pu être envisagée pour prédire les grades "
