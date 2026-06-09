@@ -1377,7 +1377,10 @@ add_bullet(doc, "Analyse de sensibilité formelle (indices de Sobol) : l'analyse
 add_heading(doc, "4.5 Traduction clinique : perspectives de transposition NHP → humain", 2)
 add_paragraph(doc,
     "Sur la base des paramètres PK/PD ajustés chez le NHP, une transposition clinique "
-    "préliminaire peut être envisagée. La transposition des paramètres PK repose sur "
+    "préliminaire peut être envisagée. L'extrapolation allométrique s'applique "
+    "exclusivement aux paramètres PK — les paramètres PD (Slopes) étant supposés "
+    "conservés entre espèces pour un même payload (cf. §4.5). "
+    "La transposition des paramètres PK repose sur "
     "des lois d'allométrie inter-espèces :",
     first_line_indent=1.0)
 add_equation(doc, "CL_humain = CL_NHP × (BW_humain / BW_NHP)^0.75    [allométrie standard]")
@@ -1388,10 +1391,12 @@ add_paragraph(doc,
     "sur CL reste inférieur à 2, ce qui est acceptable en première approximation.",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "La transposition des paramètres PD (Slopes) est plus délicate, car la sensibilité "
-    "des progéniteurs hématopoïétiques au payload peut varier entre espèces. Une approche "
-    "conservatrice consiste à utiliser directement les Slopes NHP comme estimation "
-    "initiale, en attendant des données d'IC50 sur progéniteurs humains (CFU). "
+    "Pour les paramètres PD, l'hypothèse standard retenue est que la sensibilité "
+    "cellulaire au payload — quantifiée par les Slopes — est conservée entre espèces "
+    "pour un même mécanisme d'action. Les Slopes calibrés sur NHP sont donc utilisés "
+    "directement comme point de départ pour l'humain, en l'absence de données "
+    "d'IC50 sur progéniteurs humains (CFU). Cette hypothèse constitue une perspective "
+    "de validation (mesure d'IC50 sur CFU-GM, BFU-E humains). "
     "Ces projections constituent une base de discussion pour la définition de la dose "
     "de départ en Premier-en-Homme (FIH), en cohérence avec le NOAEL identifié en NHP. "
     "Dans l'étude préclinique NHP, le NOAEL est défini selon les critères toxicologiques "
