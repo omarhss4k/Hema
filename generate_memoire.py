@@ -567,8 +567,11 @@ add_equation(doc, "Effet = 1 − Slope × Damage")
 add_paragraph(doc,
     "Le paramètre Slope est spécifique à chaque lignée cellulaire (Slope_MPP, "
     "Slope_CMP, Slope_MEP), reflétant la sensibilité différentielle des progéniteurs "
-    "au payload cytotoxique. Ces paramètres sont calibrés sur les données "
-    "hématologiques observées.",
+    "au payload cytotoxique. Ces paramètres sont également propres à chaque molécule : "
+    "un payload à mécanisme d'action différent (alkylant, inhibiteur de topoisomérase, "
+    "inhibiteur de kinase) induira des Slopes distincts selon son affinité pour les "
+    "progéniteurs hématopoïétiques. Ces paramètres sont calibrés sur les données "
+    "hématologiques observées pour chaque composé.",
     first_line_indent=1.0)
 
 add_heading(doc, "2.4 Modèle pharmacocinétique", 2)
