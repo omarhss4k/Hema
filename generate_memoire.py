@@ -816,7 +816,8 @@ add_bullet(doc,
     "individuelle de chaque paramètre PK/PD (CL, V1, Slope_MPP, k_rep, etc.) a été "
     "corrélée au nadir de neutrophiles correspondant. Le coefficient ρ de Spearman, "
     "non-paramétrique et robuste aux distributions asymétriques, quantifie la force "
-    "et le sens de cette relation. Un |ρ| > 0,3 a été retenu comme seuil de pertinence.")
+    "et le sens de cette relation. Un |ρ| > 0,3 a été retenu comme seuil de pertinence, "
+    "correspondant à un effet de taille moyenne selon la classification de Cohen (1988).")
 add_bullet(doc,
     "Régression logistique : une régression logistique binaire a été ajustée en prenant "
     "comme variable dépendante l'indicateur G≥3 (0/1) et comme prédicteurs les "
