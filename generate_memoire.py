@@ -833,10 +833,17 @@ add_paragraph(doc,
 
 add_heading(doc, "2.7 Grading CTCAE v5", 2)
 add_paragraph(doc,
-    "L'évaluation de la toxicité hématologique prédicte repose sur la classification "
-    "CTCAE v5 (Common Terminology Criteria for Adverse Events, version 5.0, NCI 2017), "
-    "standard international utilisé dans les essais cliniques oncologiques pour "
-    "caractériser la sévérité des effets indésirables.",
+    "Cette section s'applique exclusivement à l'étape de simulation de population humaine "
+    "(§3.2.2, T-DXd). Pour l'étude préclinique NHP (§3.3), les résultats sont décrits "
+    "en termes de nadirs absolus (×10⁹/L pour les neutrophiles et plaquettes, ×10¹²/L "
+    "pour les RBC) sans attribution de grade CTCAE, classification propre aux essais "
+    "cliniques et non applicable aux études animales.",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "L'évaluation de la toxicité hématologique prédicte en population humaine repose sur "
+    "la classification CTCAE v5 (Common Terminology Criteria for Adverse Events, "
+    "version 5.0, NCI 2017), standard international utilisé dans les essais cliniques "
+    "oncologiques pour caractériser la sévérité des effets indésirables.",
     first_line_indent=1.0)
 
 add_heading(doc, "Principe de classification", 3)
