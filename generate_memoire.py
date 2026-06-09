@@ -1325,7 +1325,7 @@ add_heading(doc, "4.3 Limites méthodologiques", 2)
 add_paragraph(doc,
     "Plusieurs limites doivent être considérées dans l'interprétation de ces résultats :",
     first_line_indent=1.0)
-add_bullet(doc, "Identifiabilité des paramètres : avec n=8 animaux NHP et 4 niveaux "
+add_bullet(doc, "Identification des paramètres : avec n=8 animaux NHP et 4 niveaux "
             "de dose, l'estimation simultanée de tous les paramètres Slope est "
             "potentiellement sous-contrainte. Des analyses de sensibilité et de "
             "corrélation entre paramètres seraient nécessaires pour quantifier "
