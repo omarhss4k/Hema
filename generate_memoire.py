@@ -590,6 +590,19 @@ add_paragraph(doc,
     "La demi-vie d'élimination terminale β est donnée par :",
     first_line_indent=1.0)
 add_equation(doc, "t½β = ln(2) / β    avec β = racine de l'équation caractéristique bi-exponentielle")
+add_paragraph(doc,
+    "La concentration plasmatique suit une décroissance bi-exponentielle :",
+    first_line_indent=1.0)
+add_equation(doc, "C(t) = A × e^{−αt} + B × e^{−βt}")
+add_paragraph(doc,
+    "où α et β sont les macro-constantes (α > β), et A, B les amplitudes. "
+    "La relation avec les paramètres systémiques est :",
+    first_line_indent=1.0)
+add_equation(doc, "k₁₀ = CL / V1     k₁₂ = Q / V1     k₂₁ = Q / V2")
+add_equation(doc, "α + β = k₁₀ + k₁₂ + k₂₁")
+add_equation(doc, "α × β = k₁₀ × k₂₁")
+add_equation(doc, "V1 = Dose / (A + B)     [car C₀ = A + B]")
+add_equation(doc, "CL = Dose / AUCinf = k₁₀ × V1")
 
 add_heading(doc, "2.4.2 Analyse non-compartimentale (NCA) — initialisation", 3)
 add_paragraph(doc,
