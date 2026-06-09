@@ -505,7 +505,10 @@ add_paragraph(doc,
 add_equation(doc, "dC/dt = k_prol × f_feedback × (1 − Slope × Damage) × C_in − k_transit × C")
 add_paragraph(doc,
     "où k_prol est le taux de prolifération, k_transit le taux de transit vers le "
-    "compartiment suivant, et f_feedback le feedback homéostatique.",
+    "compartiment suivant, f_feedback le feedback homéostatique, C_in le flux entrant "
+    "depuis le compartiment précédent, Damage l'état d'endommagement cellulaire accumulé "
+    "(défini en §2.3), et Slope le paramètre de sensibilité de la lignée au médicament "
+    "(défini en §2.5).",
     first_line_indent=1.0)
 add_paragraph(doc,
     "Le feedback homéostatique est modélisé par une fonction puissance :",
