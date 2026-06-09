@@ -50,10 +50,12 @@ init_pars$k_circ_RBC  <- 0.00037  # ref. 13
 # k_circ_Ret est dérivé dans parameters_FORNARI_CORRECT.R (Eq S4)
 
 # ── Drug effects (Table 2) ──
-# Slopes ajustés pour la sensibilité espèce-spécifique (Eq. 10)
-init_pars$Slope_MPP  <- 0.79   # IC50-scaled from rat (2.05)
-init_pars$Slope_CMP  <- 0.57   # IC50-scaled from rat (1.47)
-init_pars$Slope_MEP  <- 0.66   # IC50-scaled from rat (2.19)
+# Slopes IC50-scaled: Slope_H = Slope_R × (IC50_R / IC50_H)   [Fornari Eq. 10]
+# IC50_CMP: rat=2.83, human=4.04 → ratio=0.700
+# IC50_MEP: rat=0.86, human=1.56 → ratio=0.551
+init_pars$Slope_MPP  <- 2.05 * (2.83 / 4.04)   # = 1.44
+init_pars$Slope_CMP  <- 1.47 * (2.83 / 4.04)   # = 1.03
+init_pars$Slope_MEP  <- 2.19 * (0.86 / 1.56)   # = 1.21
 init_pars$delta_Ret  <- 2.8    # same as rat (Table 2)
 init_pars$delta_Plt  <- 0.54   # same as rat (Table 2)
 
