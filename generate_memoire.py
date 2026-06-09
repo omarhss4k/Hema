@@ -1268,9 +1268,15 @@ add_bullet(doc, "Interprétabilité biologique : chaque paramètre a une signifi
             "biologique claire (taux de prolifération, demi-vie cellulaire, taux de "
             "réparation), facilitant la communication avec les équipes pharmaceutiques "
             "et réglementaires")
-add_bullet(doc, "Extrapolation inter-espèces : la structure compartimentale homologue "
-            "entre espèces permet une transposition raisonnée des paramètres, "
-            "ce qu'un modèle statistique purement empirique ne permet pas")
+add_bullet(doc, "Extrapolation inter-espèces : la structure compartimentale de "
+            "l'hématopoïèse est conservée entre espèces (MPP→CMP/MEP→cellules matures), "
+            "ce qui permet une transposition raisonnée des paramètres physiologiques "
+            "(baselines, temps de transit, feedbacks) par allométrie. "
+            "Pour les paramètres PD (Slopes), la transposition repose sur l'hypothèse "
+            "que la sensibilité cellulaire au payload est conservée entre espèces pour "
+            "un même mécanisme d'action — hypothèse qui peut être mise en défaut si "
+            "l'expression de la cible diffère entre espèces, et qui gagnerait à être "
+            "validée par des données d'IC50 sur progéniteurs humains (CFU).")
 add_bullet(doc, "Prédiction du nadir temporel : le décalage cinétique PK/PD est "
             "naturellement capturé par la cascade de transit, ce qui est impossible "
             "avec un modèle direct exposition-réponse")
