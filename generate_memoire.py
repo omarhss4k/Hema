@@ -799,14 +799,9 @@ add_paragraph(doc,
 
 add_heading(doc, "Graphique de calibration", 3)
 add_paragraph(doc,
-    "Un graphique de calibration a été produit en portant les proportions prédites en "
-    "abscisse et les proportions observées en ordonnée, pour chacune des 6 comparaisons. "
-    "La droite d'identité (y = x) constitue la référence d'un modèle parfaitement "
-    "calibré. Les points situés au-dessus de cette droite indiquent une sous-prédiction "
-    "(le modèle sous-estime la toxicité observée) ; ceux situés en dessous indiquent une "
-    "sur-prédiction. Les barres d'erreur représentent les IC95% de Wilson sur les "
-    "proportions prédites. Ce graphique constitue un outil de diagnostic visuel "
-    "permettant d'identifier des biais systématiques par type de toxicité.",
+    "Un graphique de calibration (proportions prédites vs observées) a été produit "
+    "pour évaluer visuellement l'adéquation des prédictions aux données cliniques. "
+    "Sa description détaillée est présentée avec la figure correspondante en §3.2.2.",
     first_line_indent=1.0)
 
 add_heading(doc, "Analyse de sensibilité paramétrique", 3)
