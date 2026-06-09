@@ -791,7 +791,7 @@ add_equation(doc,
 add_paragraph(doc,
     "où p̂ᵢ est la proportion prédite par le modèle et pᵢ la proportion observée dans "
     "les données cliniques pour la comparaison i. La RMSE pénalise davantage les erreurs "
-    "importantes (sensibilité aux outliers), tandis que la MAE donne une estimation "
+    "importantes (sensibilité aux valeurs aberrantes), tandis que la MAE donne une estimation "
     "plus robuste de l'erreur moyenne absolue. Ces deux métriques sont exprimées en "
     "points de proportion (0–1) et permettent une interprétation directe de l'écart "
     "cliniquement significatif entre modèle et données.",
