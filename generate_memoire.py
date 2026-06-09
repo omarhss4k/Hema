@@ -1035,6 +1035,42 @@ add_paragraph(doc,
     "utilisé comme base pour les applications suivantes.",
     first_line_indent=1.0)
 
+add_heading(doc, "3.1.3 Transposition rat → humain pour le carboplatine : validation intermédiaire", 3)
+add_paragraph(doc,
+    "Avant d'appliquer le pipeline à un nouveau composé, une étape intermédiaire de "
+    "validation a été réalisée : la transposition du modèle carboplatine calibré sur "
+    "données de rat vers la population humaine. Cette étape constitue un garde-fou "
+    "méthodologique, visant à vérifier que la chaîne complète — extrapolation allométrique "
+    "des paramètres PK, paramètres PD de rat appliqués à l'humain — reproduit les "
+    "prédictions publiées par Fornari et al. (2019).",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "Le protocole simulé correspond au schéma de la Figure 4c de Fornari : carboplatine "
+    "dosé selon la formule de Calvert (AUC cible = 5 mg·mL⁻¹·min, GFR = 125 mL/min, "
+    "soit une dose de 750 mg), administré en 2 cycles Q21D. Une cohorte virtuelle de "
+    "N=1000 patients a été générée avec variabilité résiduelle log-additive (σ issu du "
+    "Tableau S4 de Fornari). Les paramètres biologiques humains de base (Tableau 1 de "
+    "Fornari) ont remplacé ceux du rat.",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "Les proportions de patients par grade CTCAE simulées reproduisent fidèlement la "
+    "Figure 4c de Fornari : la neutropénie tout grade (~40%) et la thrombocytopénie "
+    "modérée sont cohérentes avec les données de référence. Cette concordance valide "
+    "la transposabilité inter-espèces du cadre pour le carboplatine et autorise "
+    "son extension à d'autres composés.",
+    first_line_indent=1.0)
+
+p = doc.add_paragraph()
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+run = p.add_run("[Figure — Insérer ici : etape2_carboplatin_humain/results/Figure4c_grades_AUC5.pdf]")
+set_font(run, size=10, italic=True, color=(100,100,100))
+p = doc.add_paragraph()
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+run = p.add_run("Figure 1b. Distribution simulée des grades CTCAE — Carboplatine AUC=5, Q21D×2, "
+                "N=1000 patients virtuels. Reproduction de la Figure 4c de Fornari et al. (2019).")
+set_font(run, size=10, italic=True)
+doc.add_paragraph()
+
 # ── 3.2 ───────────────────────────────────────────────────
 add_heading(doc, "3.2 Étape 2 — Application au T-DXd : preuve de concept rat → humain", 2)
 
