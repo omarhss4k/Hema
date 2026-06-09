@@ -1015,8 +1015,12 @@ add_bullet(doc, "Réticulocytes : nadir tardif (jour 14–18), récupération pl
 add_bullet(doc, "Plaquettes : nadir au jour 12–15, récupération progressive")
 add_paragraph(doc,
     "Les résidus relatifs moyens (|obs−pred|/obs × 100) sont inférieurs à 15% pour "
-    "toutes les lignées et tous les points temporels, validant la fidélité de "
-    "l'implémentation par rapport à la publication originale.",
+    "toutes les lignées à l'exception d'un point isolé sur la courbe RBC à t=0 "
+    "(résidu ~700%), identifié comme un artefact de digitalisation de la figure originale "
+    "(valeur 1003 × 10⁹/L incohérente avec la baseline physiologique du rat ~8000 × 10⁹/L "
+    "et avec le second point à t=0 = 8506 × 10⁹/L). Ce point a été exclu des métriques "
+    "de validation. En l'excluant, les résidus restent inférieurs à 15% sur l'ensemble "
+    "des profils, validant la fidélité de l'implémentation.",
     first_line_indent=1.0)
 add_paragraph(doc,
     "Cette étape de validation confirme que le cadre computationnel (rxode2, optimisation "
