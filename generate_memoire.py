@@ -1380,9 +1380,9 @@ add_bullet(doc, "Intégration des données IC50 CFU : la mesure de l'IC50 sur co
             "hématopoïétiques (CFU-GM, BFU-E) in vitro permettrait d'ancrer "
             "mécanistiquement le paramètre Slope dans une donnée expérimentale directe, "
             "réduisant le nombre de paramètres à calibrer sur données in vivo")
-add_bullet(doc, "Approche bayésienne : l'incorporation d'a priori informatives (issues "
-            "des données rat et T-DXd) dans l'estimation NHP permettrait de régulariser "
-            "l'inférence malgré le faible nombre d'animaux")
+add_bullet(doc, "Approche bayésienne : l'incorporation de distributions a priori informatives "
+            "(issues des données rat et T-DXd) dans l'estimation NHP permettrait de "
+            "régulariser l'inférence malgré le faible nombre d'animaux")
 add_bullet(doc, "Extension multi-doses et régimes répétés : le modèle actuel peut être "
             "directement appliqué à des schémas Q2W ou Q4W pour explorer la fenêtre "
             "posologique optimale du composé interne")
