@@ -1401,6 +1401,15 @@ add_bullet(doc, "Analyse de sensibilité formelle (indices de Sobol) : l'analyse
             "le paramètre le plus déterminant pour la neutropénie. Une analyse de sensibilité "
             "globale par indices de Sobol permettrait de quantifier les interactions entre "
             "paramètres.")
+add_bullet(doc, "Déconvolution on-target / off-target : une extension du modèle pourrait "
+            "permettre de dissocier la contribution hématotoxique liée à l'expression de "
+            "la cible sur les progéniteurs hématopoïétiques (toxicité on-target, médiée par "
+            "le mécanisme pharmacologique) de celle liée au payload lui-même (toxicité "
+            "off-target, indépendante de la cible). Cette distinction est essentielle pour "
+            "guider l'optimisation thérapeutique : une toxicité on-target suggère un "
+            "compromis dose/efficacité inhérent au mécanisme, tandis qu'une toxicité "
+            "off-target pourrait être atténuée par une modification du payload ou du "
+            "coupleur (linker).")
 
 add_heading(doc, "4.5 Traduction clinique : perspectives de transposition NHP → humain", 2)
 add_heading(doc, "Mise en perspective avec la dose tolérée chez l'animal", 3)
