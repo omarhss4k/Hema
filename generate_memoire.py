@@ -1203,7 +1203,17 @@ add_bullet(doc, "Réticulocytes et RBC : cinétique de récupération lente, ref
 add_bullet(doc, "Dose-réponse : aggravation du nadir proportionnelle à l'augmentation "
             "de dose, validant la cohérence du modèle à travers les groupes de dose")
 
-add_heading(doc, "Décalage cinétique PK/PD", 3)
+add_heading(doc, "Décalage cinétique PK/PD (hystérèse)", 3)
+add_paragraph(doc,
+    "On parle d'hystérèse PK/PD lorsque la relation entre la concentration plasmatique "
+    "et l'effet pharmacologique n'est pas instantanée : pour une même concentration, "
+    "l'effet observé diffère selon que l'on se trouve en phase d'absorption ou "
+    "d'élimination, formant une boucle caractéristique sur le graphe effet-concentration. "
+    "Dans le contexte de la toxicité hématologique, ce phénomène traduit le fait que "
+    "le nadir des cellules matures survient plusieurs jours à semaines après le pic "
+    "de concentration plasmatique, en raison du temps de maturation des progéniteurs "
+    "médullaires.",
+    first_line_indent=1.0)
 add_paragraph(doc,
     "Une analyse de la relation temporelle entre le pic de concentration (Cmax) et "
     "le nadir hématologique met en évidence un décalage caractéristique de plusieurs "
