@@ -1468,7 +1468,8 @@ add_paragraph(doc,
 add_paragraph(doc,
     "Les résultats démontrent la généricité et la puissance prédictive du cadre "
     "semi-mécaniste pour des molécules de classe ADC, avec une capacité à capturer "
-    "le décalage cinétique PK/PD caractéristique de ce mécanisme d'action, "
+    "l'hystérèse PK/PD et le délai de transit hématologique caractéristiques de ce "
+    "mécanisme d'action (cf. §3.3.3), "
     "la dose-dépendance de la toxicité et la hiérarchie temporelle des différentes "
     "lignées hématopoïétiques.",
     first_line_indent=1.0)
