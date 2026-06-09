@@ -591,7 +591,25 @@ add_paragraph(doc,
     first_line_indent=1.0)
 add_equation(doc, "t½β = ln(2) / β    avec β = racine de l'équation caractéristique bi-exponentielle")
 
-add_heading(doc, "2.4.2 Ajustement individuel par optimisation", 3)
+add_heading(doc, "2.4.2 Analyse non-compartimentale (NCA) — initialisation", 3)
+add_paragraph(doc,
+    "Avant l'estimation compartimentale, une analyse non-compartimentale (NCA) a été "
+    "réalisée sur chaque profil individuel afin de fournir des valeurs initiales robustes "
+    "à l'algorithme d'optimisation. Les paramètres NCA calculés sont :",
+    first_line_indent=1.0)
+add_bullet(doc, "AUCinf : intégrale de la courbe concentration-temps extrapolée à l'infini")
+add_bullet(doc, "CL_NCA = Dose / AUCinf   [clairance]")
+add_bullet(doc, "C₀ : concentration initiale estimée par extrapolation à t = 0")
+add_bullet(doc, "V1_NCA = Dose / C₀   [volume central]")
+add_bullet(doc, "Vz = CL_NCA / β   [volume de distribution terminal]")
+add_bullet(doc, "t½β = ln(2) / β   [demi-vie terminale]")
+add_paragraph(doc,
+    "Ces estimations servent uniquement comme point de départ pour l'optimisation — "
+    "les paramètres définitifs (CL, V1, Q, V2) sont ceux issus du modèle 2-compartiments "
+    "ajusté par Nelder-Mead.",
+    first_line_indent=1.0)
+
+add_heading(doc, "2.4.3 Ajustement individuel par optimisation", 3)
 add_paragraph(doc,
     "Pour chaque animal ou patient disposant de données de concentration temporelle, "
     "les quatre paramètres PK (CL, V1, Q, V2) sont estimés individuellement par "
