@@ -263,6 +263,10 @@ pred_df <- pred_df %>%
   left_join(pk_raw %>% select(subject, dose_mg_kg) %>% distinct(), by = "subject") %>%
   mutate(Dose = paste0(round(dose_mg_kg), " mg/kg"))
 
+dose_levels_nca <- c("4 mg/kg", "13 mg/kg", "26 mg/kg", "39 mg/kg")
+obs_df$Dose  <- factor(obs_df$Dose,  levels = dose_levels_nca)
+pred_df$Dose <- factor(pred_df$Dose, levels = dose_levels_nca)
+
 dose_cols_nca <- c("4 mg/kg"  = "#2166ac",
                    "13 mg/kg" = "#4dac26",
                    "26 mg/kg" = "#f4a582",
