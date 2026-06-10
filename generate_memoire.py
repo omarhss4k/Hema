@@ -1046,15 +1046,18 @@ add_paragraph(doc,
     "(40 mg/kg IV, toutes les 2 semaines, 8 cycles). Les principales "
     "caractéristiques cinétiques sont retrouvées :",
     first_line_indent=1.0)
-add_bullet(doc, "Neutrophiles et monocytes : déclin progressif cumulatif sur l'ensemble des "
-            "8 cycles, sans retour à la ligne de base — reflet d'une myélosuppression cumulative "
-            "liée à la répétition des administrations")
-add_bullet(doc, "Réticulocytes et plaquettes : oscillations prononcées synchronisées avec les "
-            "administrations, nadir ~jour 10–12 post-dose, récupération partielle entre cycles, "
-            "avec accumulation progressive du déficit")
-add_bullet(doc, "Progéniteurs médullaires (MPP, CMP, MEP) : fortes variations d'amplitude sur "
-            "échelle logarithmique, reproduites par le modèle, avec une variabilité inter-points "
-            "élevée dans les données digitalisées")
+add_bullet(doc, "Neutrophiles et monocytes : les concentrations diminuent progressivement "
+            "au fil des 8 cycles sans jamais retrouver leur valeur initiale. Chaque "
+            "administration aggrave la dépression précédente, traduisant une myélosuppression "
+            "cumulative.")
+add_bullet(doc, "Réticulocytes et plaquettes : chaque injection provoque une chute rapide "
+            "suivie d'une remontée partielle avant la dose suivante — les cellules "
+            "n'ont pas le temps de récupérer complètement entre deux cycles. Le nadir "
+            "survient environ 10 à 12 jours après chaque administration.")
+add_bullet(doc, "Progéniteurs médullaires (MPP, CMP, MEP) : le modèle reproduit les grandes "
+            "oscillations observées. Les données digitalisées présentent une variabilité "
+            "importante (cellules rares, difficile à quantifier avec précision sur les "
+            "figures originales), ce qui explique les résidus plus élevés du Tableau 5.")
 add_paragraph(doc,
     "Les métriques quantitatives de validation sont résumées dans le Tableau 5 ci-dessous. "
     "Trois métriques complémentaires sont calculées sur les valeurs simulées vs observées : "
