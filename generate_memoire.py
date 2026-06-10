@@ -1064,6 +1064,19 @@ add_bullet(doc, "Progéniteurs médullaires (MPP, CMP, MEP) : le modèle reprodu
             "oscillations observées. Les données digitalisées présentent une variabilité "
             "importante (cellules rares, difficile à quantifier avec précision sur les "
             "figures originales), ce qui explique les résidus plus élevés du Tableau 5.")
+p = doc.add_paragraph()
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+run = p.add_run("[Figure — Insérer ici : etape1_fornari_carboplatin_rat/results/Figure3_simulation.pdf]")
+set_font(run, size=10, italic=True, color=(100,100,100))
+p = doc.add_paragraph()
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+run = p.add_run("Figure 1a. Profils hématologiques simulés (lignes) vs données digitalisées de "
+                "Fornari (2019) (points) — Rat Sprague-Dawley, carboplatine 40 mg/kg, "
+                "voie intraveineuse (1 h), Q14D × 8 cycles. "
+                "Neutrophiles, monocytes, réticulocytes, RBC, plaquettes et progéniteurs médullaires.")
+set_font(run, size=10, italic=True)
+doc.add_paragraph()
+
 add_paragraph(doc,
     "Les métriques quantitatives de validation sont résumées dans le Tableau 5 ci-dessous. "
     "Trois métriques complémentaires sont calculées sur les valeurs simulées vs observées : "
@@ -1151,7 +1164,8 @@ set_font(run, size=10, italic=True, color=(100,100,100))
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 run = p.add_run("Figure 1b. Profils simulés de neutrophiles et plaquettes vs données publiées "
-                "de Fornari (2019) — Carboplatine AUC=5, Q21D×2, humain. "
+                "de Fornari (2019) — Carboplatine AUC=5 (dose ≈ 750 mg), voie intraveineuse (1 h), "
+                "Q21D × 2 cycles, patient adulte (GFR = 125 mL/min). "
                 "Lignes : simulation déterministe ; points : données digitalisées.")
 set_font(run, size=10, italic=True)
 doc.add_paragraph()
@@ -1402,8 +1416,9 @@ set_font(run, size=10, italic=True, color=(100,100,100))
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 run = p.add_run("Figure 3. Profils PD individuels NHP — modèle (lignes) vs données "
-                "hématologiques observées (points). Neutrophiles, réticulocytes, "
-                "RBC et plaquettes.")
+                "hématologiques observées (points). Composé en développement interne, "
+                "voie intraveineuse, dose unique, 4 niveaux de dose : 4, 13, 26, 39 mg/kg. "
+                "Neutrophiles, réticulocytes, RBC et plaquettes.")
 set_font(run, size=10, italic=True)
 doc.add_paragraph()
 
