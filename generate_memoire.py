@@ -237,7 +237,8 @@ add_paragraph(doc,
     "Le pipeline a été développé en quatre étapes progressives : (1) reproduction et "
     "validation du modèle Fornari sur données de rat traitées au carboplatine ; "
     "(2) application au T-DXd (trastuzumab deruxtecan) avec simulation de population "
-    "virtuelle de 300 patients, aboutissant à une prédiction des grades CTCAE v5 en "
+    "virtuelle de 300 patients, aboutissant à une prédiction des grades CTCAE v5 "
+    "(échelle de sévérité des effets indésirables, cf. §2.7) en "
     "accord avec les données cliniques issues du dossier soumis à la FDA (BLA 761139, DESTINY-Breast01, n=184) ; "
     "(3) application à un composé en développement interne sur données NHP précliniques "
     "(n=8, 4 niveaux de dose), incluant un ajustement PK individuel à 2 compartiments "
@@ -387,7 +388,8 @@ add_paragraph(doc,
     "directe du payload aux progéniteurs.",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Dans l'essai DESTINY-Breast01, la neutropénie de grade ≥3 a été rapportée chez "
+    "Dans l'essai DESTINY-Breast01, la neutropénie de grade ≥3 (sévère selon "
+    "la classification CTCAE, cf. §2.7) a été rapportée chez "
     "16% des patients traités par T-DXd 5,4 mg/kg Q3W, constituant la principale "
     "toxicité hématologique sévère. La gestion de ces cytopénies nécessite des "
     "réductions de doses ou des interruptions de traitement, impactant directement "
