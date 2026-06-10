@@ -1102,9 +1102,8 @@ add_paragraph(doc,
 add_heading(doc, "3.1.3 Transposition rat → humain pour le carboplatine : validation intermédiaire", 3)
 add_paragraph(doc,
     "Avant d'appliquer le cadre à un nouveau composé, une étape intermédiaire a été "
-    "réalisée pour vérifier que la chaîne de modélisation complète — paramètres PK "
-    "extrapolés par allométrie depuis le rat, paramètres PD conservés tels quels — "
-    "reproduit correctement les profils hématologiques humains publiés par Fornari (2019). "
+    "réalisée pour vérifier que la chaîne de modélisation complète reproduit correctement "
+    "les profils hématologiques humains publiés par Fornari (2019). "
     "Cette étape constitue un garde-fou : si le modèle échoue sur un composé bien documenté "
     "comme le carboplatine, il ne peut pas être appliqué à un composé moins connu.",
     first_line_indent=1.0)
@@ -1114,36 +1113,44 @@ add_paragraph(doc,
 add_bullet(doc, "Paramètres PK : extrapolation allométrique depuis le rat (70 g) vers l'humain "
             "(70 kg). La clairance est mise à l'échelle en BW^0,75 et le volume de distribution "
             "central en BW^1,0, conformément aux lois d'allométrie standard.")
-add_bullet(doc, "Paramètres PD (Slopes) : conservés identiques entre espèces. L'hypothèse "
-            "est que la sensibilité des progéniteurs hématopoïétiques au carboplatine est "
-            "comparable chez le rat et chez l'humain.")
+add_bullet(doc, "Paramètres PD : les Slopes sont recalculés par mise à l'échelle selon les IC50 "
+            "mesurés sur cellules humaines et murines (formule de Fornari, Éq. 10). "
+            "Les paramètres delta_Ret et delta_Plt sont initialement conservés depuis le rat, "
+            "puis ajustés visuellement si nécessaire.")
 add_paragraph(doc,
-    "Le protocole simulé reproduit la Figure 4c de Fornari (2019) : carboplatine dosé "
+    "Le protocole simulé reproduit la Figure 4 de Fornari (2019) : carboplatine dosé "
     "selon la formule de Calvert (AUC cible = 5 mg·mL⁻¹·min, GFR = 125 mL/min, "
     "dose ≈ 750 mg), administré en 2 cycles toutes les 3 semaines (Q21D). "
-    "Les valeurs biologiques de référence humaines (basales Neut, Plt, Ret, RBC) "
-    "proviennent du Tableau 1 de Fornari (2019) et remplacent celles du rat.",
+    "Les valeurs biologiques de référence humaines proviennent du Tableau 1 de Fornari (2019).",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Les profils simulés de neutrophiles sont en bon accord avec la Figure 4c de "
-    "Fornari, confirmant que l'extrapolation allométrique des paramètres PK et la "
-    "conservation des Slopes rat → humain sont valides pour le carboplatine. "
-    "Le profil de plaquettes présente un accord moins satisfaisant : le nadir simulé "
-    "est décalé par rapport aux données de référence, ce qui reflète une limite connue "
-    "du modèle — la cinétique plaquettaire (régulation par la thrombopoïétine, durée "
-    "de vie variable) est difficile à transposer directement du rat à l'humain sans "
-    "recalibration. Cette limite est acceptée dans le cadre de cette étude, le modèle "
-    "restant utilisé à titre exploratoire pour les étapes suivantes.",
+    "Les profils simulés de neutrophiles sont en bon accord avec les données publiées "
+    "(nadir simulé 1,86 × 10⁹/L à J33, cohérent avec la Figure 4 de Fornari). "
+    "Pour les plaquettes, une recalibration visuelle de deux paramètres a été nécessaire "
+    "pour améliorer l'accord : Slope_MEP ajusté de 1,21 à 1,00 µM⁻¹ "
+    "(la valeur IC50-scalée surestimait la suppression des précurseurs plaquettaires) "
+    "et delta_Plt de 0,54 à 0,60. "
+    "Après recalibration, le nadir plaquettaire simulé est de 152 × 10⁹/L au 1ᵉʳ cycle "
+    "et 162 × 10⁹/L au 2ᵉ cycle (valeurs de référence : 170 et 149 × 10⁹/L). "
+    "Le RMSE relatif sur l'ensemble du profil plaquettaire est de 6,4%.",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "Une limite persistante est que la simulation ne reproduit pas l'aggravation cumulative "
+    "observée : dans les données publiées, le nadir du 2ᵉ cycle est plus profond que celui "
+    "du 1ᵉʳ (149 vs 170 × 10⁹/L), ce qui reflète un épuisement progressif des précurseurs "
+    "médullaires. Dans la simulation, c'est l'inverse — le feedback homéostatique compense "
+    "trop fortement entre les cycles. Ce point est une limite connue du modèle de Fornari "
+    "pour les plaquettes et sera conservé dans les étapes suivantes.",
     first_line_indent=1.0)
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run = p.add_run("[Figure — Insérer ici : etape2_carboplatin_humain/results/Figure4c_overlay.pdf]")
+run = p.add_run("[Figure — Insérer ici : etape2_carboplatin_humain/results/Figure4_Q21D_x2.pdf]")
 set_font(run, size=10, italic=True, color=(100,100,100))
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run = p.add_run("Figure 1b. Profils PD simulés (neutrophiles, plaquettes) vs données publiées "
+run = p.add_run("Figure 1b. Profils simulés de neutrophiles et plaquettes vs données publiées "
                 "de Fornari (2019) — Carboplatine AUC=5, Q21D×2, humain. "
-                "Lignes : médiane simulée ; bande : intervalle de variabilité.")
+                "Lignes : simulation déterministe ; points : données digitalisées.")
 set_font(run, size=10, italic=True)
 doc.add_paragraph()
 
