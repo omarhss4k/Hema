@@ -1046,11 +1046,15 @@ add_paragraph(doc,
     "(40 mg/kg IV, toutes les 2 semaines, 8 cycles). Les principales "
     "caractéristiques cinétiques sont retrouvées :",
     first_line_indent=1.0)
-add_bullet(doc, "Neutrophiles : nadir au jour 10–12 post-dose, retour à la ligne de base "
-            "au jour 20–25, avec rebond réactionnel légèrement supra-baseline")
-add_bullet(doc, "Réticulocytes : nadir tardif (jour 14–18), récupération plus lente "
-            "reflétant la cinétique d'érythropoïèse")
-add_bullet(doc, "Plaquettes : nadir au jour 12–15, récupération progressive")
+add_bullet(doc, "Neutrophiles et monocytes : déclin progressif cumulatif sur l'ensemble des "
+            "8 cycles, sans retour à la ligne de base — reflet d'une myélosuppression cumulative "
+            "liée à la répétition des administrations")
+add_bullet(doc, "Réticulocytes et plaquettes : oscillations prononcées synchronisées avec les "
+            "administrations, nadir ~jour 10–12 post-dose, récupération partielle entre cycles, "
+            "avec accumulation progressive du déficit")
+add_bullet(doc, "Progéniteurs médullaires (MPP, CMP, MEP) : fortes variations d'amplitude sur "
+            "échelle logarithmique, reproduites par le modèle, avec une variabilité inter-points "
+            "élevée dans les données digitalisées")
 add_paragraph(doc,
     "Les métriques quantitatives de validation sont résumées dans le Tableau 5 ci-dessous. "
     "Trois métriques complémentaires sont calculées sur les valeurs simulées vs observées : "
