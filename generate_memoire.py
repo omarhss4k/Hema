@@ -1264,6 +1264,12 @@ add_paragraph(doc,
     "et l'hémogramme complet (PD) selon un calendrier prédéfini sur plusieurs semaines "
     "post-administration.",
     first_line_indent=1.0)
+add_paragraph(doc,
+    "La dose la plus élevée (D4, 39 mg/kg) n'a pas été tolérée : les deux animaux de ce "
+    "groupe (3101 et 3002) ont été sacrifiés prématurément au jour [À COMPLÉTER], "
+    "en raison d'une toxicité sévère. Les données hématologiques de ce groupe sont donc "
+    "incomplètes aux temps tardifs, ce qui limite l'analyse PD à cette dose.",
+    first_line_indent=1.0)
 
 add_heading(doc, "3.3.2 Analyse pharmacocinétique NHP — Résultats", 3)
 add_paragraph(doc,
