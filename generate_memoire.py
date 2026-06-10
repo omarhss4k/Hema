@@ -1326,51 +1326,60 @@ doc.add_paragraph()
 
 add_heading(doc, "3.3.3 Calibration de l'effet hématologique du composé", 3)
 add_paragraph(doc,
-    "Les paramètres de sensibilité (Slope_MPP, Slope_CMP, Slope_MEP) ont été ajustés "
-    "manuellement par comparaison visuelle entre les profils hématologiques simulés et "
-    "les données observées chez chaque animal NHP. Il ne s'agit pas d'une simulation "
-    "purement basée sur des données in vitro, ni d'une estimation formelle par "
-    "optimisation numérique : les valeurs ont été sélectionnées de façon itérative pour "
-    "reproduire au mieux l'amplitude et la cinétique des nadirs observés. Les "
-    "concentrations prédites par le modèle PK individuel ont été utilisées comme entrée "
-    "du modèle PD. Les paramètres biologiques de base NHP ont été dérivés des valeurs "
-    "hématologiques pré-dose de chaque animal.",
+    "Les paramètres de sensibilité du modèle PD — qui quantifient l'effet du composé "
+    "sur chaque type de précurseur hématopoïétique (Slope_MPP, Slope_CMP, Slope_MEP) — "
+    "ont été calibrés par ajustement visuel itératif. "
+    "Pour chaque animal, les concentrations plasmatiques prédites par le modèle PK "
+    "individuel ont été utilisées comme entrée du modèle PD, et les paramètres "
+    "biologiques de base ont été dérivés des valeurs hématologiques pré-dose propres "
+    "à chaque animal. Les Slopes ont ensuite été ajustés pour reproduire au mieux "
+    "l'amplitude et la cinétique des chutes observées.",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Le modèle PD reproduit les principales caractéristiques de la réponse hématologique "
-    "observée :",
+    "Le modèle reproduit les principales tendances de la réponse hématologique "
+    "(cf. Figure 3) :",
     first_line_indent=1.0)
-add_bullet(doc, "Neutropénie : nadir prédit concordant avec les observations, "
-            "avec rebond compensatoire reflétant la stimulation médullaire")
-add_bullet(doc, "Thrombocytopénie : nadir tardif (décalage de ~1–2 semaines par rapport "
-            "à la neutropénie), cohérent avec la durée de vie plus longue des plaquettes")
-add_bullet(doc, "Réticulocytes et RBC : cinétique de récupération lente, reflétant "
-            "la durée de vie prolongée des érythrocytes (~120 jours chez le primate)")
-add_bullet(doc, "Dose-réponse : aggravation du nadir proportionnelle à l'augmentation "
-            "de dose, validant la cohérence du modèle à travers les groupes de dose")
-
+add_bullet(doc, "La chute des neutrophiles et des plaquettes est cohérente avec les "
+            "observations aux doses intermédiaires (13 et 26 mg/kg), avec un nadir "
+            "survenant quelques jours après l'injection.")
+add_bullet(doc, "Les plaquettes montrent un nadir plus tardif que les neutrophiles "
+            "(décalage de 1 à 2 semaines), cohérent avec leur durée de vie plus longue, "
+            "et ce décalage est bien reproduit par le modèle.")
+add_bullet(doc, "Les érythrocytes (RBC) restent stables sur la durée de l'étude, "
+            "ce qui est attendu : leur durée de vie chez le primate (~120 jours) est "
+            "trop longue pour qu'une seule injection affecte significativement "
+            "le stock circulant.")
+add_bullet(doc, "La sévérité des nadirs augmente avec la dose aux deux doses "
+            "intermédiaires, validant la cohérence dose-réponse du modèle.")
+add_paragraph(doc,
+    "Le modèle présente cependant des limites. Une variabilité importante est observée "
+    "pour les neutrophiles et les réticulocytes chez certains animaux, avec des valeurs "
+    "atteignant 200 à 400% de la baseline — des rebonds au-dessus de la valeur initiale "
+    "que le modèle ne capture pas. Ces excursions reflètent vraisemblablement une "
+    "variabilité biologique inter-individuelle réelle, potentiellement liée à l'état "
+    "inflammatoire basal de l'animal ou à des différences de sensibilité individuelle, "
+    "plutôt qu'une erreur de spécification du modèle. "
+    "Pour la dose la plus élevée (39 mg/kg), les données sont incomplètes en raison "
+    "du sacrifice prématuré des animaux (cf. §3.3.1), ce qui limite l'interprétation "
+    "PD à cette dose.",
+    first_line_indent=1.0)
 add_heading(doc, "Décalage cinétique PK/PD (hystérèse)", 3)
 add_paragraph(doc,
-    "On parle d'hystérèse PK/PD lorsque la relation entre la concentration plasmatique "
-    "et l'effet pharmacologique n'est pas instantanée : pour une même concentration, "
-    "l'effet observé diffère selon que l'on se trouve en phase d'absorption ou "
-    "d'élimination, formant une boucle caractéristique sur le graphe effet-concentration. "
-    "Dans le contexte de la toxicité hématologique, ce phénomène traduit le fait que "
-    "le nadir des cellules matures survient plusieurs jours à semaines après le pic "
-    "de concentration plasmatique, en raison du temps de maturation des progéniteurs "
-    "médullaires.",
+    "Une caractéristique importante de la toxicité hématologique des ADCs est "
+    "l'hystérèse PK/PD : le moment où les cellules sanguines atteignent leur valeur "
+    "la plus basse ne coïncide pas avec le moment où la concentration plasmatique "
+    "est maximale. Ce décalage — de plusieurs jours à plusieurs semaines selon la "
+    "lignée cellulaire — s'explique par le temps de maturation des précurseurs "
+    "médullaires : le médicament agit d'abord sur les progéniteurs dans la moelle, "
+    "et c'est seulement lorsque la génération suivante de cellules matures arrive "
+    "en circulation que l'effet devient visible dans le sang.",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Une analyse de la relation temporelle entre le pic de concentration (Cmax) et "
-    "le nadir hématologique met en évidence un décalage caractéristique de plusieurs "
-    "jours à semaines, selon la lignée cellulaire considérée. Ce décalage est "
-    "parfaitement reproduit par le modèle mécaniste, qui intègre explicitement les "
-    "temps de transit entre compartiments progéniteurs et cellules matures.",
-    first_line_indent=1.0)
-add_paragraph(doc,
-    "Cette propriété est cruciale pour la prédiction clinique : la toxicité maximale "
-    "n'est pas synchrone avec l'exposition maximale, ce qui ne serait pas capturé par "
-    "un modèle empirique direct exposition-réponse.",
+    "Ce phénomène est bien reproduit par le modèle semi-mécaniste, qui intègre "
+    "explicitement ces temps de transit. Il est cliniquement important : "
+    "si on ne connaît pas ce décalage, on risque d'interpréter l'absence d'effet "
+    "immédiat comme une preuve de tolérance, alors que la toxicité maximale "
+    "n'est pas encore atteinte.",
     first_line_indent=1.0)
 
 p = doc.add_paragraph()
