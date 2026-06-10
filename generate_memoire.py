@@ -379,8 +379,12 @@ add_paragraph(doc,
     "significatives, parmi lesquelles l'hématotoxicité occupe une place centrale. "
     "La décroissance du nombre de cellules sanguines circulantes — neutrophiles, érythrocytes "
     "et plaquettes — résulte d'une atteinte des cellules progénitrices hématopoïétiques "
-    "dans la moelle osseuse, sensibles au payload cytotoxique libéré de façon non "
-    "entièrement spécifique.",
+    "dans la moelle osseuse. Deux mécanismes peuvent être impliqués : une toxicité "
+    "off-target, liée au payload cytotoxique libéré de façon non entièrement spécifique "
+    "et atteignant les progéniteurs médullaires ; et une toxicité on-target, lorsque "
+    "l'antigène ciblé par l'anticorps est exprimé sur les cellules hématopoïétiques "
+    "elles-mêmes (ex. CD33, CD123 sur cellules myéloïdes), conduisant à une délivrance "
+    "directe du payload aux progéniteurs.",
     first_line_indent=1.0)
 add_paragraph(doc,
     "Dans l'essai DESTINY-Breast01, la neutropénie de grade ≥3 a été rapportée chez "
