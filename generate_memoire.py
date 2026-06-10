@@ -1101,40 +1101,49 @@ add_paragraph(doc,
 
 add_heading(doc, "3.1.3 Transposition rat → humain pour le carboplatine : validation intermédiaire", 3)
 add_paragraph(doc,
-    "Avant d'appliquer le pipeline à un nouveau composé, une étape intermédiaire de "
-    "validation a été réalisée : la transposition du modèle carboplatine calibré sur "
-    "données de rat vers la population humaine. Cette étape constitue un garde-fou "
-    "méthodologique, visant à vérifier que la chaîne complète — extrapolation allométrique "
-    "des paramètres PK, paramètres PD de rat appliqués à l'humain — reproduit les "
-    "prédictions publiées par Fornari et al. (2019).",
+    "Avant d'appliquer le cadre à un nouveau composé, une étape intermédiaire a été "
+    "réalisée pour vérifier que la chaîne de modélisation complète — paramètres PK "
+    "extrapolés par allométrie depuis le rat, paramètres PD conservés tels quels — "
+    "reproduit correctement les profils hématologiques humains publiés par Fornari (2019). "
+    "Cette étape constitue un garde-fou : si le modèle échoue sur un composé bien documenté "
+    "comme le carboplatine, il ne peut pas être appliqué à un composé moins connu.",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Le protocole simulé correspond au schéma de la Figure 4c de Fornari : carboplatine "
-    "dosé selon la formule de Calvert (AUC cible = 5 mg·mL⁻¹·min, GFR = 125 mL/min, "
-    "soit une dose de 750 mg), administré en 2 cycles Q21D. Une cohorte virtuelle de "
-    "N=1000 patients a été générée avec variabilité résiduelle log-additive (σ issu du "
-    "Tableau S4 de Fornari). Les paramètres biologiques humains de base (Tableau 1 de "
-    "Fornari) ont remplacé ceux du rat.",
+    "La transposition inter-espèces repose sur deux principes :",
+    first_line_indent=1.0)
+add_bullet(doc, "Paramètres PK : extrapolation allométrique depuis le rat (70 g) vers l'humain "
+            "(70 kg). La clairance est mise à l'échelle en BW^0,75 et le volume de distribution "
+            "central en BW^1,0, conformément aux lois d'allométrie standard.")
+add_bullet(doc, "Paramètres PD (Slopes) : conservés identiques entre espèces. L'hypothèse "
+            "est que la sensibilité des progéniteurs hématopoïétiques au carboplatine est "
+            "comparable chez le rat et chez l'humain.")
+add_paragraph(doc,
+    "Le protocole simulé reproduit la Figure 4c de Fornari (2019) : carboplatine dosé "
+    "selon la formule de Calvert (AUC cible = 5 mg·mL⁻¹·min, GFR = 125 mL/min, "
+    "dose ≈ 750 mg), administré en 2 cycles toutes les 3 semaines (Q21D). "
+    "Les valeurs biologiques de référence humaines (basales Neut, Plt, Ret, RBC) "
+    "proviennent du Tableau 1 de Fornari (2019) et remplacent celles du rat.",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Les profils de neutrophiles simulés reproduisent fidèlement la Figure 4c de "
-    "Fornari, validant la transposabilité inter-espèces du cadre pour le carboplatine. "
-    "En revanche, le profil thrombocytaire présente un accord moins satisfaisant : "
-    "le nadir prédit est décalé temporellement par rapport aux données de référence, "
-    "reflet d'une limitation connue du modèle de Fornari pour les plaquettes — dont la "
-    "cinétique est plus complexe (régulation thrombopoïétine, durée de vie hétérogène "
-    "des populations plaquettaires). Ce point constitue une limite de la transposition "
-    "directe des paramètres δ_Plt du rat à l'humain sans recalibration.",
+    "Les profils simulés de neutrophiles sont en bon accord avec la Figure 4c de "
+    "Fornari, confirmant que l'extrapolation allométrique des paramètres PK et la "
+    "conservation des Slopes rat → humain sont valides pour le carboplatine. "
+    "Le profil de plaquettes présente un accord moins satisfaisant : le nadir simulé "
+    "est décalé par rapport aux données de référence, ce qui reflète une limite connue "
+    "du modèle — la cinétique plaquettaire (régulation par la thrombopoïétine, durée "
+    "de vie variable) est difficile à transposer directement du rat à l'humain sans "
+    "recalibration. Cette limite est acceptée dans le cadre de cette étude, le modèle "
+    "restant utilisé à titre exploratoire pour les étapes suivantes.",
     first_line_indent=1.0)
-
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 run = p.add_run("[Figure — Insérer ici : etape2_carboplatin_humain/results/Figure4c_overlay.pdf]")
 set_font(run, size=10, italic=True, color=(100,100,100))
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run = p.add_run("Figure 1b. Profils simulés de neutrophiles et plaquettes — Carboplatine AUC=5, Q21D×2, "
-                "N=1000 patients virtuels. Reproduction de la Figure 4c de Fornari et al. (2019).")
+run = p.add_run("Figure 1b. Profils PD simulés (neutrophiles, plaquettes) vs données publiées "
+                "de Fornari (2019) — Carboplatine AUC=5, Q21D×2, humain. "
+                "Lignes : médiane simulée ; bande : intervalle de variabilité.")
 set_font(run, size=10, italic=True)
 doc.add_paragraph()
 
