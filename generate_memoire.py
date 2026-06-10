@@ -1101,46 +1101,24 @@ add_paragraph(doc,
 
 add_heading(doc, "3.1.3 Transposition rat → humain pour le carboplatine : validation intermédiaire", 3)
 add_paragraph(doc,
-    "Avant d'appliquer le cadre à un nouveau composé, une étape intermédiaire a été "
-    "réalisée pour vérifier que la chaîne de modélisation complète reproduit correctement "
-    "les profils hématologiques humains publiés par Fornari (2019). "
-    "Cette étape constitue un garde-fou : si le modèle échoue sur un composé bien documenté "
-    "comme le carboplatine, il ne peut pas être appliqué à un composé moins connu.",
+    "Avant d'appliquer le modèle à un nouveau composé, les paramètres ont été transposés "
+    "du rat à l'humain et comparés aux données publiées par Fornari (2019). "
+    "Les paramètres PK ont été extrapolés par allométrie (clairance en BW^0,75, "
+    "volume en BW^1,0). Les paramètres PD ont été recalculés à partir des IC50 "
+    "mesurés sur cellules humaines, puis ajustés visuellement sur les profils simulés. "
+    "Le protocole correspond à celui de la Figure 4 de Fornari : carboplatine "
+    "AUC=5 (formule de Calvert, dose ≈ 750 mg), 2 cycles Q21D.",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "La transposition inter-espèces repose sur deux principes :",
-    first_line_indent=1.0)
-add_bullet(doc, "Paramètres PK : extrapolation allométrique depuis le rat (70 g) vers l'humain "
-            "(70 kg). La clairance est mise à l'échelle en BW^0,75 et le volume de distribution "
-            "central en BW^1,0, conformément aux lois d'allométrie standard.")
-add_bullet(doc, "Paramètres PD : les Slopes sont recalculés par mise à l'échelle selon les IC50 "
-            "mesurés sur cellules humaines et murines (formule de Fornari, Éq. 10). "
-            "Les paramètres delta_Ret et delta_Plt sont initialement conservés depuis le rat, "
-            "puis ajustés visuellement si nécessaire.")
-add_paragraph(doc,
-    "Le protocole simulé reproduit la Figure 4 de Fornari (2019) : carboplatine dosé "
-    "selon la formule de Calvert (AUC cible = 5 mg·mL⁻¹·min, GFR = 125 mL/min, "
-    "dose ≈ 750 mg), administré en 2 cycles toutes les 3 semaines (Q21D). "
-    "Les valeurs biologiques de référence humaines proviennent du Tableau 1 de Fornari (2019).",
-    first_line_indent=1.0)
-add_paragraph(doc,
-    "Les profils simulés de neutrophiles sont en bon accord avec les données publiées "
-    "(nadir simulé 1,86 × 10⁹/L à J33, cohérent avec la Figure 4 de Fornari). "
-    "Pour les plaquettes, une recalibration visuelle de deux paramètres a été nécessaire "
-    "pour améliorer l'accord : Slope_MEP ajusté de 1,21 à 1,00 µM⁻¹ "
-    "(la valeur IC50-scalée surestimait la suppression des précurseurs plaquettaires) "
-    "et delta_Plt de 0,54 à 0,60. "
-    "Après recalibration, le nadir plaquettaire simulé est de 152 × 10⁹/L au 1ᵉʳ cycle "
-    "et 162 × 10⁹/L au 2ᵉ cycle (valeurs de référence : 170 et 149 × 10⁹/L). "
-    "Le RMSE relatif sur l'ensemble du profil plaquettaire est de 6,4%.",
-    first_line_indent=1.0)
-add_paragraph(doc,
-    "Une limite persistante est que la simulation ne reproduit pas l'aggravation cumulative "
-    "observée : dans les données publiées, le nadir du 2ᵉ cycle est plus profond que celui "
-    "du 1ᵉʳ (149 vs 170 × 10⁹/L), ce qui reflète un épuisement progressif des précurseurs "
-    "médullaires. Dans la simulation, c'est l'inverse — le feedback homéostatique compense "
-    "trop fortement entre les cycles. Ce point est une limite connue du modèle de Fornari "
-    "pour les plaquettes et sera conservé dans les étapes suivantes.",
+    "Le profil de neutrophiles est bien reproduit (nadir simulé 1,86 × 10⁹/L, "
+    "cohérent avec les données publiées). "
+    "Pour les plaquettes, deux paramètres ont été recalibrés visuellement "
+    "(Slope_MEP : 1,21 → 1,00 µM⁻¹ ; delta_Plt : 0,54 → 0,60), "
+    "ce qui améliore l'accord avec un RMSE de 6,4% sur l'ensemble du profil "
+    "(nadir simulé 152 × 10⁹/L vs 170 × 10⁹/L observé au 1ᵉʳ cycle). "
+    "Le modèle ne reproduit pas l'aggravation cumulative entre cycles — "
+    "le feedback homéostatique compense trop fortement — ce qui constitue "
+    "une limite connue du modèle de Fornari pour les plaquettes.",
     first_line_indent=1.0)
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
