@@ -1043,8 +1043,8 @@ add_heading(doc, "3.1.2 Qualité de l'ajustement", 3)
 add_paragraph(doc,
     "Les profils hématologiques simulés reproduisent fidèlement les données observées "
     "publiées par Fornari (2019) pour le rat traité au carboplatine "
-    "(40 mg/kg IV, toutes les 2 semaines, 8 cycles). Les principales "
-    "caractéristiques cinétiques sont retrouvées :",
+    "(40 mg/kg, perfusion intraveineuse de 1 heure, toutes les 2 semaines, 8 cycles). "
+    "Les principales caractéristiques cinétiques sont retrouvées :",
     first_line_indent=1.0)
 add_bullet(doc, "Neutrophiles et monocytes : les concentrations diminuent progressivement "
             "au fil des 8 cycles sans jamais retrouver leur valeur initiale. Chaque "
