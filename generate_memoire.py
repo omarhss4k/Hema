@@ -518,11 +518,10 @@ run = p.add_run("[Figure — Insérer ici : schéma de l'architecture compartime
 set_font(run, size=10, italic=True, color=(100,100,100))
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run = p.add_run("Figure 0. Architecture compartimentale du modèle semi-mécaniste de Fornari (2019). "
-                "Les compartiments progéniteurs (MPP, CMP, MEP) sont situés dans la moelle osseuse ; "
-                "les cellules matures (neutrophiles, monocytes, réticulocytes, érythrocytes, plaquettes) "
-                "circulent dans le sang. Les triangles rouges indiquent les sites d'action du médicament. "
-                "Les flèches courbes représentent les rétrocontrôles homéostatiques.")
+run = p.add_run("Figure 0. Architecture compartimentale du modèle de Fornari (2019) : "
+                "cascade de différenciation hématopoïétique de la moelle osseuse (MPP → CMP/MEP → "
+                "cellules matures) vers le sang. Les triangles rouges indiquent les sites d'action "
+                "du médicament ; les flèches courbes, les rétrocontrôles homéostatiques.")
 set_font(run, size=10, italic=True)
 doc.add_paragraph()
 
