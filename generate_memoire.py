@@ -1101,24 +1101,45 @@ add_paragraph(doc,
 
 add_heading(doc, "3.1.3 Transposition rat → humain pour le carboplatine : validation intermédiaire", 3)
 add_paragraph(doc,
-    "Avant d'appliquer le modèle à un nouveau composé, les paramètres ont été transposés "
-    "du rat à l'humain et comparés aux données publiées par Fornari (2019). "
-    "Les paramètres PK ont été extrapolés par allométrie (clairance en BW^0,75, "
-    "volume en BW^1,0). Les paramètres PD ont été recalculés à partir des IC50 "
-    "mesurés sur cellules humaines, puis ajustés visuellement sur les profils simulés. "
-    "Le protocole correspond à celui de la Figure 4 de Fornari : carboplatine "
-    "AUC=5 (formule de Calvert, dose ≈ 750 mg), 2 cycles Q21D.",
+    "Avant d'appliquer le modèle à un nouveau composé, une étape de validation "
+    "intermédiaire a été réalisée : transposer le modèle calibré chez le rat vers "
+    "l'humain, et vérifier que les profils simulés correspondent aux données publiées "
+    "par Fornari (2019). Cette étape permet de s'assurer que la méthode de transposition "
+    "est correcte avant de l'appliquer à un composé pour lequel on dispose de moins de données.",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Le profil de neutrophiles est bien reproduit (nadir simulé 1,86 × 10⁹/L, "
-    "cohérent avec les données publiées). "
-    "Pour les plaquettes, deux paramètres ont été recalibrés visuellement "
-    "(Slope_MEP : 1,21 → 1,00 µM⁻¹ ; delta_Plt : 0,54 → 0,60), "
-    "ce qui améliore l'accord avec un RMSE de 6,4% sur l'ensemble du profil "
-    "(nadir simulé 152 × 10⁹/L vs 170 × 10⁹/L observé au 1ᵉʳ cycle). "
-    "Le modèle ne reproduit pas l'aggravation cumulative entre cycles — "
-    "le feedback homéostatique compense trop fortement — ce qui constitue "
-    "une limite connue du modèle de Fornari pour les plaquettes.",
+    "La transposition du rat à l'humain a nécessité deux types d'ajustements :",
+    first_line_indent=1.0)
+add_bullet(doc, "Pharmacocinétique : un humain n'est pas un grand rat. "
+            "Les organes qui éliminent le médicament (foie, reins) sont proportionnellement "
+            "plus petits chez les grands animaux. On utilise des lois d'allométrie — des "
+            "équations empiriques reliant la taille du corps aux paramètres PK — pour "
+            "recalculer la clairance et le volume de distribution adaptés à un humain de 70 kg "
+            "à partir des valeurs mesurées chez le rat de 70 g.")
+add_bullet(doc, "Pharmacodynamique : la sensibilité des cellules souches au carboplatine "
+            "n'est pas identique chez le rat et chez l'humain. Les Slopes (paramètres qui "
+            "quantifient l'effet toxique du médicament sur chaque type de précurseur) ont "
+            "été recalculés à partir des concentrations inhibitrices IC50 mesurées "
+            "expérimentalement sur cellules humaines et murines.")
+add_paragraph(doc,
+    "Le protocole simulé correspond à celui de la Figure 4 de Fornari (2019) : "
+    "carboplatine administré selon la formule de Calvert "
+    "(dose calculée pour atteindre une exposition cible AUC=5, soit environ 750 mg), "
+    "en 2 perfusions séparées de 3 semaines.",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "Les neutrophiles simulés reproduisent bien les données publiées "
+    "(nadir à 1,86 × 10⁹/L), ce qui confirme la validité de la méthode de transposition "
+    "pour la lignée myéloïde. "
+    "Pour les plaquettes, un ajustement visuel supplémentaire a été nécessaire : "
+    "deux paramètres ont été légèrement modifiés pour mieux coller aux données "
+    "(RMSE = 6,4% sur l'ensemble du profil, nadir simulé 152 vs 170 × 10⁹/L observé). "
+    "Une limite subsiste : le modèle ne reproduit pas l'aggravation d'un cycle à l'autre "
+    "— dans les données, le nadir est plus profond au 2ᵉ cycle qu'au 1ᵉʳ, "
+    "signe d'un épuisement progressif des cellules souches. "
+    "Le modèle tend au contraire à récupérer entre les cycles. "
+    "Ce comportement est une limite connue de l'architecture du modèle de Fornari "
+    "pour la lignée plaquettaire.",
     first_line_indent=1.0)
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
