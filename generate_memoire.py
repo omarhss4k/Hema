@@ -1049,7 +1049,8 @@ add_paragraph(doc,
 add_bullet(doc, "Neutrophiles et monocytes : les concentrations diminuent progressivement "
             "au fil des 8 cycles sans jamais retrouver leur valeur initiale. Chaque "
             "administration aggrave la dépression précédente, traduisant une myélosuppression "
-            "cumulative.")
+            "cumulative (réduction progressive de la capacité de production cellulaire "
+            "par la moelle osseuse).")
 add_bullet(doc, "Réticulocytes et plaquettes : chaque injection provoque une chute rapide "
             "suivie d'une remontée partielle avant la dose suivante — les cellules "
             "n'ont pas le temps de récupérer complètement entre deux cycles. Le nadir "
