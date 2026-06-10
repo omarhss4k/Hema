@@ -282,11 +282,17 @@ add_paragraph(doc,
     "The pipeline was developed in four progressive steps: (1) reproduction and validation "
     "of the Fornari model on rat carboplatin data; (2) application to T-DXd "
     "(trastuzumab deruxtecan) with virtual population simulation of 300 patients, "
-    "yielding CTCAE v5 grade predictions consistent with clinical data from the regulatory submission to the FDA "
-    "(BLA 761139, DESTINY-Breast01, n=184); (3) application to an internally developed "
-    "compound using preclinical NHP data (n=8, 4 dose levels), including non-compartmental "
-    "analysis, individual 2-compartment PK fitting, and PD calibration; (4) perspectives "
-    "for clinical translation based on NHP parameters.",
+    "yielding CTCAE v5 hematotoxicity grade predictions consistent with clinical data "
+    "from the regulatory submission to the FDA "
+    "(BLA 761139, DESTINY-Breast01, n=184); (3) application of the model to an internally "
+    "developed compound using preclinical data from non-human primates (NHP) "
+    "(n=8, 4 dose levels), including non-compartmental analysis, individual 2-compartment "
+    "PK fitting, and PD calibration; (4) clinical translation based on NHP parameters.",
+    first_line_indent=1.0)
+add_paragraph(doc,
+    "The results demonstrate the robustness and genericity of the pipeline, capable of "
+    "integrating data from multiple species and compounds within a unified and reproducible "
+    "methodological framework.",
     first_line_indent=1.0)
 
 doc.add_paragraph()
