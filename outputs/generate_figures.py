@@ -113,134 +113,68 @@ print("✓ figure_pkpd_model.png")
 # ═══════════════════════════════════════════════════════
 PURPLE = '#5B2C8D'; TEAL = '#1A6B6B'
 
-# Grille 2×2 — beaucoup plus lisible que 4 colonnes étroites
-fig2, ax2 = plt.subplots(figsize=(22, 20))
-ax2.set_xlim(0, 8); ax2.set_ylim(0, 8)
+# 4 boîtes horizontales — texte minimal, polices très grandes
+fig2, ax2 = plt.subplots(figsize=(20, 10))
+ax2.set_xlim(0, 10); ax2.set_ylim(0, 5)
 ax2.axis('off'); fig2.patch.set_facecolor('white')
 
 steps = [
-    # (col, row, header, hbg, bullets, results, badge_c)
-    (0, 1,
-     "ÉTAPE 1 — Modèle hématopoïétique\n(Fornari et al. 2019)",
-     BLUE_M,
-     ["Données & méthodes",
-      "• Rat / carboplatine",
-      "• Données digitalisées (Fornari 2019)",
-      "• EDO 8 compartiments",
-      "• Compartiments de transit + feedbacks",
-      "• R : deSolve · ggplot2"],
-     ["Résultat clé",
-      "• RMSE < 15 % sur cellules circulantes",
-      "• Implémentation validée"],
-     BLUE),
-    (1, 1,
-     "ÉTAPE 2 — Hématotoxicité T-DXd\n(Validation FDA BLA 761139)",
-     '#B5510D',
-     ["Données & méthodes",
-      "• ADC 2-cpt PK + TMDD (modèle NHP)",
-      "• Transposition Rat → NHP → Humain",
-      "• Slopes rat transposés via IC50-scaling",
-      "• N = 300 patients virtuels simulés",
-      "• R : optim() · CTCAE v5 · ggplot2"],
-     ["Résultat clé",
-      "• Neutropénie tout grade : 29 % vs 29 % FDA",
-      "• Thrombocytopénie G3-4 : 3 % vs 3 % FDA"],
-     '#B5510D'),
-    (0, 0,
-     "ÉTAPE 3 — Hématotoxicité composé\n(NHP interne — données confidentielles)",
-     TEAL,
-     ["Données & méthodes",
-      "• 8 singes cynomolgus, 4 doses",
-      "• 4 / 13 / 26 / 39 mg/kg",
-      "• Ajustement PK individuel (Nelder-Mead)",
-      "• Calibration visuelle des Slopes PD",
-      "• R : rxode2 · optim() · PKNCA"],
-     ["Résultat clé",
-      "• Profils PK/PD individuels concordants",
-      "• CL ≈ 1,8 mL/h/kg ;  t½ ≈ 55 h"],
-     TEAL),
-    (1, 0,
-     "ÉTAPE 4 — Prédiction clinique\n(Transposition NHP → Humain)",
-     PURPLE,
-     ["Données & méthodes",
-      "• Allométrie PK :",
-      "  CL_hum = CL_NHP × (70/BW)^0,75",
-      "• Slopes NHP → point de départ humain",
-      "• Simulation hématotoxicité humaine",
-      "• R : rxode2 · ggplot2 · CTCAE v5"],
-     ["Résultat clé",
-      "• Dose FIH candidate : P(G≥3) < 10 %",
-      "• Support dossier réglementaire IND/CTA"],
-     PURPLE),
+    (BLUE_M,  "ÉTAPE 1",  "Modèle\nhématopoïétique",  "Rat / carboplatine\nFornari 2019",         "RMSE < 15 %\nValidé ✓"),
+    ('#B5510D',"ÉTAPE 2",  "Hématotoxicité\nT-DXd",    "FDA BLA 761139\nN = 300 patients",         "29 % vs 29 % FDA\nValidé ✓"),
+    (TEAL,    "ÉTAPE 3",  "Hématotoxicité\ncomposé",   "NHP interne\n8 singes — confidentiel",     "PK/PD concordants\nCL ≈ 1,8 mL/h/kg"),
+    (PURPLE,  "ÉTAPE 4",  "Prédiction\nclinique",      "Transposition\nNHP → Humain",              "P(G≥3) < 10 %\nDossier IND/CTA"),
 ]
 
-W2, H2 = 3.7, 3.7
-GAP = 0.3
+BW = 2.2   # largeur boîte
+BH = 4.2   # hauteur boîte
+GAP = 0.15
 
-for col, row, header, hbg, bullets, results, badge_c in steps:
-    x0 = col * (W2 + GAP) + 0.15
-    y0 = row * (H2 + GAP) + 0.15
+for i, (color, num, title, data, result) in enumerate(steps):
+    x0 = i * (BW + GAP) + 0.1
 
-    # Outer box
-    ax2.add_patch(FancyBboxPatch((x0, y0), W2, H2, boxstyle="round,pad=0.08",
-        facecolor='#F5F5F5', edgecolor=badge_c, linewidth=3.5, zorder=1))
-    # Header band
-    hh = 0.85
-    ax2.add_patch(FancyBboxPatch((x0, y0 + H2 - hh), W2, hh,
-        boxstyle="round,pad=0.04", facecolor=hbg, edgecolor=hbg, linewidth=0, zorder=2))
-    ax2.text(x0 + W2/2, y0 + H2 - hh/2, header, ha='center', va='center',
-             fontsize=16, fontweight='bold', color='white', zorder=3,
+    # Boîte principale
+    ax2.add_patch(FancyBboxPatch((x0, 0.3), BW, BH,
+        boxstyle="round,pad=0.06", facecolor='#F6F6F6',
+        edgecolor=color, linewidth=4, zorder=1))
+
+    # Bandeau titre
+    ax2.add_patch(FancyBboxPatch((x0, 0.3 + BH - 1.4), BW, 1.4,
+        boxstyle="round,pad=0.04", facecolor=color,
+        edgecolor=color, linewidth=0, zorder=2))
+
+    # Numéro étape
+    ax2.text(x0 + BW/2, 0.3 + BH - 0.35, num,
+             ha='center', va='center', fontsize=22,
+             fontweight='bold', color='white', zorder=3)
+    # Titre
+    ax2.text(x0 + BW/2, 0.3 + BH - 0.95, title,
+             ha='center', va='center', fontsize=19,
+             fontweight='bold', color='white', zorder=3,
+             multialignment='center', linespacing=1.3)
+
+    # Données
+    ax2.text(x0 + BW/2, 0.3 + BH - 1.95, data,
+             ha='center', va='center', fontsize=17,
+             color='#222222', zorder=3,
+             multialignment='center', linespacing=1.5)
+
+    # Résultat
+    ax2.add_patch(FancyBboxPatch((x0+0.1, 0.4), BW-0.2, 0.95,
+        boxstyle="round,pad=0.05", facecolor=color,
+        edgecolor=color, linewidth=0, alpha=0.18, zorder=2))
+    ax2.text(x0 + BW/2, 0.9, result,
+             ha='center', va='center', fontsize=16,
+             fontweight='bold', color=color, zorder=3,
              multialignment='center', linespacing=1.4)
 
-    # Bullets
-    for i, line in enumerate(bullets):
-        y = y0 + H2 - hh - 0.18 - i * 0.38
-        fw = 'bold' if i == 0 else 'normal'
-        fs = 15 if i == 0 else 13.5
-        ax2.text(x0 + 0.12, y, line, fontsize=fs, fontweight=fw,
-                 color='#1A1A1A', va='top', zorder=3)
+# Flèches entre étapes
+for i in range(3):
+    x_mid = 0.1 + (i+1)*(BW+GAP) - GAP/2
+    ax2.annotate('', xy=(x_mid + 0.01, 2.7), xytext=(x_mid - 0.01, 2.7),
+                 arrowprops=dict(arrowstyle='->', color='#999999', lw=6), zorder=6)
 
-    # Results block
-    rh = 0.95
-    ax2.add_patch(FancyBboxPatch((x0+0.1, y0+0.05), W2-0.2, rh,
-        boxstyle="round,pad=0.05", facecolor=badge_c, edgecolor=badge_c,
-        linewidth=0, alpha=0.15, zorder=2))
-    for i, line in enumerate(results):
-        y = y0 + rh - 0.05 - i * 0.38
-        fw = 'bold' if i == 0 else 'normal'
-        fc = badge_c if i == 0 else '#1A1A1A'
-        ax2.text(x0 + 0.2, y, line, fontsize=13.5, fontweight=fw,
-                 color=fc, va='top', zorder=3)
-
-# Arrow Étape 1 → 2 (horizontal, top row)
-ax2.annotate('', xy=(W2 + GAP + 0.15 - 0.05, 0.15 + H2*1.5 + GAP*0.5),
-             xytext=(W2 + 0.15 + 0.05, 0.15 + H2*1.5 + GAP*0.5),
-             arrowprops=dict(arrowstyle='->', color='#777777', lw=6), zorder=6)
-
-# Arrow Étape 2 → 3 (diagonal, top-right → bottom-left)
-cx1 = 0.15 + W2 + GAP + W2/2   # centre étape 2
-cy1 = 0.15 + H2 + GAP          # bas étape 2
-cx2 = 0.15 + W2/2               # centre étape 3
-cy2 = 0.15 + H2 + GAP          # haut étape 3
-ax2.annotate('', xy=(cx2, cy2 + 0.05), xytext=(cx1, cy1 - 0.05),
-             arrowprops=dict(arrowstyle='->', color='#777777', lw=6,
-                             connectionstyle='arc3,rad=0.0'), zorder=6)
-
-# Arrow Étape 3 → 4 (horizontal, bottom row)
-ax2.annotate('', xy=(W2 + GAP + 0.15 - 0.05, 0.15 + H2/2),
-             xytext=(W2 + 0.15 + 0.05, 0.15 + H2/2),
-             arrowprops=dict(arrowstyle='->', color='#777777', lw=6), zorder=6)
-
-# Numéros d'étapes
-for col, row, lbl, lc in [(0,1,"Étape 1",BLUE_M),(1,1,"Étape 2",'#B5510D'),
-                           (0,0,"Étape 3",TEAL),(1,0,"Étape 4",PURPLE)]:
-    x0 = col*(W2+GAP) + 0.15
-    y0 = row*(H2+GAP) + 0.15
-    rbox(ax2, x0 + W2 - 1.35, y0 + H2 - 0.08, 1.25, 0.42,
-         lbl, lc, lc, fs=14, lw=2, zorder=4)
-
-plt.tight_layout(pad=0.3)
-plt.savefig('/home/user/Hema/outputs/figure_pipeline_steps.png', dpi=200,
+plt.tight_layout(pad=0.2)
+plt.savefig('/home/user/Hema/outputs/figure_pipeline_steps.png', dpi=180,
             bbox_inches='tight', facecolor='white')
 plt.close()
 print("✓ figure_pipeline_steps.png")
