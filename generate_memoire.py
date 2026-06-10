@@ -1318,7 +1318,7 @@ run = p.add_run("Figure 2. Profils PK individuels NHP — modèle 2-compartiment
 set_font(run, size=10, italic=True)
 doc.add_paragraph()
 
-add_heading(doc, "3.3.3 Ajustement pharmacodynamique NHP", 3)
+add_heading(doc, "3.3.3 Calibration de l'effet hématologique du composé", 3)
 add_paragraph(doc,
     "Les paramètres de sensibilité (Slope_MPP, Slope_CMP, Slope_MEP) ont été ajustés "
     "manuellement par comparaison visuelle entre les profils hématologiques simulés et "
