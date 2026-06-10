@@ -1129,11 +1129,11 @@ add_paragraph(doc,
 
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run = p.add_run("[Figure — Insérer ici : etape2_carboplatin_humain/results/Figure4c_grades_AUC5.pdf]")
+run = p.add_run("[Figure — Insérer ici : etape2_carboplatin_humain/results/Figure4c_overlay.pdf]")
 set_font(run, size=10, italic=True, color=(100,100,100))
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run = p.add_run("Figure 1b. Distribution simulée des grades CTCAE — Carboplatine AUC=5, Q21D×2, "
+run = p.add_run("Figure 1b. Profils simulés de neutrophiles et plaquettes — Carboplatine AUC=5, Q21D×2, "
                 "N=1000 patients virtuels. Reproduction de la Figure 4c de Fornari et al. (2019).")
 set_font(run, size=10, italic=True)
 doc.add_paragraph()
