@@ -1336,6 +1336,16 @@ add_paragraph(doc,
     "l'amplitude et la cinétique des chutes observées.",
     first_line_indent=1.0)
 add_paragraph(doc,
+    "L'incertitude sur les Slopes calibrés a été explorée par une analyse de sensibilité "
+    "locale : chaque Slope a été varié individuellement de ±20% et ±50% autour de sa "
+    "valeur retenue, et l'impact sur le nadir prédit de chaque lignée a été quantifié. "
+    "Cette approche permet d'identifier les paramètres auxquels le modèle est le plus "
+    "sensible et de borner l'incertitude de prédiction sans recourir à une estimation "
+    "formelle. L'absence d'estimation numérique formelle constitue une limite "
+    "méthodologique : une approche par optimisation permettrait de fournir des "
+    "intervalles de confiance rigoureux sur les Slopes (cf. §4.4).",
+    first_line_indent=1.0)
+add_paragraph(doc,
     "Le modèle reproduit les principales tendances de la réponse hématologique "
     "(cf. Figure 3) :",
     first_line_indent=1.0)
@@ -1353,15 +1363,18 @@ add_bullet(doc, "La sévérité des nadirs augmente avec la dose aux deux doses 
             "intermédiaires, validant la cohérence dose-réponse du modèle.")
 add_paragraph(doc,
     "Le modèle présente cependant des limites. Une variabilité importante est observée "
-    "pour les neutrophiles et les réticulocytes chez certains animaux, avec des valeurs "
-    "atteignant 200 à 400% de la baseline — des rebonds au-dessus de la valeur initiale "
-    "que le modèle ne capture pas. Ces excursions reflètent vraisemblablement une "
-    "variabilité biologique inter-individuelle réelle, potentiellement liée à l'état "
-    "inflammatoire basal de l'animal ou à des différences de sensibilité individuelle, "
-    "plutôt qu'une erreur de spécification du modèle. "
+    "pour les neutrophiles et les réticulocytes chez certains animaux (notamment 1001, "
+    "4001, 3002), avec des excursions atteignant 400 à 600% de la baseline — des rebonds "
+    "au-dessus de la valeur initiale que le modèle ne capture pas. "
+    "Ces écarts reflètent vraisemblablement une variabilité biologique inter-individuelle "
+    "réelle, potentiellement liée à l'état inflammatoire basal ou à des différences de "
+    "sensibilité individuelle, plutôt qu'une mauvaise spécification structurelle du modèle, "
+    "dont la forme reste cohérente avec les cinétiques moyennes observées. "
+    "La prise en compte formelle de cette variabilité par un modèle à effets mixtes (NLME) "
+    "constitue la principale perspective méthodologique (cf. §4.4). "
     "Pour la dose la plus élevée (39 mg/kg), les données sont incomplètes en raison "
-    "du sacrifice prématuré des animaux (cf. §3.3.1), ce qui limite l'interprétation "
-    "PD à cette dose.",
+    "du sacrifice prématuré des animaux (cf. §3.3.1), ce qui limite l'analyse PD "
+    "à cette dose.",
     first_line_indent=1.0)
 add_heading(doc, "Décalage cinétique PK/PD (hystérèse)", 3)
 add_paragraph(doc,
