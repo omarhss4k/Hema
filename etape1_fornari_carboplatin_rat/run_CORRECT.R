@@ -12,7 +12,7 @@ source("data_fornari.R")
 if (!dir.exists("results")) dir.create("results")
 
 # ============================================================
-# Figure 3 — 40 mg/kg Q14D x 8 cycles (120 jours)
+# Figure 3 -- 40 mg/kg Q14D x 8 cycles (120 jours)
 # ============================================================
 cat("=== Figure 3 : 40 mg/kg Q14D x 8 cycles ===\n")
 pars_f3          <- init_pars
@@ -62,7 +62,7 @@ cat(sprintf("  Plt  : nadir=%.1f  → Grade %d | G3: %.1f%%  G4: %.1f%%\n",
             grades_f3$pct_plt[3], grades_f3$pct_plt[4]))
 
 # ============================================================
-# Figure S1 — 30 mg/kg dose unique
+# Figure S1 -- 30 mg/kg dose unique
 # ============================================================
 cat("\n=== Figure S1 : 30 mg/kg dose unique ===\n")
 pars_s1          <- init_pars

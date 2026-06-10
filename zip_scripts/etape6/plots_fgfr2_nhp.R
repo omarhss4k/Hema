@@ -1,13 +1,13 @@
 ############################################################
 # plots_fgfr2_nhp.R
-# Graphiques publication-ready — ggplot2 uniquement
+# Graphiques publication-ready -- ggplot2 uniquement
 # Prérequis : run_fgfr2_nhp.R déjà sourcé
 ############################################################
 library(ggplot2)
 library(dplyr)
 library(tidyr)
 
-# ── Auto-source si objets manquants ─────────────────────
+# -- Auto-source si objets manquants ---------------------
 if (!exists("sims_fgfr2") || !exists("doses_fgfr2")) {
   cat("Lancement de run_fgfr2_nhp.R...\n")
   source("run_fgfr2_nhp.R")
@@ -16,12 +16,12 @@ if (!exists("sims_fgfr2") || !exists("doses_fgfr2")) {
 if (!dir.exists("results")) dir.create("results")
 
 # ════════════════════════════════════════════════════════
-# DONNÉES OBSERVÉES — chargées depuis nhp_hema_data.csv
+# DONNÉES OBSERVÉES -- chargées depuis nhp_hema_data.csv
 # Remplir le CSV avec les valeurs réelles (cf. data_nhp.R)
 # ════════════════════════════════════════════════════════
 source("data_nhp.R")
 
-# ── Palette ─────────────────────────────────────────────
+# -- Palette ---------------------------------------------
 dose_cols <- c("4 mg/kg"  = "#2166ac",
                "13 mg/kg" = "#4dac26",
                "26 mg/kg" = "#f4a582",
@@ -40,7 +40,7 @@ theme_poster <- theme_bw(base_size = 15) +
     strip.text       = element_text(face = "bold", size = 13)
   )
 
-# ── Long format ──────────────────────────────────────────
+# -- Long format ------------------------------------------
 sim_long <- bind_rows(lapply(seq_along(doses_fgfr2), function(i) {
   sims_fgfr2[[i]] %>%
     select(time_d, Neut, Plt, Ret, RBC, Damage) %>%
@@ -72,7 +72,7 @@ nadir_df <- sim_long %>%
   ungroup()
 
 # ════════════════════════════════════════════════════════
-# Figure 1 — 4 panels cellulaires (facet_wrap)
+# Figure 1 -- 4 panels cellulaires (facet_wrap)
 # ════════════════════════════════════════════════════════
 df_cells <- sim_long %>% filter(Cellule != "Damage (a.u.)")
 
@@ -120,7 +120,7 @@ p_cells <- ggplot(df_cells, aes(x = time_d, y = Valeur, color = Dose)) +
   scale_x_continuous(breaks = seq(0, 120, by = 21),
                      labels = paste0("D", seq(0, 120, by = 21))) +
   facet_wrap(~Cellule, scales = "free_y", ncol = 2) +
-  labs(title    = "Predicted Hematological Profiles — FGFR2 inhibitor Q3W × 3 cycles (+ recovery)",
+  labs(title    = "Predicted Hematological Profiles -- FGFR2 inhibitor Q3W × 3 cycles (+ recovery)",
        subtitle = "▽ nadir  |  ··· baseline  |  --- dose day  |  filled circles = observations",
        x = "Time (days)", y = NULL) +
   theme_poster
@@ -132,7 +132,7 @@ ggsave("results/poster_PD_4panels.png",
 cat("  -> results/poster_PD_4panels.pdf / .png\n")
 
 # ════════════════════════════════════════════════════════
-# Figure 2 — Damage seul
+# Figure 2 -- Damage seul
 # ════════════════════════════════════════════════════════
 p_damage <- ggplot(sim_long %>% filter(Cellule == "Damage (a.u.)"),
                    aes(x = time_d, y = Valeur, color = Dose)) +
@@ -142,7 +142,7 @@ p_damage <- ggplot(sim_long %>% filter(Cellule == "Damage (a.u.)"),
   scale_color_manual(values = dose_cols) +
   scale_x_continuous(breaks = seq(0, 120, by = 21),
                      labels = paste0("D", seq(0, 120, by = 21))) +
-  labs(title = "DNA Damage — model driver",
+  labs(title = "DNA Damage -- model driver",
        x = "Time (days)", y = "Damage (a.u.)") +
   theme_poster
 
@@ -151,7 +151,7 @@ ggsave("results/poster_Damage.png", p_damage, width = 7, height = 5, dpi = 300)
 cat("  -> results/poster_Damage.pdf / .png\n")
 
 # ════════════════════════════════════════════════════════
-# Figure 3 — Barplot nadir % changement
+# Figure 3 -- Barplot nadir % changement
 # ════════════════════════════════════════════════════════
 base_vals <- c("Neutrophils (10⁹/L)" = init_pars$Neut0,
                "Platelets (10⁹/L)"   = init_pars$Plt0,
@@ -171,7 +171,7 @@ p_bar <- ggplot(nadir_pct, aes(x = Cellule, y = Pct, fill = Dose)) +
            size = 4, hjust = 1) +
   scale_fill_manual(values = dose_cols) +
   scale_y_continuous(labels = function(x) paste0(x, "%")) +
-  labs(title = "Nadir — % change from baseline",
+  labs(title = "Nadir -- % change from baseline",
        x = NULL, y = "% change vs baseline") +
   theme_poster
 
@@ -182,13 +182,13 @@ cat("  -> results/poster_nadir_barplot.pdf / .png\n")
 cat("\nTous les graphiques generes dans results/\n")
 
 # ════════════════════════════════════════════════════════
-# TABLEAU POSTER — Nadirs & validation PK
+# TABLEAU POSTER -- Nadirs & validation PK
 # Export PNG prêt à intégrer dans le poster
 # ════════════════════════════════════════════════════════
 library(gridExtra)
 library(grid)
 
-# ── 1. Tableau des nadirs ────────────────────────────────
+# -- 1. Tableau des nadirs --------------------------------
 cells_info <- list(
   list(var = "Neut", label = "Neutrophils\n(10⁹/L)",   base = init_pars$Neut0),
   list(var = "Plt",  label = "Platelets\n(10⁹/L)",     base = init_pars$Plt0),
@@ -229,7 +229,7 @@ tt_nad <- ttheme_minimal(
 tbl_nad_grob <- tableGrob(nadir_tbl, rows = NULL, theme = tt_nad)
 
 title_nad <- textGrob(
-  "Predicted Hematological Nadirs — FGFR2 inhibitor NHP  (Q3W × 3 cycles)",
+  "Predicted Hematological Nadirs -- FGFR2 inhibitor NHP  (Q3W × 3 cycles)",
   gp = gpar(fontsize = 11, fontface = "bold", col = "#1a3a5c")
 )
 note_nad <- textGrob(
@@ -245,7 +245,7 @@ grid.draw(arrangeGrob(title_nad, tbl_nad_grob, note_nad,
 dev.off()
 cat("  -> results/poster_table_nadirs.png\n")
 
-# ── 2. Tableau validation PK vs FDA Table 7 ─────────────
+# -- 2. Tableau validation PK vs FDA Table 7 -------------
 pk_tbl <- do.call(rbind, lapply(seq_along(doses_fgfr2), function(i) {
   s   <- sims_fgfr2[[i]]
   fda <- if (i <= length(fda_tk_nhp)) fda_tk_nhp[[i]] else NULL
@@ -286,11 +286,11 @@ tt_pk <- ttheme_minimal(
 tbl_pk_grob <- tableGrob(pk_tbl, rows = NULL, theme = tt_pk)
 
 title_pk <- textGrob(
-  "PK Validation — FGFR2 inhibitor NHP vs preclinical data",
+  "PK Validation -- FGFR2 inhibitor NHP vs preclinical data",
   gp = gpar(fontsize = 11, fontface = "bold", col = "#1a3a5c")
 )
 note_pk <- textGrob(
-  "C₀ (µg/mL)  |  AUC₂₁ (µg·h/mL)  |  t½ (days)   — obs = preclinical data",
+  "C₀ (µg/mL)  |  AUC₂₁ (µg·h/mL)  |  t½ (days)   -- obs = preclinical data",
   gp = gpar(fontsize = 8.5, col = "grey45", fontface = "italic")
 )
 
@@ -303,8 +303,8 @@ dev.off()
 cat("  -> results/poster_table_pk_validation.png\n")
 
 # ════════════════════════════════════════════════════════
-# Figure 5 — Décalage cinétique PK → hématotoxicité
-# ────────────────────────────────────────────────────────
+# Figure 5 -- Décalage cinétique PK → hématotoxicité
+# --------------------------------------------------------
 # 4 panneaux (un par dose) : PK normalisée (% Cmax) +
 # Neut / Plt / Ret normalisés (% baseline) sur le même axe.
 # L'œil voit directement le retard cinétique.
@@ -366,7 +366,7 @@ p_kinetics <- ggplot(norm_long,
                      limits = c(0, NA)) +
   facet_wrap(~ Dose, ncol = 2) +
   labs(
-    title    = "PK → Hematotoxicity Kinetic Shift — FGFR2 inhibitor NHP",
+    title    = "PK → Hematotoxicity Kinetic Shift -- FGFR2 inhibitor NHP",
     subtitle = "FGFR2 inhib.: % of Cmax  |  cells: % of baseline  |  --- dose day",
     x = "Time (days)", y = "% (normalized)"
   ) +
@@ -381,8 +381,8 @@ ggsave("results/poster_PK_PD_kinetics.png",
 cat("  -> results/poster_PK_PD_kinetics.pdf / .png\n")
 
 # ════════════════════════════════════════════════════════
-# Figure 6 — 2 rangées synchronisées : PK (log) / Neut (lin)
-# Vue toutes doses — montre clairement le retard de nadir
+# Figure 6 -- 2 rangées synchronisées : PK (log) / Neut (lin)
+# Vue toutes doses -- montre clairement le retard de nadir
 # ════════════════════════════════════════════════════════
 pk_long_all <- bind_rows(lapply(seq_along(doses_fgfr2), function(i) {
   sims_fgfr2[[i]] %>%
@@ -413,7 +413,7 @@ p_row1 <- ggplot(pk_long_all, aes(x = time_d, y = C_ADC1, color = Dose)) +
   scale_color_manual(values = dose_cols) +
   scale_y_log10() +
   scale_x_continuous(breaks = xbreaks, labels = xlabels) +
-  labs(title = "PK — FGFR2 inhibitor (log scale)",
+  labs(title = "PK -- FGFR2 inhibitor (log scale)",
        x = NULL, y = "Concentration (µg/mL)") +
   theme_poster +
   theme(legend.position = "none",
@@ -455,14 +455,14 @@ ggsave("results/poster_PK_PD_2rows.png",
 cat("  -> results/poster_PK_PD_2rows.pdf / .png\n")
 
 # ════════════════════════════════════════════════════════
-# Figure 7 — Profils PREDITS individuels (% baseline propre)
+# Figure 7 -- Profils PREDITS individuels (% baseline propre)
 # Une simulation par animal (baseline = valeur J-3 individuelle)
 # 8 panneaux, 4 lignees, J-3 = 100%
 # Points observes superposes
 # ════════════════════════════════════════════════════════
 if (obs_has_data) {
 
-  # ── Helper : re-derive Eq. S4 pour une baseline individuelle ──
+  # -- Helper : re-derive Eq. S4 pour une baseline individuelle --
   derive_pars_individual <- function(ip_base, neut0, plt0, rbc0, ret0) {
     ip <- ip_base
     ip$Neut0 <- neut0
@@ -505,7 +505,7 @@ if (obs_has_data) {
     ip
   }
 
-  # ── Simulation individuelle par animal ────────────────
+  # -- Simulation individuelle par animal ----------------
   animal_info <- list(
     list(id="1001", dose=4),  list(id="1002", dose=4),
     list(id="2001", dose=13), list(id="2002", dose=13),
@@ -522,7 +522,7 @@ if (obs_has_data) {
   sims_ind <- lapply(animal_info, function(a) {
     base <- obs_data[obs_data$Animal_Id == a$id & obs_data$jour == -3, ]
     if (nrow(base) == 0 || any(is.na(c(base$Neut, base$Plt, base$RBC, base$Ret)))) {
-      cat(sprintf("  %s : baseline J-3 manquante — ignore\n", a$id))
+      cat(sprintf("  %s : baseline J-3 manquante -- ignore\n", a$id))
       return(NULL)
     }
     ip <- derive_pars_individual(init_pars,
@@ -558,7 +558,7 @@ if (obs_has_data) {
   })
   names(sims_ind) <- sapply(animal_info, `[[`, "id")
 
-  # ── Long format normalise ──────────────────────────────
+  # -- Long format normalise ------------------------------
   ind_pred_long <- bind_rows(lapply(sims_ind, function(s) {
     if (is.null(s)) return(NULL)
     lbl <- paste0(s$Animal_Id[1], " (", s$dose_mgkg[1], " mg/kg)")
@@ -577,7 +577,7 @@ if (obs_has_data) {
                             levels = c("Neutrophils","Platelets",
                                        "RBC","Reticulocytes")))
 
-  # ── Observations en % baseline individuelle ────────────
+  # -- Observations en % baseline individuelle ------------
   baseline_ind <- obs_data %>%
     filter(jour == -3) %>%
     select(Animal_Id, Neut_base=Neut, Plt_base=Plt,
@@ -603,13 +603,13 @@ if (obs_has_data) {
                                        "RBC","Reticulocytes"))) %>%
     filter(!is.na(Pct))
 
-  # ── Palette ───────────────────────────────────────────
+  # -- Palette -------------------------------------------
   cell_cols_ind <- c("Neutrophils"   = "#2166ac",
                      "Platelets"     = "#4dac26",
                      "RBC"           = "#d6604d",
                      "Reticulocytes" = "#984ea3")
 
-  # ── Figure ────────────────────────────────────────────
+  # -- Figure --------------------------------------------
   p_ind_pred <- ggplot(ind_pred_long,
                        aes(x = time_d, y = Pct,
                            color = Cellule, group = Cellule)) +
@@ -628,7 +628,7 @@ if (obs_has_data) {
     scale_y_continuous(labels = function(x) paste0(x, "%")) +
     facet_wrap(~ Animal_label, ncol = 4) +
     labs(
-      title    = "Individual Predicted Profiles — FGFR2 inhibitor NHP",
+      title    = "Individual Predicted Profiles -- FGFR2 inhibitor NHP",
       subtitle = "Line = model prediction  |  Points = observations  |  % of individual day-3 baseline  |  --- 100%  |  ··· dose day",
       x = "Time (days)", y = "% of individual baseline"
     ) +
@@ -642,7 +642,7 @@ if (obs_has_data) {
   cat("  -> results/poster_PD_predicted_individual.pdf / .png\n")
 
   # ════════════════════════════════════════════════════════
-  # Figure 8 — Profils PREDITS individuels SANS observé
+  # Figure 8 -- Profils PREDITS individuels SANS observé
   # Identique à Fig 7 mais sans geom_point observations
   # ════════════════════════════════════════════════════════
   p_ind_pred_noobs <- ggplot(ind_pred_long,
@@ -660,7 +660,7 @@ if (obs_has_data) {
     scale_y_continuous(labels = function(x) paste0(x, "%")) +
     facet_wrap(~ Animal_label, ncol = 4) +
     labs(
-      title    = "Individual Predicted Profiles — FGFR2 inhibitor NHP",
+      title    = "Individual Predicted Profiles -- FGFR2 inhibitor NHP",
       subtitle = "Model prediction  |  % of individual day-3 baseline  |  --- 100%  |  ··· dose day (D0/D21/D42)",
       x = "Time (days)", y = "% of individual baseline"
     ) +
@@ -678,22 +678,22 @@ if (obs_has_data) {
 }
 
 # ════════════════════════════════════════════════════════
-# CONCLUSIONS POSTER — texte révisé
+# CONCLUSIONS POSTER -- texte révisé
 # Copier-coller dans l'outil de mise en page du poster
 # ════════════════════════════════════════════════════════
-# • A semi-mechanistic PK/PD model was developed for the FGFR2 inhibitor
+# * A semi-mechanistic PK/PD model was developed for the FGFR2 inhibitor
 #   in NHP by coupling a 2-compartment TMDD PK model with the Fornari 2019
 #   hematopoietic progenitor framework
 #
-# • PK parameters were calibrated and validated against preclinical NHP data
+# * PK parameters were calibrated and validated against preclinical NHP data
 #   across 3 dose levels (3, 10, 30 mg/kg Q3W × 3 cycles)
 #
-# • The model predicts dose-dependent hematological nadirs:
+# * The model predicts dose-dependent hematological nadirs:
 #   reticulocytes at Day ~8, neutrophils and platelets at Day ~15 post-dose
 #
-# • At 30 mg/kg, deepest suppression is predicted for reticulocytes and
-#   neutrophils — consistent with dose-limiting toxicity observed in NHP
+# * At 30 mg/kg, deepest suppression is predicted for reticulocytes and
+#   neutrophils -- consistent with dose-limiting toxicity observed in NHP
 #
-# • This mechanistic framework provides a quantitative basis for
+# * This mechanistic framework provides a quantitative basis for
 #   preclinical-to-clinical translation of FGFR2 inhibitor hematotoxicity
 #   and supports rational dose optimization in oncology

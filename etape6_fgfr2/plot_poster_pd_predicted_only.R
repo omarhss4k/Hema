@@ -1,12 +1,12 @@
 ############################################################
 # plot_poster_pd_predicted_only.R
-# Poster figure — PD predicted profiles ONLY (no observed data)
+# Poster figure -- PD predicted profiles ONLY (no observed data)
 # FGFR2 inhibitor NHP  |  Q3W × 3 cycles + recovery
 #
 # 3 figures :
-#   A. poster_PD_pred_4panels.pdf/png  — 4 cell types, facet × dose
-#   B. poster_PD_pred_alldoses.pdf/png — 4 cell types, lines per dose
-#   C. poster_PD_pred_nadir.pdf/png    — nadir barplot % vs baseline
+#   A. poster_PD_pred_4panels.pdf/png  -- 4 cell types, facet × dose
+#   B. poster_PD_pred_alldoses.pdf/png -- 4 cell types, lines per dose
+#   C. poster_PD_pred_nadir.pdf/png    -- nadir barplot % vs baseline
 #
 # Prérequis : run_fgfr2_nhp.R sourcé (objets sims_fgfr2, doses_fgfr2, init_pars)
 ############################################################
@@ -22,7 +22,7 @@ if (!exists("sims_fgfr2") || !exists("doses_fgfr2")) {
 
 if (!dir.exists("results")) dir.create("results")
 
-# ── Palette & thème ──────────────────────────────────────
+# -- Palette & thème --------------------------------------
 dose_cols <- c("4 mg/kg"  = "#2166ac",
                "13 mg/kg" = "#4dac26",
                "26 mg/kg" = "#f4a582",
@@ -45,7 +45,7 @@ theme_poster_pred <- theme_classic(base_size = 15) +
     plot.margin       = margin(10, 15, 10, 10)
   )
 
-# ── Long format simulé ───────────────────────────────────
+# -- Long format simulé -----------------------------------
 sim_long <- bind_rows(lapply(seq_along(doses_fgfr2), function(i) {
   sims_fgfr2[[i]] %>%
     select(time_d, Neut, Plt, Ret, RBC) %>%
@@ -58,14 +58,14 @@ sim_long <- bind_rows(lapply(seq_along(doses_fgfr2), function(i) {
   mutate(Cell = factor(Cell,
                        levels = c("Neut", "Plt", "Ret", "RBC"),
                        labels = c("Neutrophils (10⁹/L)", "Platelets (10⁹/L)",
-                                  "Reticulocytes (10⁹/L)", "RBC (10¹²/L)")))
+                                  "Reticulocytes (10⁹/L)", "RBC (10²/L)")))
 
 # Baselines
 base_df <- data.frame(
   Cell     = factor(c("Neutrophils (10⁹/L)", "Platelets (10⁹/L)",
-                      "Reticulocytes (10⁹/L)", "RBC (10¹²/L)"),
+                      "Reticulocytes (10⁹/L)", "RBC (10²/L)"),
                     levels = c("Neutrophils (10⁹/L)", "Platelets (10⁹/L)",
-                               "Reticulocytes (10⁹/L)", "RBC (10¹²/L)")),
+                               "Reticulocytes (10⁹/L)", "RBC (10²/L)")),
   baseline = c(init_pars$Neut0, init_pars$Plt0,
                init_pars$Ret0,  init_pars$RBC0)
 )
@@ -80,7 +80,7 @@ xbreaks <- seq(0, 120, by = 21)
 xlabels <- paste0("D", xbreaks)
 
 # ════════════════════════════════════════════════════════
-# Figure A — 4 panels × 4 doses (facet Cell, color Dose)
+# Figure A -- 4 panels × 4 doses (facet Cell, color Dose)
 # ════════════════════════════════════════════════════════
 pA <- ggplot(sim_long, aes(x = time_d, y = Value, color = Dose)) +
 
@@ -109,7 +109,7 @@ pA <- ggplot(sim_long, aes(x = time_d, y = Value, color = Dose)) +
   facet_wrap(~ Cell, scales = "free_y", ncol = 2) +
 
   labs(
-    title    = "Predicted Hematological Profiles — FGFR2 Inhibitor NHP",
+    title    = "Predicted Hematological Profiles -- FGFR2 Inhibitor NHP",
     subtitle = "Q3W × 3 cycles + recovery  |  ▽ predicted nadir  |  ··· species baseline  |  --- dose day",
     x = "Time (days)", y = NULL
   ) +
@@ -124,7 +124,7 @@ ggsave("results/poster_PD_pred_4panels.png",
 cat("  -> results/poster_PD_pred_4panels.pdf / .png\n")
 
 # ════════════════════════════════════════════════════════
-# Figure B — toutes doses superposées, facet cell type
+# Figure B -- toutes doses superposées, facet cell type
 # Vue "overlay" : montre clairement la dose-réponse
 # ════════════════════════════════════════════════════════
 
@@ -159,7 +159,7 @@ pB <- ggplot(sim_pct, aes(x = time_d, y = Pct, color = Dose)) +
 
   # Annotation grade 2
   annotate("text", x = 5, y = 73,
-           label = "–25% (Grade 2 threshold)", color = "#e74c3c",
+           label = "-25% (Grade 2 threshold)", color = "#e74c3c",
            size = 3.5, hjust = 0, fontface = "italic") +
 
   scale_color_manual(values = dose_cols, name = "Dose") +
@@ -170,8 +170,8 @@ pB <- ggplot(sim_pct, aes(x = time_d, y = Pct, color = Dose)) +
   facet_wrap(~ Cell, ncol = 2) +
 
   labs(
-    title    = "Dose-Dependent Hematological Suppression — FGFR2 Inhibitor NHP",
-    subtitle = "% of baseline  |  ▽ predicted nadir  |  ··· baseline (100%)  |  — Grade 2 threshold (−25%)",
+    title    = "Dose-Dependent Hematological Suppression -- FGFR2 Inhibitor NHP",
+    subtitle = "% of baseline  |  ▽ predicted nadir  |  ··· baseline (100%)  |  -- Grade 2 threshold (−25%)",
     x = "Time (days)", y = "% of baseline"
   ) +
   theme_poster_pred +
@@ -185,7 +185,7 @@ ggsave("results/poster_PD_pred_alldoses.png",
 cat("  -> results/poster_PD_pred_alldoses.pdf / .png\n")
 
 # ════════════════════════════════════════════════════════
-# Figure C — Barplot nadir % vs baseline (4 doses × 4 lignées)
+# Figure C -- Barplot nadir % vs baseline (4 doses × 4 lignées)
 # ════════════════════════════════════════════════════════
 nadir_bar <- nadir_pct %>%
   mutate(PctChange = Pct - 100)
@@ -220,7 +220,7 @@ pC <- ggplot(nadir_bar,
   facet_wrap(~ Cell, ncol = 2) +
 
   labs(
-    title    = "Predicted Hematological Nadir — % Change from Baseline",
+    title    = "Predicted Hematological Nadir -- % Change from Baseline",
     subtitle = "FGFR2 inhibitor NHP  |  Q3W × 3 cycles  |  CTCAE v5 severity thresholds",
     x = NULL, y = "% change vs baseline"
   ) +
@@ -234,7 +234,7 @@ ggsave("results/poster_PD_pred_nadir.png",
        pC, width = 13, height = 10, dpi = 300)
 cat("  -> results/poster_PD_pred_nadir.pdf / .png\n")
 
-# ── Console récap ─────────────────────────────────────────
+# -- Console récap -----------------------------------------
 cat("\n═══ Nadir summary (predicted, % vs baseline) ═══\n")
 nadir_bar %>%
   select(Dose, Cell, Nadir_pct = Pct, Change_pct = PctChange) %>%

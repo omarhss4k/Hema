@@ -1,6 +1,6 @@
 ############################################################
 # pkpd_fgfr2_nhp.R
-# ODE PK/PD — Inhibiteur FGFR2 — SINGE CYNOMOLGUS (NHP)
+# ODE PK/PD -- Inhibiteur FGFR2 -- SINGE CYNOMOLGUS (NHP)
 #
 # Modèle (23 états) :
 #   PK (3) : ADC 2-cpt linéaire + Damage
@@ -17,11 +17,11 @@
 pkpd_nhp_ode <- function(time, state, pars) {
   with(as.list(c(state, pars)), {
 
-    # ── Perfusion IV ────────────────────────────────────
+    # -- Perfusion IV ------------------------------------
     rate_in <- if (!is.null(pars$rate_fun)) pars$rate_fun(time) else 0
 
     # ════════════════════════════════════════════════════
-    # PK — Inhibiteur FGFR2 — 2-cpt linéaire
+    # PK -- Inhibiteur FGFR2 -- 2-cpt linéaire
     # CL calibré sur données NCA NHP (pk2cmt_params.csv)
     # ════════════════════════════════════════════════════
     dC_ADC1 <- rate_in / V1_ADC +
@@ -32,14 +32,14 @@ pkpd_nhp_ode <- function(time, state, pars) {
                (Q_ADC / V2_ADC) * C_ADC2
 
     # ════════════════════════════════════════════════════
-    # DOMMAGE ADN — driver : C_ADC1 µM (concentration FGFR2)
+    # DOMMAGE ADN -- driver : C_ADC1 µM (concentration FGFR2)
     # dDamage/dt = k_dam × C_ADC1(µM) − k_rep × Damage
     # ════════════════════════════════════════════════════
     C_ADC1_uM <- C_ADC1 * mgL_to_uM_ADC   # mg/L → µM  (÷ MW_ADC × 1000)
     dDamage   <- k_dam * C_ADC1_uM - k_rep * Damage
 
     # ════════════════════════════════════════════════════
-    # PD — Modèle Fornari (kill linéaire sur Damage)
+    # PD -- Modèle Fornari (kill linéaire sur Damage)
     # ════════════════════════════════════════════════════
     D_kill <- max(0, Damage)
 
@@ -47,7 +47,7 @@ pkpd_nhp_ode <- function(time, state, pars) {
     kill_CMP <- Slope_CMP * D_kill
     kill_MEP <- Slope_MEP * D_kill
 
-    # ── Feedbacks (Eq. 11-13 Fornari) ───────────────────
+    # -- Feedbacks (Eq. 11-13 Fornari) -------------------
     r_stem    <- 0.5 * (CMP0 / max(CMP, 1e-6)) + 0.5 * (MEP0 / max(MEP, 1e-6))
     f_stem    <- (max(min(r_stem,    50), 0.2))^gamma_stem
 
@@ -57,7 +57,7 @@ pkpd_nhp_ode <- function(time, state, pars) {
     r_matMEP  <- RBC0 / max(RBC, 1e-6)
     f_mat_MEP <- (max(min(r_matMEP,  50), 0.2))^gamma_mat_MEP
 
-    # ── Progéniteurs ────────────────────────────────────
+    # -- Progéniteurs ------------------------------------
     dMPP <- k_stem * f_stem +
             k_prol_MPP * (1 - kill_MPP) * MPP -
             (k_tr_CMP * f_mat_CMP + k_tr_MEP * f_mat_MEP) * MPP
@@ -70,21 +70,21 @@ pkpd_nhp_ode <- function(time, state, pars) {
             k_tr_MEP * f_mat_MEP * MPP -
             (k_tr_Ret + k_tr_Plt) * MEP
 
-    # ── Transit Neutrophiles ─────────────────────────────
+    # -- Transit Neutrophiles -----------------------------
     a_Neut   <- 3 / MTT_Neut
     dT1_Neut <- k_tr_Neut * CMP  - a_Neut * T1_Neut
     dT2_Neut <- a_Neut * T1_Neut - a_Neut * T2_Neut
     dT3_Neut <- a_Neut * T2_Neut - a_Neut * T3_Neut
     dNeut    <- a_Neut * T3_Neut - k_circ_Neut * Neut
 
-    # ── Transit Monocytes ────────────────────────────────
+    # -- Transit Monocytes --------------------------------
     a_Mono   <- 3 / MTT_Mono
     dT1_Mono <- k_tr_Mono * CMP  - a_Mono * T1_Mono
     dT2_Mono <- a_Mono * T1_Mono - a_Mono * T2_Mono
     dT3_Mono <- a_Mono * T2_Mono - a_Mono * T3_Mono
     dMono    <- a_Mono * T3_Mono - k_circ_Mono * Mono
 
-    # ── Transit Réticulocytes (prolifératifs) ────────────
+    # -- Transit Réticulocytes (prolifératifs) ------------
     f_prol_Ret <- (max(min(RBC0 / max(RBC, 1e-6), 50), 0.2))^gamma_prolTrans
     drug_ret   <- delta_Ret * Slope_MEP * k_prol_Ret * D_kill
 
@@ -96,7 +96,7 @@ pkpd_nhp_ode <- function(time, state, pars) {
     dRet    <- a_Ret * T3_Ret - k_circ_Ret * Ret
     dRBC    <- k_circ_Ret * Ret - k_circ_RBC * RBC
 
-    # ── Transit Plaquettes (prolifératifs) ───────────────
+    # -- Transit Plaquettes (prolifératifs) ---------------
     f_prol_Plt <- (max(min(Plt0 / max(Plt, 1e-6), 50), 0.2))^gamma_prolTrans
     drug_plt   <- delta_Plt * Slope_MEP * k_prol_Plt * D_kill
 

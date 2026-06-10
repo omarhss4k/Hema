@@ -1,6 +1,6 @@
 ############################################################
 # run_pkpd_tdxd_rat.R
-# Simulation complète PK/PD T-DXd — RAT
+# Simulation complète PK/PD T-DXd -- RAT
 #
 # Sources :
 #   ../scripts/parameters_rat.R             (baselines PD, rat)
@@ -15,7 +15,7 @@
 ############################################################
 library(deSolve)
 
-# ── Chargement des paramètres ────────────────────────────
+# -- Chargement des paramètres ----------------------------
 source("../etape1_fornari_carboplatin_rat/parameters_rat.R")
 source("../shared/parameters_FORNARI_CORRECT.R")
 source("parameters_tdxd_rat.R")
@@ -24,7 +24,7 @@ source("../shared/plots.R")
 
 if (!dir.exists("results")) dir.create("results")
 
-# ── Fusion des paramètres ────────────────────────────────
+# -- Fusion des paramètres --------------------------------
 # Base : paramètres PD Fornari (init_pars, après FORNARI_CORRECT)
 # Ajout : paramètres PK T-DXd (tdxd_pars)
 # Règle : tdxd_pars a la priorité sur les conflits (k_dam, k_rep)
@@ -34,12 +34,12 @@ pars_fornari_pd[["k_rep"]] <- NULL
 
 pars_full <- c(pars_fornari_pd, tdxd_pars)
 
-# ── Override Slope_MEP calibré T-DXd ────────────────────
+# -- Override Slope_MEP calibré T-DXd --------------------
 # Slope_MEP carboplatin (2.19) produit MEP@20=-14% → au-dessus du seuil
 # histopathologique n=4. Calibré à 1.00 : MEP@20=-9.8%, MEP@60=-23.7%
 pars_full$Slope_MEP <- Slope_MEP_tdxd_rat   # 1.00, depuis parameters_tdxd_rat.R
 
-# ── Fusion des états initiaux ────────────────────────────
+# -- Fusion des états initiaux ----------------------------
 # PK T-DXd : C_ADC1, C_ADC2, C_DXd, C_DXd_ic, Damage (= 0 à t=0)
 # PD Fornari : tous sauf C1, C2, Damage (carboplatin → retirés)
 state_pd <- init_state[!names(init_state) %in% c("C1", "C2", "Damage")]
@@ -49,14 +49,14 @@ cat("═════════════════════════
 cat("  MODÈLE FUSIONNÉ : T-DXd PK + Fornari PD\n")
 cat(sprintf("  %d états  |  %d paramètres\n",
             length(state0_full), length(pars_full)))
-cat(sprintf("  Krel : %.4f (C1) → %.4f (C2) → %.4f h⁻¹ (C3)  [Yin 2020]\n",
+cat(sprintf("  Krel : %.4f (C1) → %.4f (C2) → %.4f h- (C3)  [Yin 2020]\n",
             pars_full$k_rel_c1,
             pars_full$k_rel_c1 * 2^pars_full$krel_power * pars_full$krel_factor,
             pars_full$k_rel_c1 * 3^pars_full$krel_power * pars_full$krel_factor))
 cat("═══════════════════════════════════════════════════════════\n\n")
 
 # ══════════════════════════════════════════════════════════
-# Scénario 1 — 5 mg/kg Q3W × 3 cycles
+# Scénario 1 -- 5 mg/kg Q3W × 3 cycles
 # ══════════════════════════════════════════════════════════
 cat("=== Scénario 1 : T-DXd 5 mg/kg Q3W × 3 cycles ===\n")
 
@@ -77,7 +77,7 @@ save_all_cells(
   sim        = sim_s1,
   pars       = pars_s1,
   file       = "results/PKPD_5mgkg_Q3Wx3_cells.pdf",
-  titre      = "T-DXd 5 mg/kg Q3W × 3 — PD hématologique (Rat)",
+  titre      = "T-DXd 5 mg/kg Q3W × 3 -- PD hématologique (Rat)",
   dose_days  = dose_days_s1
 )
 
@@ -111,7 +111,7 @@ dev.off()
 cat("  -> results/PKPD_5mgkg_Q3Wx3_pk.pdf\n\n")
 
 # ══════════════════════════════════════════════════════════
-# Scénario 2 — 10 mg/kg Q3W × 3 cycles
+# Scénario 2 -- 10 mg/kg Q3W × 3 cycles
 # ══════════════════════════════════════════════════════════
 cat("=== Scénario 2 : T-DXd 10 mg/kg Q3W × 3 cycles ===\n")
 
@@ -129,12 +129,12 @@ save_all_cells(
   sim        = sim_s2,
   pars       = pars_s2,
   file       = "results/PKPD_10mgkg_Q3Wx3_cells.pdf",
-  titre      = "T-DXd 10 mg/kg Q3W × 3 — PD hématologique (Rat)",
+  titre      = "T-DXd 10 mg/kg Q3W × 3 -- PD hématologique (Rat)",
   dose_days  = dose_days_s1
 )
 
 # ══════════════════════════════════════════════════════════
-# Scénario 3 — 20 mg/kg Q3W × 3 cycles (FDA seuil Ret)
+# Scénario 3 -- 20 mg/kg Q3W × 3 cycles (FDA seuil Ret)
 # ══════════════════════════════════════════════════════════
 cat("=== Scénario 3 : T-DXd 20 mg/kg Q3W × 3 cycles (FDA seuil Ret) ===\n")
 
@@ -149,7 +149,7 @@ pars_s3$rate_fun <- make_tdxd_infusion(
 sim_s3 <- simulate_pkpd_tdxd(times_s1, pars_s3, state0_full)
 
 # ══════════════════════════════════════════════════════════
-# Scénario 4 — 60 mg/kg Q3W × 3 cycles (FDA seuil Ery/Plt)
+# Scénario 4 -- 60 mg/kg Q3W × 3 cycles (FDA seuil Ery/Plt)
 # ══════════════════════════════════════════════════════════
 cat("=== Scénario 4 : T-DXd 60 mg/kg Q3W × 3 cycles (FDA seuil Ery) ===\n")
 
@@ -164,7 +164,7 @@ pars_s4$rate_fun <- make_tdxd_infusion(
 sim_s4 <- simulate_pkpd_tdxd(times_s1, pars_s4, state0_full)
 
 # ══════════════════════════════════════════════════════════
-# Scénario 5 — 197 mg/kg Q3W × 3 cycles (FDA seuil Neut/Mye)
+# Scénario 5 -- 197 mg/kg Q3W × 3 cycles (FDA seuil Neut/Mye)
 # ══════════════════════════════════════════════════════════
 cat("=== Scénario 5 : T-DXd 197 mg/kg Q3W × 3 cycles (FDA seuil Mye) ===\n")
 
@@ -179,7 +179,7 @@ pars_s5$rate_fun <- make_tdxd_infusion(
 sim_s5 <- simulate_pkpd_tdxd(times_s1, pars_s5, state0_full)
 
 # ══════════════════════════════════════════════════════════
-# Graphique dose-réponse — validation FDA BLA 761139
+# Graphique dose-réponse -- validation FDA BLA 761139
 # ══════════════════════════════════════════════════════════
 pdf("results/PKPD_FDA_validation_dose_response.pdf", width = 14, height = 10)
 par(mfrow = c(2, 3), mar = c(4, 4.2, 3, 1))
@@ -187,7 +187,7 @@ par(mfrow = c(2, 3), mar = c(4, 4.2, 3, 1))
 doses_sim  <- c(5, 10, 20, 60, 197)
 sims_list  <- list(sim_s1, sim_s2, sim_s3, sim_s4, sim_s5)
 
-# ── Couleurs par dose ──
+# -- Couleurs par dose --
 dose_cols  <- c("#2166ac", "#4dac26", "#d6604d", "#f4a582", "#b2182b")
 
 # Fonctions utilitaires locales
@@ -203,7 +203,7 @@ mep_pcts  <- sapply(sims_list,  function(s) pct_nadir(s, "MEP",  MEP0))
 neut_pcts <- sapply(sims_list,  function(s) pct_nadir(s, "Neut", Neut0))
 plt_pcts  <- sapply(sims_list,  function(s) pct_nadir(s, "Plt",  Plt0))
 
-# ── 1. Dose-réponse Réticulocytes ──
+# -- 1. Dose-réponse Réticulocytes --
 barplot(ret_pcts, names.arg = paste0(doses_sim, "\nmg/kg"),
         col = dose_cols, ylim = c(min(ret_pcts) * 1.2, 5),
         ylab = "Nadir Ret (%Δ baseline)", main = "Réticulocytes (sang)",
@@ -214,7 +214,7 @@ abline(h = 0, col = "grey40")
 # Annotation FDA
 text(0.7, -15, "FDA: ↓ à ≥20 mg/kg", col = "#d6604d", cex = 0.8, font = 2)
 
-# ── 2. Dose-réponse Érythroblastes (MEP) ──
+# -- 2. Dose-réponse Érythroblastes (MEP) --
 barplot(mep_pcts, names.arg = paste0(doses_sim, "\nmg/kg"),
         col = dose_cols, ylim = c(min(mep_pcts) * 1.2, 5),
         ylab = "Nadir MEP (%Δ baseline)", main = "Érythroblastes / MEP (moelle)",
@@ -226,7 +226,7 @@ text(0.5, -11, "Seuil detect. -10%",   col = "orange", adj = 0, cex = 0.75)
 abline(h = 0, col = "grey40")
 text(0.7, -5, "FDA: ↓ à ≥60 mg/kg", col = "#d6604d", cex = 0.8, font = 2)
 
-# ── 3. Dose-réponse Neutrophiles (Myélocytes proxy) ──
+# -- 3. Dose-réponse Neutrophiles (Myélocytes proxy) --
 barplot(neut_pcts, names.arg = paste0(doses_sim, "\nmg/kg"),
         col = dose_cols, ylim = c(min(neut_pcts) * 1.2, 5),
         ylab = "Nadir Neut (%Δ baseline)", main = "Neutrophiles / Myélocytes (moelle)",
@@ -236,7 +236,7 @@ text(0.5, -21, "Seuil détection -20%", col = "red", adj = 0, cex = 0.75)
 abline(h = 0, col = "grey40")
 text(0.7, -5, "FDA: ↓ à ≥197 mg/kg", col = "#d6604d", cex = 0.8, font = 2)
 
-# ── 4. Réticulocytes — profil temporel multi-doses ──
+# -- 4. Réticulocytes -- profil temporel multi-doses --
 all_times_d <- sim_s1$time_d
 y_min <- min(sapply(sims_list, function(s) min(s$Ret, na.rm=TRUE)))
 y_max <- Ret0 * 1.15
@@ -244,7 +244,7 @@ y_max <- Ret0 * 1.15
 plot(all_times_d, sim_s1$Ret, type = "n",
      xlim = range(all_times_d), ylim = c(y_min, y_max),
      xlab = "Temps (jours)", ylab = "Ret [×10⁶/kg]",
-     main = "Réticulocytes — profil temporel")
+     main = "Réticulocytes -- profil temporel")
 for (i in seq_along(sims_list)) {
   lines(sims_list[[i]]$time_d, sims_list[[i]]$Ret,
         col = dose_cols[i], lwd = 1.5)
@@ -254,12 +254,12 @@ abline(h = Ret0, lty = 3, col = "grey40")
 legend("topright", paste0(doses_sim, " mg/kg"), col = dose_cols,
        lwd = 1.5, bty = "n", cex = 0.8)
 
-# ── 5. MEP — profil temporel multi-doses ──
+# -- 5. MEP -- profil temporel multi-doses --
 y_min_mep <- min(sapply(sims_list, function(s) min(s$MEP, na.rm=TRUE)))
 plot(all_times_d, sim_s1$MEP, type = "n",
      xlim = range(all_times_d), ylim = c(y_min_mep, MEP0 * 1.15),
      xlab = "Temps (jours)", ylab = "MEP [×10⁶/kg]",
-     main = "Érythroblastes / MEP — profil temporel")
+     main = "Érythroblastes / MEP -- profil temporel")
 for (i in seq_along(sims_list)) {
   lines(sims_list[[i]]$time_d, sims_list[[i]]$MEP,
         col = dose_cols[i], lwd = 1.5)
@@ -269,12 +269,12 @@ abline(h = MEP0, lty = 3, col = "grey40")
 legend("topright", paste0(doses_sim, " mg/kg"), col = dose_cols,
        lwd = 1.5, bty = "n", cex = 0.8)
 
-# ── 6. Neutrophiles — profil temporel multi-doses ──
+# -- 6. Neutrophiles -- profil temporel multi-doses --
 y_min_neut <- min(sapply(sims_list, function(s) min(s$Neut, na.rm=TRUE)))
 plot(all_times_d, sim_s1$Neut, type = "n",
      xlim = range(all_times_d), ylim = c(y_min_neut, Neut0 * 1.15),
      xlab = "Temps (jours)", ylab = "Neut [×10⁶/kg]",
-     main = "Neutrophiles — profil temporel")
+     main = "Neutrophiles -- profil temporel")
 for (i in seq_along(sims_list)) {
   lines(sims_list[[i]]$time_d, sims_list[[i]]$Neut,
         col = dose_cols[i], lwd = 1.5)
@@ -291,13 +291,13 @@ cat("  -> results_PKPD/PKPD_FDA_validation_dose_response.pdf\n")
 # Résumé
 # ══════════════════════════════════════════════════════════
 cat("\n═══════════════════════════════════════════════════════════\n")
-cat("  VALIDATION FDA BLA 761139 — DOSE-RÉPONSE RAT Q3W×3\n")
+cat("  VALIDATION FDA BLA 761139 -- DOSE-RÉPONSE RAT Q3W×3\n")
 cat("  (Slope_MEP calibré = 1.00 | Slope_MEP carbo = 2.19)\n")
-cat("─────────────────────────────────────────────────────────\n")
+cat("---------------------------------------------------------\n")
 cat(sprintf("  %-8s  %-9s  %-9s  %-9s  %-9s  %-9s  %s\n",
             "Dose", "Ret%", "MEP%", "Neut%", "Plt%", "Dmg max", "FDA observé"))
 cat(sprintf("  %-8s  %-9s  %-9s  %-9s  %-9s  %-9s  %s\n",
-            "────────", "─────────","─────────","─────────","─────────","─────────","──────────────────"))
+            "--------", "---------","---------","---------","---------","---------","------------------"))
 
 fda_obs <- c(
   "NOAEL hémato",
@@ -327,7 +327,7 @@ for (i in seq_along(doses_sim)) {
               fda_obs[i]))
 }
 
-cat("─────────────────────────────────────────────────────────\n")
+cat("---------------------------------------------------------\n")
 cat("  Seuils FDA (détection histopathologique, n=4) :\n")
 cat("  Ret  : seuil ≥20 mg/kg → modèle prédit ↓ à 20 mg/kg ✓\n")
 cat("  MEP  : seuil ≥60 mg/kg → MEP@20<10%, MEP@60>20%    ✓\n")

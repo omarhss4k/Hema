@@ -1,6 +1,6 @@
 ############################################################
 # plot_rat_validation.R
-# Figure de présentation — Validation rat vs FDA BLA 761139
+# Figure de présentation -- Validation rat vs FDA BLA 761139
 # 3 doses clés : 20, 60, 197 mg/kg Q3W × 3 cycles
 ############################################################
 library(deSolve)
@@ -10,7 +10,7 @@ source("../shared/parameters_FORNARI_CORRECT.R")
 source("parameters_tdxd_rat.R")
 source("pkpd_tdxd_rat.R")
 
-# ── Paramètres ────────────────────────────────────────────
+# -- Paramètres --------------------------------------------
 pars_fornari_pd <- init_pars
 pars_fornari_pd[["k_dam"]] <- NULL
 pars_fornari_pd[["k_rep"]] <- NULL
@@ -21,7 +21,7 @@ state_pd    <- init_state[!names(init_state) %in% c("C1", "C2", "Damage")]
 state0_full <- c(tdxd_state0, state_pd)
 times       <- seq(0, 63 * 24, by = 2)   # 63 jours = 3 cycles Q3W
 
-# ── Simulations 3 doses FDA ───────────────────────────────
+# -- Simulations 3 doses FDA -------------------------------
 doses <- c(20, 60, 197)
 cols  <- c("#4dac26", "#f4a582", "#b2182b")   # vert → orange → rouge
 
@@ -41,11 +41,11 @@ mep_pct  <- sapply(sims, pct, "MEP",  MEP0)
 neut_pct <- sapply(sims, pct, "Neut", Neut0)
 
 cat("\nRésultats :\n")
-for (i in 1:3) cat(sprintf("  %3d mg/kg — Ret=%+.1f%%  MEP=%+.1f%%  Neut=%+.1f%%\n",
+for (i in 1:3) cat(sprintf("  %3d mg/kg -- Ret=%+.1f%%  MEP=%+.1f%%  Neut=%+.1f%%\n",
                             doses[i], ret_pct[i], mep_pct[i], neut_pct[i]))
 
 # ══════════════════════════════════════════════════════════
-# FIGURE 1 — Résumé validation : nadirs vs seuils FDA
+# FIGURE 1 -- Résumé validation : nadirs vs seuils FDA
 # ══════════════════════════════════════════════════════════
 pdf("results_PKPD/rat_validation_FDA_summary.pdf", width = 10, height = 6)
 par(mfrow = c(1, 3), mar = c(5, 5, 4, 1.5), bg = "white", oma = c(0, 0, 3, 0))
@@ -105,14 +105,14 @@ plot_bar(neut_pct,
          "FDA : chute détectable à ≥ 197 mg/kg",
          "→ modèle reproduit le seuil ✓")
 
-mtext("Validation rat — T-DXd Q3W × 3 cycles  |  FDA BLA 761139",
+mtext("Validation rat -- T-DXd Q3W × 3 cycles  |  FDA BLA 761139",
       outer = TRUE, cex = 1.15, font = 2, line = 1.2)
 
 dev.off()
 cat("  -> results_PKPD/rat_validation_FDA_summary.pdf\n")
 
 # ══════════════════════════════════════════════════════════
-# FIGURE 2 — Profils temporels (Ret + MEP + Neut)
+# FIGURE 2 -- Profils temporels (Ret + MEP + Neut)
 # ══════════════════════════════════════════════════════════
 pdf("results_PKPD/rat_profils_temporels.pdf", width = 12, height = 5)
 par(mfrow = c(1, 3), mar = c(4, 4.5, 3.5, 1), bg = "white",
@@ -143,7 +143,7 @@ plot_profile("Ret",  Ret0,  "Ret [×10⁶/kg]",  "Réticulocytes")
 plot_profile("MEP",  MEP0,  "MEP [×10⁶/kg]",  "Érythroblastes (MEP)")
 plot_profile("Neut", Neut0, "Neut [×10⁶/kg]", "Neutrophiles")
 
-mtext("Profils temporels — T-DXd rat (20 / 60 / 197 mg/kg Q3W × 3)",
+mtext("Profils temporels -- T-DXd rat (20 / 60 / 197 mg/kg Q3W × 3)",
       outer = TRUE, cex = 1.1, font = 2, line = 0.8)
 
 dev.off()

@@ -1,11 +1,11 @@
 ############################################################
 # pkpd_model_FORNARI.R
-# ODE système complet — Équations 1–9 (Fornari 2019)
+# ODE système complet -- Équations 1-9 (Fornari 2019)
 # Feedbacks Eq. 11, 12, 13
 ############################################################
 library(deSolve)
 
-# ── Wrapper simulation ──────────────────────────────────
+# -- Wrapper simulation ----------------------------------
 simulate_all <- function(times, pars, state0,
                          rtol = 1e-7, atol = 1e-9) {
   out <- as.data.frame(lsoda(
@@ -24,7 +24,7 @@ simulate_all <- function(times, pars, state0,
               min(out$Plt,  na.rm=TRUE),
               min(out$Ret,  na.rm=TRUE)))
 
-  # ── Diagnostic PK/Damage ─────────────────────────────────
+  # -- Diagnostic PK/Damage ---------------------------------
   # Si Slope × Damage_max > 1, le kill domine la proliferation
   # → nadir trop profond (signe que les params PK generent trop d'exposition)
   D_max  <- max(out$Damage, na.rm = TRUE)
@@ -43,21 +43,21 @@ simulate_all <- function(times, pars, state0,
   out
 }
 
-# ── ODE ──────────────────────────────────────────────────
+# -- ODE --------------------------------------------------
 pkpd_fornari <- function(time, state, pars) {
   with(as.list(c(state, pars)), {
 
-    # ── PK (2 compartiments) ──
+    # -- PK (2 compartiments) --
     rate_in <- if (!is.null(pars$rate_fun)) pars$rate_fun(time) else 0
     dC1 <- rate_in/V1 - (CL/V1)*C1 - (Q/V1)*C1 + (Q/V2)*C2
     dC2 <- (Q/V1)*C1 - (Q/V2)*C2
 
-    # ── Platine libre → Damage (Eq. 3) ──
+    # -- Platine libre → Damage (Eq. 3) --
     fu_t      <- fu_inf + (fu0 - fu_inf) * exp(-k_bind * time)
     C_free_uM <- fu_t * C1 * mgL_to_uM
     dDamage   <- k_dam * C_free_uM - k_rep * Damage
 
-    # ── Feedbacks (Eq. 11, 12, 13) ──
+    # -- Feedbacks (Eq. 11, 12, 13) --
     eps <- 1e-9
 
     # fdbk_stem : descendance MPP (Eq. 11)
@@ -80,7 +80,7 @@ pkpd_fornari <- function(time, state, pars) {
     r_pPlt     <- Plt0 / max(Plt, eps)
     f_prol_Plt <- pmin(pmax(r_pPlt, 0.2), 10)^gamma_prolTrans
 
-    # ── Progeniteurs (Eq. 1, 4) ──
+    # -- Progeniteurs (Eq. 1, 4) --
     dMPP <- k_stem * f_stem +
             k_prol_MPP * (1 - Slope_MPP * Damage) * MPP -
             k_tr_CMP * f_mat_CMP * MPP -
@@ -94,7 +94,7 @@ pkpd_fornari <- function(time, state, pars) {
             k_tr_MEP * f_mat_MEP * MPP -
             (k_tr_Ret + k_tr_Plt) * MEP
 
-    # ── Neutrophiles — transit non prolifératif (Eq. 5, Fornari 2019) ──
+    # -- Neutrophiles -- transit non prolifératif (Eq. 5, Fornari 2019) --
     # Pas d'effet drogue direct sur les compartiments transit (contrairement à Ret/Plt)
     a_Neut   <- 3 / MTT_Neut
     dT1_Neut <- k_tr_Neut*CMP   - a_Neut*T1_Neut
@@ -102,14 +102,14 @@ pkpd_fornari <- function(time, state, pars) {
     dT3_Neut <- a_Neut*T2_Neut  - a_Neut*T3_Neut
     dNeut    <- a_Neut*T3_Neut  - k_circ_Neut*Neut
 
-    # ── Monocytes — transit non prolifératif (Eq. 5) ──
+    # -- Monocytes -- transit non prolifératif (Eq. 5) --
     a_Mono   <- 3 / MTT_Mono
     dT1_Mono <- k_tr_Mono*CMP     - a_Mono*T1_Mono
     dT2_Mono <- a_Mono*T1_Mono   - a_Mono*T2_Mono
     dT3_Mono <- a_Mono*T2_Mono   - a_Mono*T3_Mono
     dMono    <- a_Mono*T3_Mono   - k_circ_Mono*Mono
 
-    # ── Réticulocytes — T1/T2 prolifératifs (Eq. 7) ──
+    # -- Réticulocytes -- T1/T2 prolifératifs (Eq. 7) --
     drug_ret <- delta_Ret * Slope_MEP * k_prol_Ret * Damage
 
     dT1_Ret <- k_prol_Ret * f_prol_Ret * T1_Ret -
@@ -124,7 +124,7 @@ pkpd_fornari <- function(time, state, pars) {
     dRet    <- a_Ret * T3_Ret - k_circ_Ret * Ret
     dRBC    <- k_circ_Ret * Ret - k_circ_RBC * RBC
 
-    # ── Plaquettes — T1/T2 prolifératifs (Eq. 7) ──
+    # -- Plaquettes -- T1/T2 prolifératifs (Eq. 7) --
     drug_plt <- delta_Plt * Slope_MEP * k_prol_Plt * Damage
 
     dT1_Plt <- k_prol_Plt * f_prol_Plt * T1_Plt -

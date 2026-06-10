@@ -1,5 +1,5 @@
 # =============================================================================
-# Analyse PK — modèle 2 compartiments IV bolus avec rxode2
+# Analyse PK -- modèle 2 compartiments IV bolus avec rxode2
 # =============================================================================
 # Modèle :   d/dt(A1) = -(CL/V1 + Q/V1)*A1 + (Q/V2)*A2
 #            d/dt(A2) =   (Q/V1)*A1 - (Q/V2)*A2
@@ -13,7 +13,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 
-# ── 1. Données ----------------------------------------------------------------
+# -- 1. Données ----------------------------------------------------------------
 # BLQ terminaux (336h, 504h) → NA  |  96h et 168h sont quantifiables
 
 # Facteur de correction dose : 1.297 (dose réelle = dose nominale × 1.297)
@@ -22,7 +22,7 @@ library(ggplot2)
 
 pk_raw <- bind_rows(
 
-  # ── 4 mg/kg (nominale 3 mg/kg × 1.297) ──────────────
+  # -- 4 mg/kg (nominale 3 mg/kg × 1.297) --------------
   data.frame(
     subject    = "Animal_01",
     dose_mg_kg = 3 * 1.297,
@@ -37,7 +37,7 @@ pk_raw <- bind_rows(
     conc = c(0,     73200, 50200, 16600, 6370, 3680, 2180, 1020, NA,  NA ) * 1.297
   ),
 
-  # ── 13 mg/kg (nominale 10 mg/kg × 1.297) — à remplir ─
+  # -- 13 mg/kg (nominale 10 mg/kg × 1.297) -- à remplir -
   # data.frame(
   #   subject    = "Animal_03",
   #   dose_mg_kg = 10 * 1.297,
@@ -51,7 +51,7 @@ pk_raw <- bind_rows(
   #   conc = c() * 1.297
   # ),
 
-  # ── 26 mg/kg (nominale 20 mg/kg × 1.297) — à remplir ─
+  # -- 26 mg/kg (nominale 20 mg/kg × 1.297) -- à remplir -
   # data.frame(
   #   subject    = "Animal_05",
   #   dose_mg_kg = 20 * 1.297,
@@ -65,7 +65,7 @@ pk_raw <- bind_rows(
   #   conc = c() * 1.297
   # ),
 
-  # ── 39 mg/kg (nominale 30 mg/kg × 1.297) — à remplir ─
+  # -- 39 mg/kg (nominale 30 mg/kg × 1.297) -- à remplir -
   # data.frame(
   #   subject    = "Animal_07",
   #   dose_mg_kg = 30 * 1.297,
@@ -80,14 +80,14 @@ pk_raw <- bind_rows(
   # )
 )
 
-# ── 2. Définition du modèle rxode2 --------------------------------------------
+# -- 2. Définition du modèle rxode2 --------------------------------------------
 pk2cmt <- rxode2({
   d/dt(A1) <- -(CL / V1 + Q / V1) * A1 + (Q / V2) * A2
   d/dt(A2) <-  (Q / V1) * A1 - (Q / V2) * A2
   C        <- A1 / V1
 })
 
-# ── 3. Ajustement par animal (moindres carrés sur log-concentrations) ---------
+# -- 3. Ajustement par animal (moindres carrés sur log-concentrations) ---------
 # La fonction objectif minimise Σ [ln(Cobs) - ln(Cpred)]²
 # Les paramètres sont optimisés sur l'échelle log (→ contrainte de positivité).
 
@@ -110,7 +110,7 @@ fit_animal <- function(animal_data) {
     }, error = function(e) 1e10)
   }
 
-  # Valeurs initiales — estimées à partir des données :
+  # Valeurs initiales -- estimées à partir des données :
   #   V1 ≈ dose/Cmax ≈ 3e6/70000 ≈ 43 mL/kg
   #   CL ≈ 1.73 mL/h/kg (NCA préliminaire)
   #   Q  ≈ 5 mL/h/kg, V2 ≈ 130 mL/kg
@@ -123,7 +123,7 @@ fit_animal <- function(animal_data) {
   exp(fit$par) |> setNames(c("CL", "V1", "Q", "V2"))
 }
 
-# ── 4. Paramètres dérivés (analytiques, modèle 2-cmt) -------------------------
+# -- 4. Paramètres dérivés (analytiques, modèle 2-cmt) -------------------------
 # Les constantes microscopiques donnent les valeurs propres alpha (rapide)
 # et beta (terminale) du système biexponentiel :
 #   C(t) = A·exp(-alpha·t) + B·exp(-beta·t)
@@ -145,14 +145,14 @@ derived_params <- function(p) {
   )
 }
 
-# ── 5. AUClast (trapèzes linéaires) ------------------------------------------
+# -- 5. AUClast (trapèzes linéaires) ------------------------------------------
 auclast_animal <- function(animal_data) {
   d <- animal_data %>% filter(!is.na(conc)) %>% arrange(time)
   n <- nrow(d)
   sum(diff(d$time) * (d$conc[-n] + d$conc[-1]) / 2)
 }
 
-# ── 6. Boucle sur les animaux -------------------------------------------------
+# -- 6. Boucle sur les animaux -------------------------------------------------
 animals    <- unique(pk_raw$subject)
 results    <- list()
 pk2cmt_raw <- list()   # paramètres bruts du fit 2-cmt
@@ -209,11 +209,11 @@ units_row <- data.frame(
   stringsAsFactors = FALSE
 )
 
-cat("\n=== Paramètres PK — tableau de sortie ===\n")
+cat("\n=== Paramètres PK -- tableau de sortie ===\n")
 print(rbind(units_row, nca_summary), row.names = FALSE)
 write.csv(nca_summary, "nca_results.csv", row.names = FALSE)
 
-# ── Export paramètres 2-cmt + ligne moyenne ───────────────────────────────
+# -- Export paramètres 2-cmt + ligne moyenne -------------------------------
 pk2cmt_df <- bind_rows(pk2cmt_raw)
 mean_row   <- data.frame(
   Animal_Id  = "Mean",
@@ -234,7 +234,7 @@ write.csv(pk2cmt_df, "pk2cmt_params.csv", row.names = FALSE)
 cat("Tableau exporté : pk2cmt_params.csv\n")
 cat("\nTableau exporté : nca_results.csv\n")
 
-# ── 7. Courbes ajustées + données observées -----------------------------------
+# -- 7. Courbes ajustées + données observées -----------------------------------
 # Générer les prédictions du modèle ajusté pour chaque animal
 
 t_max_obs  <- max(pk_raw$time, na.rm = TRUE)
@@ -285,7 +285,7 @@ p_linear <- ggplot() +
   geom_point(data = obs_df,  aes(x=time, y=conc, color=Dose, shape=subject), size=3, na.rm=TRUE) +
   scale_color_manual(values = dose_cols_nca) +
   scale_shape_manual(values = animal_shapes) +
-  labs(title    = "PK Profile — 2-Compartment Model (rxode2 fit)",
+  labs(title    = "PK Profile -- 2-Compartment Model (rxode2 fit)",
        subtitle = "Points = observations ; lines = fitted model | ●○ = animal 1/2 per dose",
        x = "Time (h)", y = "Concentration (ng/mL)",
        color = "Dose", shape = "Animal") +
@@ -300,9 +300,9 @@ p_semilog <- ggplot() +
   scale_color_manual(values = dose_cols_nca) +
   scale_shape_manual(values = animal_shapes) +
   scale_y_log10() +
-  labs(title    = "PK Profile — 2-Compartment Model (rxode2 fit) — Semi-log scale",
+  labs(title    = "PK Profile -- 2-Compartment Model (rxode2 fit) -- Semi-log scale",
        subtitle = "Points = observations ; lines = fitted model | ●○ = animal 1/2 per dose",
-       x = "Time (h)", y = "Concentration (ng/mL) — log",
+       x = "Time (h)", y = "Concentration (ng/mL) -- log",
        color = "Dose", shape = "Animal") +
   theme_pk
 print(p_semilog)
@@ -310,7 +310,7 @@ ggsave("nca_semilog.png", plot = p_semilog, width = 8, height = 5, dpi = 300)
 
 cat("\nGraphiques exportés : nca_linear.png  nca_semilog.png\n")
 
-# ── 8. Tableau récapitulatif paramètres PK ────────────────────────────────────
+# -- 8. Tableau récapitulatif paramètres PK ------------------------------------
 # Colonnes : Animal | Dose | Cmax | t½β | CL | V1 | Q | V2
 # Ligne finale : moyenne des 8 animaux
 
@@ -349,8 +349,8 @@ tbl_body <- build_display(recap_df)
 
 tbl_mean <- data.frame(
   "Animal"        = "Mean",
-  "Dose\n(mg/kg)" = "—",
-  "Cmax\n(ng/mL)" = "—",
+  "Dose\n(mg/kg)" = "--",
+  "Cmax\n(ng/mL)" = "--",
   "t½β\n(h)"      = fmt(mean_row2$t12_beta_h, 1),
   "CL\n(mL/h/kg)" = fmt(mean_row2$CL_mL_h_kg, 2),
   "V1\n(mL/kg)"   = fmt(mean_row2$V1_mL_kg,   1),
@@ -362,7 +362,7 @@ tbl_mean <- data.frame(
 
 display_tbl <- rbind(tbl_body, tbl_mean)
 
-# ── Rendu ggplot2 (sans dépendance externe) ───────────────────────────────────
+# -- Rendu ggplot2 (sans dépendance externe) -----------------------------------
 n_col  <- ncol(display_tbl)
 n_body <- nrow(display_tbl)
 n_row  <- n_body + 1   # + ligne d'en-tête
@@ -371,7 +371,7 @@ col_names <- colnames(display_tbl)
 col_w     <- c(2.2, 1.3, 1.8, 1.2, 1.4, 1.3, 1.4, 1.3)   # largeur relative par col
 col_x     <- cumsum(c(0, col_w[-n_col])) + col_w / 2       # centre de chaque col
 
-# Long format — ordre ligne par ligne (t + as.vector corrige le column-major d'unlist)
+# Long format -- ordre ligne par ligne (t + as.vector corrige le column-major d'unlist)
 row_major <- function(df) as.vector(t(as.matrix(df)))
 
 cells <- data.frame(
@@ -406,7 +406,7 @@ p_tbl <- ggplot(cells, aes(x = cx, y = cy)) +
   scale_x_continuous(limits = c(0, sum(col_w)), expand = c(0.01, 0)) +
   scale_y_continuous(limits = c(0.5, n_row + 0.5), expand = c(0, 0)) +
   labs(
-    title    = "PK Parameters — 2-Compartment Model (rxode2 fit)",
+    title    = "PK Parameters -- 2-Compartment Model (rxode2 fit)",
     subtitle = "IV bolus · NHP (cynomolgus macaque) · FGFR2 inhibitor  |  CL, V weight-normalized (mL/h/kg, mL/kg)"
   ) +
   theme_void(base_size = 12) +

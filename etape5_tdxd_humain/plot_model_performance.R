@@ -10,7 +10,7 @@
 library(ggplot2)
 library(ggrepel)
 
-# ── Chargement résultats modèle ───────────────────────────
+# -- Chargement résultats modèle ---------------------------
 rds_path <- "results/population_results.rds"
 
 if (!file.exists(rds_path)) {
@@ -22,9 +22,9 @@ if (!file.exists(rds_path)) {
 
 results <- readRDS(rds_path)
 n       <- nrow(results)
-cat(sprintf("\n═══ Performance prédictive — N = %d patients ═══\n\n", n))
+cat(sprintf("\n═══ Performance prédictive -- N = %d patients ═══\n\n", n))
 
-# ── Données FDA de référence (BLA 761139, DESTINY-Breast01, n=184) ─
+# -- Données FDA de référence (BLA 761139, DESTINY-Breast01, n=184) -
 fda_neut   <- c(G0=71, G1=7,  G2=7,  G3=13, G4=3)
 fda_anemia <- c(G0=30, G1=37, G2=24, G3=8,  G4=1)
 fda_plt    <- c(G0=63, G1=30, G2=4,  G3=2,  G4=1)
@@ -40,7 +40,7 @@ fda_g34 <- c(
   Plt    = fda_plt["G3"]    + fda_plt["G4"]
 )
 
-# ── Calcul des proportions modèle ────────────────────────
+# -- Calcul des proportions modèle ------------------------
 grade_order <- c("G0", "G1", "G2", "G3", "G4")
 
 tab_neut   <- table(factor(results$Grade_Neut,   levels = grade_order))
@@ -62,7 +62,7 @@ mod_g34 <- c(
   Plt    = sum(pct_p[c("G3","G4")])
 )
 
-# ── IC95% Wilson ─────────────────────────────────────────
+# -- IC95% Wilson -----------------------------------------
 # Formule : p ± 1.96 * sqrt(p*(1-p)/n)  avec p en proportion [0,1]
 wilson_ci <- function(pct_vec, n) {
   p    <- pct_vec / 100
@@ -81,7 +81,7 @@ ci_an_g34   <- wilson_ci(mod_g34["Anemia"],        n)
 ci_plt_tg   <- wilson_ci(mod_tout_grade["Plt"],    n)
 ci_plt_g34  <- wilson_ci(mod_g34["Plt"],           n)
 
-# ── Tableau IC95% ─────────────────────────────────────────
+# -- Tableau IC95% -----------------------------------------
 ic95_df <- data.frame(
   Toxicite  = c("Neutropénie",      "Neutropénie",
                 "Anémie",           "Anémie",
@@ -104,8 +104,8 @@ ic95_df <- data.frame(
 )
 
 cat("IC95% Wilson (méthode binomiale approchée, N=300) :\n")
-cat("─────────────────────────────────────────────────────────────\n")
-fmt <- "  %-20s %-12s : %5.1f%%  [%5.1f%% – %5.1f%%]  (FDA: %5.1f%%)\n"
+cat("-------------------------------------------------------------\n")
+fmt <- "  %-20s %-12s : %5.1f%%  [%5.1f%% - %5.1f%%]  (FDA: %5.1f%%)\n"
 for (i in seq_len(nrow(ic95_df))) {
   cat(sprintf(fmt,
               ic95_df$Toxicite[i],
@@ -121,7 +121,7 @@ dir.create("results", showWarnings = FALSE)
 write.csv(ic95_df, "results/grade_IC95.csv", row.names = FALSE)
 cat("\n  -> results/grade_IC95.csv\n")
 
-# ── Métriques de performance RMSE / MAE ──────────────────
+# -- Métriques de performance RMSE / MAE ------------------
 pred_vec <- ic95_df$Pred_pct
 obs_vec  <- ic95_df$FDA_pct
 
@@ -132,7 +132,7 @@ cat(sprintf("\nMétriques de performance (6 comparaisons prédites vs FDA) :\n")
 cat(sprintf("  RMSE = %.2f points de pourcentage\n", rmse_val))
 cat(sprintf("  MAE  = %.2f points de pourcentage\n", mae_val))
 
-# ── Graphique de calibration ──────────────────────────────
+# -- Graphique de calibration ------------------------------
 cal_df <- ic95_df
 cal_df$label <- paste0(
   ifelse(cal_df$Toxicite == "Neutropénie",      "Neut",
@@ -192,7 +192,7 @@ p_cal <- ggplot(cal_df, aes(x = FDA_pct, y = Pred_pct,
     y        = "Prédit modèle (N=300) ± IC95% Wilson",
     title    = "Calibration : Modèle PK/PD vs FDA",
     subtitle = sprintf(
-      "6 comparaisons (3 toxicités × 2 métriques) — RMSE=%.2f pp, MAE=%.2f pp",
+      "6 comparaisons (3 toxicités × 2 métriques) -- RMSE=%.2f pp, MAE=%.2f pp",
       rmse_val, mae_val)
   ) +
 
@@ -206,7 +206,7 @@ p_cal <- ggplot(cal_df, aes(x = FDA_pct, y = Pred_pct,
     axis.title       = element_text(face = "bold")
   )
 
-# ── Export ───────────────────────────────────────────────
+# -- Export -----------------------------------------------
 dir.create("results_PKPD_human", showWarnings = FALSE)
 
 out_pdf <- "results_PKPD_human/calibration_plot.pdf"

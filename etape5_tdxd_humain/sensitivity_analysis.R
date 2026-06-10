@@ -1,6 +1,6 @@
 ############################################################
 # sensitivity_analysis.R
-# Analyse de sensibilité — paramètres PK/PD → nadirs / grades
+# Analyse de sensibilité -- paramètres PK/PD → nadirs / grades
 #
 # Utilise les données existantes : results/population_results.rds
 # (pas de re-simulation)
@@ -11,7 +11,7 @@
 
 library(ggplot2)
 
-# ── Chargement résultats modèle ───────────────────────────
+# -- Chargement résultats modèle ---------------------------
 rds_path <- "results/population_results.rds"
 
 if (!file.exists(rds_path)) {
@@ -23,9 +23,9 @@ if (!file.exists(rds_path)) {
 
 results <- readRDS(rds_path)
 n       <- nrow(results)
-cat(sprintf("\n═══ Analyse de sensibilité — N = %d patients ═══\n\n", n))
+cat(sprintf("\n═══ Analyse de sensibilité -- N = %d patients ═══\n\n", n))
 
-# ── Paramètres d'entrée et sorties ────────────────────────
+# -- Paramètres d'entrée et sorties ------------------------
 params <- c("Slope_CMP", "Slope_MEP", "CL_ADC", "V1_ADC", "Slope_Plt_direct")
 nadirs <- c("Neut_nadir", "RBC_nadir", "Plt_nadir")
 
@@ -40,9 +40,9 @@ if (length(missing_cols) > 0) {
   nadirs <- intersect(nadirs, colnames(results))
 }
 
-# ── a) Corrélations de Spearman ───────────────────────────
+# -- a) Corrélations de Spearman ---------------------------
 cat("a) Corrélations de Spearman (paramètre → nadir) :\n")
-cat("─────────────────────────────────────────────────────────────\n")
+cat("-------------------------------------------------------------\n")
 
 spearman_list <- list()
 
@@ -73,9 +73,9 @@ for (param in params) {
   cat(sprintf("  %-22s  %12s  %12s  %12s\n", param, neut_val, rbc_val, plt_val))
 }
 
-# ── b) Régression logistique P(G3-4 neutropénie) ─────────
+# -- b) Régression logistique P(G3-4 neutropénie) ---------
 cat("\nb) Régression logistique P(Grade G3-4 Neutropénie) :\n")
-cat("─────────────────────────────────────────────────────────────\n")
+cat("-------------------------------------------------------------\n")
 
 if ("Grade_Neut" %in% colnames(results)) {
   results$G34_Neut <- as.integer(results$Grade_Neut %in% c("G3", "G4"))
@@ -110,7 +110,7 @@ if ("Grade_Neut" %in% colnames(results)) {
         stringsAsFactors = FALSE
       )
 
-      or_fmt <- "  %-22s  OR = %6.3f  [%6.3f – %6.3f]  p = %.4f\n"
+      or_fmt <- "  %-22s  OR = %6.3f  [%6.3f - %6.3f]  p = %.4f\n"
       for (i in seq_len(nrow(or_df))) {
         cat(sprintf(or_fmt,
                     or_df$Parametre[i],
@@ -126,11 +126,11 @@ if ("Grade_Neut" %in% colnames(results)) {
     cat("  Paramètres insuffisants pour la régression logistique.\n")
   }
 } else {
-  cat("  Colonne Grade_Neut absente — régression ignorée.\n")
+  cat("  Colonne Grade_Neut absente -- régression ignorée.\n")
 }
 
-# ── c) Tornado plot — corrélations Neut_nadir ────────────
-cat("\nc) Tornado plot — corrélations de Spearman avec Neut_nadir :\n")
+# -- c) Tornado plot -- corrélations Neut_nadir ------------
+cat("\nc) Tornado plot -- corrélations de Spearman avec Neut_nadir :\n")
 
 if ("Neut_nadir" %in% nadirs) {
   neut_cors <- sapply(params, function(p) {
@@ -173,7 +173,7 @@ if ("Neut_nadir" %in% nadirs) {
     labs(
       x        = "Corrélation de Spearman (r)",
       y        = NULL,
-      title    = "Analyse de sensibilité — Paramètres vs Nadir neutrophilique",
+      title    = "Analyse de sensibilité -- Paramètres vs Nadir neutrophilique",
       subtitle = sprintf(
         "Corrélations de Spearman entre paramètres PK/PD et Neut_nadir (N=%d)",
         n)
@@ -190,7 +190,7 @@ if ("Neut_nadir" %in% nadirs) {
       plot.subtitle    = element_text(size = 11, hjust = 0.5, color = "grey40")
     )
 
-  # ── d) Export ─────────────────────────────────────────
+  # -- d) Export -----------------------------------------
   dir.create("results_PKPD_human", showWarnings = FALSE)
 
   out_pdf <- "results_PKPD_human/sensitivity_tornado.pdf"
@@ -202,12 +202,12 @@ if ("Neut_nadir" %in% nadirs) {
   cat(sprintf("  -> %s\n", out_pdf))
   cat(sprintf("  -> %s\n", out_png))
 } else {
-  cat("  Neut_nadir non disponible — tornado plot ignoré.\n")
+  cat("  Neut_nadir non disponible -- tornado plot ignoré.\n")
 }
 
-# ── e) Résumé console des paramètres les plus influents ──
-cat("\ne) Résumé — Paramètres les plus influents sur Neut_nadir :\n")
-cat("─────────────────────────────────────────────────────────────\n")
+# -- e) Résumé console des paramètres les plus influents --
+cat("\ne) Résumé -- Paramètres les plus influents sur Neut_nadir :\n")
+cat("-------------------------------------------------------------\n")
 
 if ("Neut_nadir" %in% nadirs) {
   sorted_cors <- sort(abs(neut_cors), decreasing = TRUE)

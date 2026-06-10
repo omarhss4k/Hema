@@ -1,6 +1,6 @@
 ############################################################
 # plots.R
-# Fonctions de visualisation — axes adaptatifs par panneau
+# Fonctions de visualisation -- axes adaptatifs par panneau
 # Avec superposition des données observées (Fornari 2019)
 ############################################################
 library(ggplot2)
@@ -8,7 +8,7 @@ library(gridExtra)
 library(grid)
 library(scales)
 
-# ── Panneau individuel ───────────────────────────────────
+# -- Panneau individuel -----------------------------------
 plot_cell_panel <- function(sim, yvar, title, color,
                             baseline  = NULL,
                             dose_days = NULL,
@@ -78,7 +78,7 @@ plot_cell_panel <- function(sim, yvar, title, color,
           axis.text   = element_text(size = 10))
 }
 
-# ── Grille 4×2 ───────────────────────────────────────────
+# -- Grille 4×2 -------------------------------------------
 plot_all_cells <- function(sim, pars,
                            titre     = "Hematopoiesis",
                            dose_days = NULL,
@@ -113,7 +113,7 @@ plot_all_cells <- function(sim, pars,
               top = textGrob(titre, gp = gpar(fontface = "bold", fontsize = 15)))
 }
 
-# ── Sauvegarder en PDF + PNG ─────────────────────────────
+# -- Sauvegarder en PDF + PNG -----------------------------
 save_all_cells <- function(sim, pars, file, titre,
                            dose_days = NULL, obs_list = NULL,
                            width = 12, height = 11) {
@@ -132,7 +132,7 @@ save_all_cells <- function(sim, pars, file, titre,
   message("✓ Sauvegardé : ", png_file)
 }
 
-# ── Résumé nadir/peak ────────────────────────────────────
+# -- Résumé nadir/peak ------------------------------------
 print_summary <- function(sim, pars) {
   cells <- list(c("Neut","Neut0"), c("Mono","Mono0"),
                 c("Plt","Plt0"),   c("Ret","Ret0"),

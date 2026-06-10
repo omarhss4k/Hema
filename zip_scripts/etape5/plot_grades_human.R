@@ -1,7 +1,7 @@
 ############################################################
 # plot_grades_human.R
-# Graphique grades CTCAE — Neutropénie + Anémie
-# T-DXd 5.4 mg/kg Q3W × 6 — N=300 patients
+# Graphique grades CTCAE -- Neutropénie + Anémie
+# T-DXd 5.4 mg/kg Q3W × 6 -- N=300 patients
 # Charge depuis RDS si disponible, sinon re-simule
 ############################################################
 
@@ -26,9 +26,9 @@ pct_a <- as.numeric(round(100 * tab_anemia / n_ok, 1))
 names(pct_n) <- grade_order
 names(pct_a) <- grade_order
 
-# FDA BLA 761139 — DESTINY-Breast01 (U201, n=184)
+# FDA BLA 761139 -- DESTINY-Breast01 (U201, n=184)
 fda_neut  <- c(G0=71, G1=7, G2=7, G3=13, G4=3)
-# FDA BLA 761139 — anémie (lab grading, n=184)
+# FDA BLA 761139 -- anémie (lab grading, n=184)
 fda_anemia <- c(G0=30, G1=37, G2=24, G3=8, G4=1)
 
 # Palette par grade
@@ -91,9 +91,9 @@ plot_grade_panel <- function(pct_mod, pct_fda, title, fda_label = "FDA (DESTINY-
 }
 
 plot_grade_panel(pct_n, fda_neut,
-                 "Neutropénie — T-DXd 5.4 mg/kg Q3W × 6")
+                 "Neutropénie -- T-DXd 5.4 mg/kg Q3W × 6")
 plot_grade_panel(pct_a, fda_anemia,
-                 "Anémie (proxy RBC) — T-DXd 5.4 mg/kg Q3W × 6")
+                 "Anémie (proxy RBC) -- T-DXd 5.4 mg/kg Q3W × 6")
 
 mtext("T-DXd 5.4 mg/kg Q3W × 6 cycles  |  Grades CTCAE v5  |  Modèle vs FDA BLA 761139",
       outer = TRUE, line = -1.2, cex = 0.95, col = "grey40")

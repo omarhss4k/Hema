@@ -1,5 +1,5 @@
 ############################################################
-# calibrate_plt.R — Calibration 2D : delta_Plt + gamma_prolTrans
+# calibrate_plt.R -- Calibration 2D : delta_Plt + gamma_prolTrans
 # Stratégie :
 #   Phase 1 : delta_Plt pour mettre nadir1 dans [127.5, 172.5]
 #   Phase 2 : gamma_prolTrans pour mettre nadir2 dans [110.5, 149.5]
@@ -12,13 +12,13 @@ source("pkpd_model_FORNARI.R")
 source("parameters_human.R")
 source("parameters_FORNARI_CORRECT.R")
 
-# ── Dose Calvert (AUC=5, GFR=125 mL/min — normal renal function, Fornari 2019 S11) ──
+# -- Dose Calvert (AUC=5, GFR=125 mL/min -- normal renal function, Fornari 2019 S11) --
 AUC_target   <- 5
 GFR_mLmin    <- 125
 dose_calvert <- AUC_target * (GFR_mLmin + 25)
 times_hu     <- seq(0, 63 * 24, by = 1)
 
-# ── Fonction de simulation silencieuse (supprime les cat() de simulate_all) ──
+# -- Fonction de simulation silencieuse (supprime les cat() de simulate_all) --
 run_sim_quiet <- function(delta_plt, gamma_pt) {
   p <- init_pars
   p$delta_Plt       <- delta_plt
@@ -41,23 +41,23 @@ run_sim_quiet <- function(delta_plt, gamma_pt) {
   list(nadir1=n1, nadir2=n2, day1=d1, day2=d2)
 }
 
-# ── Bornes ──
+# -- Bornes --
 dp_min  <- 0.80 ; dp_max  <- 1.50
 gpt_min <- 0.40 ; gpt_max <- 0.70
 
-# ── Tolérances ──
+# -- Tolérances --
 t1_lo <- 127.5 ; t1_hi <- 172.5   # 150 ± 15%
 t2_lo <- 110.5 ; t2_hi <- 149.5   # 130 ± 15%
 
-# ── Paramètres initiaux ──
+# -- Paramètres initiaux --
 dp  <- init_pars$delta_Plt
 gpt <- init_pars$gamma_prolTrans
 
 cat(sprintf("\n╔══════════════════════════════════════════════════╗\n"))
-cat(sprintf("║  CALIBRATION PLAQUETTES — STRATÉGIE 2D          ║\n"))
+cat(sprintf("║  CALIBRATION PLAQUETTES -- STRATÉGIE 2D          ║\n"))
 cat(sprintf("╚══════════════════════════════════════════════════╝\n"))
-cat(sprintf("  Objectif nadir1 = 150  plage [127.5 – 172.5]\n"))
-cat(sprintf("  Objectif nadir2 = 130  plage [110.5 – 149.5]\n\n"))
+cat(sprintf("  Objectif nadir1 = 150  plage [127.5 - 172.5]\n"))
+cat(sprintf("  Objectif nadir2 = 130  plage [110.5 - 149.5]\n\n"))
 cat(sprintf("  Départ : delta_Plt=%.2f  gamma_prolTrans=%.2f\n\n", dp, gpt))
 
 MAX_ITER <- 100
@@ -86,13 +86,13 @@ for (iter in 1:MAX_ITER) {
   new_dp  <- dp
   new_gpt <- gpt
 
-  # ── Priorité 1 : nadir1 hors plage → ajuster delta_Plt ──
+  # -- Priorité 1 : nadir1 hors plage → ajuster delta_Plt --
   if (!ok1) {
     if (n1 > t1_hi) new_dp <- dp + 0.05   # trop haut → plus de kill
     else            new_dp <- dp - 0.05   # trop bas  → moins de kill
   }
 
-  # ── Priorité 2 : nadir2 hors plage avec nadir1 OK ──
+  # -- Priorité 2 : nadir2 hors plage avec nadir1 OK --
   if (ok1 && !ok2) {
     if (n2 > t2_hi) {
       if (gpt > gpt_min) {
@@ -110,7 +110,7 @@ for (iter in 1:MAX_ITER) {
     }
   }
 
-  # ── Cas mixte : les deux hors plage dans la même direction ──
+  # -- Cas mixte : les deux hors plage dans la même direction --
   if (!ok1 && !ok2) {
     # On ajuste d'abord delta_Plt (déjà fait ci-dessus)
     # Si on est à la borne de delta_Plt, on essaie gamma_prolTrans
@@ -120,7 +120,7 @@ for (iter in 1:MAX_ITER) {
     }
   }
 
-  # ── Appliquer les bornes ──
+  # -- Appliquer les bornes --
   new_dp  <- max(dp_min,  min(dp_max,  new_dp))
   new_gpt <- max(gpt_min, min(gpt_max, new_gpt))
 
@@ -135,21 +135,21 @@ for (iter in 1:MAX_ITER) {
   gpt <- new_gpt
 }
 
-# ── Résumé final ──
+# -- Résumé final --
 cat(sprintf("\n══════════════════════════════════════════════════\n"))
 cat(sprintf("  RÉSULTATS FINAUX\n"))
 cat(sprintf("══════════════════════════════════════════════════\n"))
 cat(sprintf("  delta_Plt       = %.2f\n", dp))
 cat(sprintf("  gamma_prolTrans = %.2f\n", gpt))
-cat(sprintf("  Plt_nadir1      = %.1f  (cible 150, plage 127.5–172.5) %s\n",
+cat(sprintf("  Plt_nadir1      = %.1f  (cible 150, plage 127.5-172.5) %s\n",
             n1, ifelse(n1>=t1_lo & n1<=t1_hi, "✓", "✗")))
-cat(sprintf("  Plt_nadir2      = %.1f  (cible 130, plage 110.5–149.5) %s\n",
+cat(sprintf("  Plt_nadir2      = %.1f  (cible 130, plage 110.5-149.5) %s\n",
             n2, ifelse(n2>=t2_lo & n2<=t2_hi, "✓", "✗")))
 cat(sprintf("  Asymétrie       = %.1f  (nadir1 - nadir2)\n", n1-n2))
 cat(sprintf("  Convergence     : %s\n", ifelse(ok, "OUI ✓", "NON ✗")))
 cat(sprintf("══════════════════════════════════════════════════\n\n"))
 
-# ── Mise à jour de parameters_human.R si convergé ──
+# -- Mise à jour de parameters_human.R si convergé --
 if (ok) {
   lines <- readLines("parameters_human.R")
   lines <- gsub(

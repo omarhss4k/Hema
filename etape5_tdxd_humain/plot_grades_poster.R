@@ -1,6 +1,6 @@
 ############################################################
 # plot_grades_poster.R
-# Figure poster : grades CTCAE — T-DXd 5.4 mg/kg Q3W × 6
+# Figure poster : grades CTCAE -- T-DXd 5.4 mg/kg Q3W × 6
 # Neutropénie | Anémie | Thrombocytopénie
 # Modèle semi-mécaniste (N=300) vs FDA DESTINY-Breast01
 #
@@ -13,7 +13,7 @@
 
 library(ggplot2)
 
-# ── Thème poster ─────────────────────────────────────────
+# -- Thème poster -----------------------------------------
 theme_poster_grades <- theme_classic(base_size = 15) +
   theme(
     strip.background   = element_rect(fill = "#2c3e50", color = NA),
@@ -28,12 +28,12 @@ theme_poster_grades <- theme_classic(base_size = 15) +
     legend.position    = "bottom"
   )
 
-# ── Définitions grades ────────────────────────────────────
+# -- Définitions grades ------------------------------------
 grade_order     <- c("G0", "G1", "G2", "G3", "G4")
 grade_order_rev <- rev(grade_order)   # G4 au bas du stacked bar
 
 grade_cols <- c(
-  G0 = "#4575b4",   # bleu foncé  — pas de toxicité
+  G0 = "#4575b4",   # bleu foncé  -- pas de toxicité
   G1 = "#91bfdb",   # bleu clair
   G2 = "#fee090",   # jaune
   G3 = "#fc8d59",   # orange
@@ -48,7 +48,7 @@ grade_labels <- c(
   G4 = "G4 (critique)"
 )
 
-# ── Données FDA (BLA 761139) ──────────────────────────────
+# -- Données FDA (BLA 761139) ------------------------------
 # DESTINY-Breast01, n=184 (U201)
 fda_neut   <- c(G0=71, G1=7,  G2=7,  G3=13, G4=3)
 fda_anemia <- c(G0=30, G1=37, G2=24, G3=8,  G4=1)
@@ -57,7 +57,7 @@ fda_plt    <- c(G0=63, G1=30, G2=4,  G3=2,  G4=1)
 
 tox_levels <- c("Neutropénie", "Anémie", "Thrombocytopénie")
 
-# ── Chargement résultats modèle ───────────────────────────
+# -- Chargement résultats modèle ---------------------------
 rds_path <- "results/population_results.rds"
 
 if (!file.exists(rds_path)) {
@@ -79,7 +79,7 @@ pct_n <- setNames(as.numeric(round(100 * tab_neut   / n_ok, 1)), grade_order)
 pct_a <- setNames(as.numeric(round(100 * tab_anemia / n_ok, 1)), grade_order)
 pct_p <- setNames(as.numeric(round(100 * tab_plt    / n_ok, 1)), grade_order)
 
-# ── Assemblage long format ────────────────────────────────
+# -- Assemblage long format --------------------------------
 make_long <- function(pct_mod, pct_fda, tox_name) {
   rbind(
     data.frame(source = "Modèle", grade = grade_order,
@@ -108,7 +108,7 @@ df$ymid <- df$ymax - df$pct / 2
 
 df_label <- df[df$pct >= 6, ]
 
-# ── Références FDA par facette ────────────────────────────
+# -- Références FDA par facette ----------------------------
 # Dans le stacked bar (G4 bas, G0 haut) :
 #   tout grade  = G1+G2+G3+G4 = 100 - G0  (hauteur depuis le bas jusqu'au bas de G0)
 #   G3-4        = G4+G3                    (hauteur des 2 premières couches depuis le bas)
@@ -123,7 +123,7 @@ fda_refs <- data.frame(
   row.names = NULL
 )
 
-# ── Annotations texte pour les lignes de référence ────────
+# -- Annotations texte pour les lignes de référence --------
 # Positionnées à x = 2.5 (juste à droite de la barre FDA, x=2)
 # avec coord_cartesian(xlim = c(0.4, 3.2)) pour l'espace
 ann_tg <- data.frame(
@@ -141,7 +141,7 @@ ann_g34 <- data.frame(
 ann_tg$tox  <- factor(ann_tg$tox,  levels = tox_levels)
 ann_g34$tox <- factor(ann_g34$tox, levels = tox_levels)
 
-# ── Figure ────────────────────────────────────────────────
+# -- Figure ------------------------------------------------
 p <- ggplot(df, aes(x = source, y = pct, fill = grade)) +
 
   # Barres empilées (Modèle | FDA)
@@ -205,7 +205,7 @@ p <- ggplot(df, aes(x = source, y = pct, fill = grade)) +
   labs(
     x        = NULL,
     y        = "Patients (%)",
-    title    = "Hématotoxicité T-DXd 5.4 mg/kg Q3W × 6 cycles — Modèle vs FDA",
+    title    = "Hématotoxicité T-DXd 5.4 mg/kg Q3W × 6 cycles -- Modèle vs FDA",
     subtitle = sprintf(
       "Modèle semi-mécaniste (N = %d) vs DESTINY-Breast01 (n = 184, BLA 761139)",
       n_ok)
@@ -213,7 +213,7 @@ p <- ggplot(df, aes(x = source, y = pct, fill = grade)) +
 
   theme_poster_grades
 
-# ── Export ───────────────────────────────────────────────
+# -- Export -----------------------------------------------
 dir.create("results_PKPD_human", showWarnings = FALSE)
 
 out_pdf <- "results_PKPD_human/poster_grades_tdxd.pdf"
@@ -225,20 +225,20 @@ ggsave(out_png, plot = p, width = 14, height = 6.5, dpi = 300)
 cat(sprintf("  -> %s\n", out_pdf))
 cat(sprintf("  -> %s\n", out_png))
 
-# ── Résumé comparatif console ─────────────────────────────
+# -- Résumé comparatif console -----------------------------
 cat("\n═══ Synthèse Modèle vs FDA ═══\n")
 fmt <- "  %-18s : tout grade %5.1f%%  |  G3-4 %5.1f%%\n"
-cat(sprintf(fmt, "Neut  — Modèle",
+cat(sprintf(fmt, "Neut  -- Modèle",
             sum(pct_n[c("G1","G2","G3","G4")]), sum(pct_n[c("G3","G4")])))
-cat(sprintf(fmt, "Neut  — FDA",
+cat(sprintf(fmt, "Neut  -- FDA",
             100 - fda_neut["G0"], fda_neut["G3"] + fda_neut["G4"]))
-cat(sprintf(fmt, "Anémie — Modèle",
+cat(sprintf(fmt, "Anémie -- Modèle",
             sum(pct_a[c("G1","G2","G3","G4")]), sum(pct_a[c("G3","G4")])))
-cat(sprintf(fmt, "Anémie — FDA",
+cat(sprintf(fmt, "Anémie -- FDA",
             100 - fda_anemia["G0"], fda_anemia["G3"] + fda_anemia["G4"]))
-cat(sprintf(fmt, "Thrombo — Modèle",
+cat(sprintf(fmt, "Thrombo -- Modèle",
             sum(pct_p[c("G1","G2","G3","G4")]), sum(pct_p[c("G3","G4")])))
-cat(sprintf(fmt, "Thrombo — FDA",
+cat(sprintf(fmt, "Thrombo -- FDA",
             100 - fda_plt["G0"], fda_plt["G3"] + fda_plt["G4"]))
 cat("\n")
 

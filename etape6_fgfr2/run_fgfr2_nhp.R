@@ -1,15 +1,15 @@
 ############################################################
 # run_fgfr2_nhp.R
-# Simulation PK/PD — FGFR2 — SINGE CYNOMOLGUS (NHP)
+# Simulation PK/PD -- FGFR2 -- SINGE CYNOMOLGUS (NHP)
 #
 # Modèle (25 états) :
-#   PK  : Inhibiteur FGFR2 — 2-cpt + TMDD | Damage ADN
+#   PK  : Inhibiteur FGFR2 -- 2-cpt + TMDD | Damage ADN
 #   PD  : Modèle Fornari 2019
 #         MPP → CMP → Neut / Mono
 #         MPP → MEP → Ret / RBC / Plt
 #
 # !! Paramètres PK à calibrer sur données FGFR2 NHP !!
-# (structure issue du modèle T-DXd — PK et slopes adaptés FGFR2)
+# (structure issue du modèle T-DXd -- PK et slopes adaptés FGFR2)
 ############################################################
 library(deSolve)
 
@@ -31,7 +31,7 @@ build_pars <- function() {
   p
 }
 
-# ── État initial (23 états) ──────────────────────────────
+# -- État initial (23 états) ------------------------------
 pd_state <- init_state[setdiff(names(init_state), c("C1", "C2", "Damage"))]
 nhp_state0 <- c(
   C_ADC1 = 0, C_ADC2 = 0, Damage = 0,
@@ -39,7 +39,7 @@ nhp_state0 <- c(
 )
 
 # ════════════════════════════════════════════════════════
-# Pas de calibration TMDD — modèle 2-cmt linéaire
+# Pas de calibration TMDD -- modèle 2-cmt linéaire
 # CL_ADC, V1_ADC, V2_ADC, Q_ADC issus de pk2cmt_params.csv
 # (ajustement rxode2 sur données NCA NHP, nca_analysis.R)
 # ════════════════════════════════════════════════════════
@@ -74,7 +74,7 @@ doses_fgfr2 <- c(4, 13, 26, 39)   # doses corrigées ×1.297
 sims_fgfr2  <- lapply(doses_fgfr2, function(d) simulate_nhp(d, n_cycles = 3))
 
 # ════════════════════════════════════════════════════════
-# DONNÉES PK OBSERVÉES — à remplir manuellement
+# DONNÉES PK OBSERVÉES -- à remplir manuellement
 # time_h = temps en heures depuis la dose
 # conc   = concentration FGFR2 mesurée (µg/mL = mg/L)
 # ════════════════════════════════════════════════════════
@@ -86,7 +86,7 @@ pk_obs <- list(
 )
 
 # ════════════════════════════════════════════════════════
-# Graphiques PK — validation FDA Table 7 + données observées
+# Graphiques PK -- validation FDA Table 7 + données observées
 # ════════════════════════════════════════════════════════
 dose_cols <- c("#2166ac", "#4dac26", "#f4a582", "#d6604d")
 dose_days <- c(0, 21, 42)
@@ -96,7 +96,7 @@ par(mfrow = c(1, 4), mar = c(4, 4.5, 3, 1.5))
 for (i in seq_along(doses_fgfr2)) {
   s   <- sims_fgfr2[[i]]; col <- dose_cols[i]; d <- doses_fgfr2[i]
   # fda_tk_nhp peut avoir moins d'entrees que doses_fgfr2 si certaines doses
-  # n'ont pas encore de donnees — on n'affiche le C0 que si disponible
+  # n'ont pas encore de donnees -- on n'affiche le C0 que si disponible
   fda_i   <- if (i <= length(fda_tk_nhp)) fda_tk_nhp[[i]] else NULL
 
   plot(s$time_d, s$C_ADC1, type="l", lwd=2.5, col=col, log="y",
@@ -119,7 +119,7 @@ dev.off()
 cat("  -> results/NHP_PK_validation_Table7.pdf\n")
 
 # ════════════════════════════════════════════════════════
-# Graphiques PD — Fornari
+# Graphiques PD -- Fornari
 # ════════════════════════════════════════════════════════
 pdf("results/NHP_PD_Fornari_FGFR2.pdf", width = 14, height = 10)
 par(mfrow = c(2, 3), mar = c(4, 4.5, 3, 1.5))
@@ -152,11 +152,11 @@ dev.off()
 cat("  -> results/NHP_PD_Fornari_FGFR2.pdf\n")
 
 # ════════════════════════════════════════════════════════
-# Validation NCA — table console
+# Validation NCA -- table console
 # ════════════════════════════════════════════════════════
 cat("\n═══ VALIDATION NCA FDA Table 7 ═══\n")
 cat(sprintf("  %-10s │ C0_obs  C0_sim  ratio │ AUC_obs AUC_sim ratio │ T½_obs T½_sim\n", "Dose"))
-cat(sprintf("  %s\n", paste(rep("─",75), collapse="")))
+cat(sprintf("  %s\n", paste(rep("-",75), collapse="")))
 for (i in seq_along(doses_fgfr2)) {
   s   <- sims_fgfr2[[i]]
   fda <- if (i <= length(fda_tk_nhp)) fda_tk_nhp[[i]] else NULL
@@ -180,7 +180,7 @@ for (i in seq_along(doses_fgfr2)) {
 cat(paste(rep("=",57), collapse=""), "\n")
 
 # ════════════════════════════════════════════════════════
-# COMPTES CELLULAIRES — Jours 2, 8, 15, 22
+# COMPTES CELLULAIRES -- Jours 2, 8, 15, 22
 # ════════════════════════════════════════════════════════
 target_days <- c(2, 8, 15, 22)
 cell_vars   <- c("Neut", "Mono", "Ret", "RBC", "Plt", "MPP", "CMP", "MEP")
@@ -204,7 +204,7 @@ cat("  COMPTES CELLULAIRES AUX JOURS 2 / 8 / 15 / 22\n")
 cat("════════════════════════════════════════════════════════════\n")
 cat(sprintf("  %-8s │ %-4s │ %8s %8s %8s %8s %8s │ %7s %7s %7s\n",
             "Dose","Jour","Neut","Mono","Ret","RBC","Plt","MPP","CMP","MEP"))
-cat(sprintf("  %s\n", paste(rep("─", 88), collapse="")))
+cat(sprintf("  %s\n", paste(rep("-", 88), collapse="")))
 
 for (i in seq_len(nrow(cell_table))) {
   r <- cell_table[i, ]
@@ -213,7 +213,7 @@ for (i in seq_len(nrow(cell_table))) {
               r$Neut, r$Mono, r$Ret, r$RBC, r$Plt,
               r$MPP,  r$CMP,  r$MEP))
   if (i %% length(target_days) == 0)
-    cat(sprintf("  %s\n", paste(rep("─", 88), collapse="")))
+    cat(sprintf("  %s\n", paste(rep("-", 88), collapse="")))
 }
 cat(sprintf("  %-8s │      │ %8.3f %8.3f %8.1f %8.0f %8.1f │ %7.3f %7.3f %7.3f\n",
             "Baseline", init_pars$Neut0, init_pars$Mono0, init_pars$Ret0,
@@ -221,7 +221,7 @@ cat(sprintf("  %-8s │      │ %8.3f %8.3f %8.1f %8.0f %8.1f │ %7.3f %7.3f %
             init_pars$MPP0, init_pars$CMP0, init_pars$MEP0))
 
 # ════════════════════════════════════════════════════════
-# NADIRS — valeur minimale + jour sur toute la simulation
+# NADIRS -- valeur minimale + jour sur toute la simulation
 # ════════════════════════════════════════════════════════
 cat("\n════════════════════════════════════════════════════════════\n")
 cat("  NADIRS (valeur min + jour) sur 3 cycles Q3W\n")
@@ -230,7 +230,7 @@ cat(sprintf("  %-8s │ %14s %14s %14s %14s %14s\n",
             "Dose", "Neut", "Mono", "Ret", "RBC", "Plt"))
 cat(sprintf("  %-8s │ %14s %14s %14s %14s %14s\n",
             "", "val  (jour)", "val  (jour)", "val  (jour)", "val  (jour)", "val  (jour)"))
-cat(sprintf("  %s\n", paste(rep("─", 85), collapse="")))
+cat(sprintf("  %s\n", paste(rep("-", 85), collapse="")))
 
 nadir_records <- list()
 for (i in seq_along(doses_fgfr2)) {
@@ -253,7 +253,7 @@ for (i in seq_along(doses_fgfr2)) {
               row_parts[1], row_parts[2], row_parts[3],
               row_parts[4], row_parts[5]))
 }
-cat(sprintf("  %s\n", paste(rep("─", 85), collapse="")))
+cat(sprintf("  %s\n", paste(rep("-", 85), collapse="")))
 cat(sprintf("  %-8s │ %14s %14s %14s %14s %14s\n",
             "Baseline",
             sprintf("%6.1f  (J0)  ", init_pars$Neut0),

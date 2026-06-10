@@ -1,6 +1,6 @@
 ############################################################
 # run_pkpd_tdxd_human_population.R
-# Simulation de population — T-DXd 5.4 mg/kg Q3W × 6 cycles
+# Simulation de population -- T-DXd 5.4 mg/kg Q3W × 6 cycles
 #
 # Objectif : reproduire la distribution de toxicité CTCAE
 #   FDA BLA 761139 (cibles primaires DESTINY-Breast01, n=184) :
@@ -30,13 +30,13 @@ dir.create("results", showWarnings = FALSE)
 set.seed(42)
 N_patients <- 300
 
-# ── IIV (ω sur log-normal) ───────────────────────────────
+# -- IIV (ω sur log-normal) -------------------------------
 omega_CL    <- 0.35   # Yin 2020
 omega_V1    <- 0.20   # Yin 2020
 omega_Slope_CMP <- 0.33   # Fornari Table S4
 omega_Slope_MEP <- 0.33   # Fornari Table S4
 
-# ── Paramètres typiques ──────────────────────────────────
+# -- Paramètres typiques ----------------------------------
 pars_pd_hu <- init_pars
 pars_pd_hu[["k_dam"]] <- NULL
 pars_pd_hu[["k_rep"]] <- NULL
@@ -50,7 +50,7 @@ state0_hu   <- c(tdxd_hu_state0, state_pd_hu)
 
 times_hu <- seq(0, 126 * 24, by = 6)   # pas 6h (rapidité)
 
-# ── CTCAE Grade Neutropénie ──────────────────────────────
+# -- CTCAE Grade Neutropénie ------------------------------
 ctcae_neut <- function(neut) {
   if      (neut < 0.5) "G4"
   else if (neut < 1.0) "G3"
@@ -59,7 +59,7 @@ ctcae_neut <- function(neut) {
   else                  "G0"
 }
 
-# ── CTCAE Grade Anémie (proxy Hgb via RBC) ───────────────
+# -- CTCAE Grade Anémie (proxy Hgb via RBC) ---------------
 # RBC0 = 5000 × 10⁹/L → Hgb₀ ≈ 12.5 g/dL (DESTINY-B01, patientes prétaitées)
 # CTCAE v5 (seuils absolus Hgb → % RBC avec Hgb₀=12.5 g/dL) :
 #   G1 : Hgb < 12 g/dL  → RBC < 96%  ... mais G0/G1 maintenu à 90% (LLN pratique)
@@ -75,7 +75,7 @@ ctcae_anemia <- function(rbc, rbc0) {
   else                   "G0"
 }
 
-# ── CTCAE Grade Thrombocytopénie (Plt en ×10⁹/L) ─────────
+# -- CTCAE Grade Thrombocytopénie (Plt en ×10⁹/L) ---------
 # Plt0 = 345 ×10⁹/L (Fornari 2019 humain)
 # CTCAE v5 : G1 : <LLN-75  G2 : 50-<75  G3 : 25-<50  G4 : <25
 ctcae_plt <- function(plt) {
@@ -235,8 +235,8 @@ pct_a <- round(100 * tab_anemia/ n_ok, 1)
 pct_p <- round(100 * tab_plt   / n_ok, 1)
 
 cat("\n═══════════════════════════════════════════════════════════\n")
-cat(sprintf("  SIMULATION POPULATION — T-DXd 5.4 mg/kg Q3W × 6 (N=%d)\n", n_ok))
-cat("─────────────────────────────────────────────────────────\n")
+cat(sprintf("  SIMULATION POPULATION -- T-DXd 5.4 mg/kg Q3W × 6 (N=%d)\n", n_ok))
+cat("---------------------------------------------------------\n")
 cat("  NEUTROPÉNIE :\n")
 cat(sprintf("    %-5s  %6s  %7s   %s\n", "Grade", "n", "%", "FDA obs."))
 for (g in grade_order) {
@@ -266,8 +266,8 @@ for (g in grade_order) {
 cat(sprintf("    TOTAL G3-4 : %.1f%%  (FDA : ~3.4%%)\n",
             pct_p["G3"] + pct_p["G4"]))
 
-cat("\n─────────────────────────────────────────────────────────\n")
-# ── Breakdown par sous-groupe trimodal ──
+cat("\n---------------------------------------------------------\n")
+# -- Breakdown par sous-groupe trimodal --
 res_r <- results[results$group_cmp == "resistant", ]
 res_m <- results[results$group_cmp == "moderate",  ]
 res_s <- results[results$group_cmp == "sensitive",  ]
@@ -289,7 +289,7 @@ cat(sprintf("  Modérés     : G3-4=%.1f%%  G1-2=%.1f%%  nadir=%s\n",
 cat(sprintf("  Sensibles   : G3-4=%.1f%%  G1-2=%.1f%%  nadir=%s\n",
             pct_g34(res_s), pct_g12(res_s), nadir_q(res_s)))
 
-# ── Breakdown anémie par sous-groupe MEP trimodal ──
+# -- Breakdown anémie par sous-groupe MEP trimodal --
 res_mep_r <- results[results$group_mep == "resistant", ]
 res_mep_l <- results[results$group_mep == "light",     ]
 res_mep_s <- results[results$group_mep == "sensitive",  ]
@@ -299,7 +299,7 @@ pct_anemia_grade <- function(x, lo, hi) {
   if (nrow(x)==0) return(0)
   100 * sum(x$RBC_nadir/rbc0 >= lo & x$RBC_nadir/rbc0 < hi) / nrow(x)
 }
-cat(sprintf("\n  Anémie — trimodal MEP : %d résistants (%.0f%%) | %d légers (%.0f%%) | %d sensibles (%.0f%%)\n",
+cat(sprintf("\n  Anémie -- trimodal MEP : %d résistants (%.0f%%) | %d légers (%.0f%%) | %d sensibles (%.0f%%)\n",
             n_mr, 100*n_mr/n_ok, n_ml, 100*n_ml/n_ok, n_ms, 100*n_ms/n_ok))
 for (grp in list(list(res_mep_r,"Résistants"), list(res_mep_l,"Légers"), list(res_mep_s,"Sensibles"))) {
   x <- grp[[1]]; nm <- grp[[2]]
@@ -308,20 +308,20 @@ for (grp in list(list(res_mep_r,"Résistants"), list(res_mep_l,"Légers"), list(
     pct_anemia_grade(x,0.67,0.83), pct_anemia_grade(x,0,0.67)))
 }
 
-cat("\n─────────────────────────────────────────────────────────\n")
+cat("\n---------------------------------------------------------\n")
 cat("  Statistiques exposition (médiane [P10-P90]) :\n")
 quants <- function(x) quantile(x, c(0.1, 0.5, 0.9), na.rm=TRUE)
 q_adc  <- quants(results$Cmax_ADC)
 q_dxd  <- quants(results$Cmax_DXd_ng)
 q_neut <- quants(results$Neut_nadir)
 q_plt  <- quants(results$Plt_nadir)
-cat(sprintf("    ADC Cmax  : %.0f [%.0f–%.0f] µg/mL  (FDA SS=122)\n",
+cat(sprintf("    ADC Cmax  : %.0f [%.0f-%.0f] µg/mL  (FDA SS=122)\n",
             q_adc[2], q_adc[1], q_adc[3]))
-cat(sprintf("    DXd Cmax  : %.1f [%.1f–%.1f] ng/mL  (FDA SS=4.4)\n",
+cat(sprintf("    DXd Cmax  : %.1f [%.1f-%.1f] ng/mL  (FDA SS=4.4)\n",
             q_dxd[2], q_dxd[1], q_dxd[3]))
-cat(sprintf("    Neut nadir: %.2f [%.2f–%.2f] × 10⁹/L\n",
+cat(sprintf("    Neut nadir: %.2f [%.2f-%.2f] × 10⁹/L\n",
             q_neut[2], q_neut[1], q_neut[3]))
-cat(sprintf("    Plt nadir : %.0f [%.0f–%.0f] × 10⁹/L  (Plt0=%.0f)\n",
+cat(sprintf("    Plt nadir : %.0f [%.0f-%.0f] × 10⁹/L  (Plt0=%.0f)\n",
             q_plt[2], q_plt[1], q_plt[3], pars_typ$Plt0))
 cat("═══════════════════════════════════════════════════════════\n")
 
@@ -333,7 +333,7 @@ par(mfrow = c(2, 3), mar = c(4, 4.2, 3, 1))
 
 grade_cols <- c(G0="#2166ac", G1="#74add1", G2="#f4a582", G3="#d6604d", G4="#b2182b")
 
-# ── 1. Distribution Neut nadir ──
+# -- 1. Distribution Neut nadir --
 hist(results$Neut_nadir, breaks = 30,
      col = "#74add1", border = "white",
      main = "Distribution nadir Neutrophiles",
@@ -346,7 +346,7 @@ text(c(2.0, 1.5, 1.0, 0.5) + 0.05, par("usr")[4] * 0.95,
      col = c("grey60", "orange", "red", "darkred"), cex = 0.85, adj = 0)
 abline(v = median(results$Neut_nadir, na.rm=TRUE), col = "#2166ac", lwd = 2)
 
-# ── 2. Distribution % chute Neut ──
+# -- 2. Distribution % chute Neut --
 pct_drop_neut <- 100 * (results$Neut_nadir - pars_typ$Neut0) / pars_typ$Neut0
 hist(pct_drop_neut, breaks = 30,
      col = "#74add1", border = "white",
@@ -356,7 +356,7 @@ abline(v = median(pct_drop_neut, na.rm=TRUE), col = "#2166ac", lwd = 2)
 text(median(pct_drop_neut)-1, par("usr")[4]*0.9,
      sprintf("Médiane\n%.1f%%", median(pct_drop_neut)), col="#2166ac", adj=1, cex=0.85)
 
-# ── 3. Barplot grades neutropénie : modèle vs FDA ──
+# -- 3. Barplot grades neutropénie : modèle vs FDA --
 grades_mod <- pct_n[grade_order]
 grades_fda <- c(71, 7, 7, 13, 3)   # approximatifs FDA
 
@@ -372,7 +372,7 @@ bp <- barplot(bar_data,
               args.legend = list(bty = "n", cex = 0.85))
 text(bp[1,], grades_mod + 2, sprintf("%.0f%%", grades_mod), cex = 0.8, col = "#2166ac")
 
-# ── 4. Distribution % chute RBC (anémie) ──
+# -- 4. Distribution % chute RBC (anémie) --
 pct_drop_rbc <- 100 * (results$RBC_nadir - pars_typ$RBC0) / pars_typ$RBC0
 hist(pct_drop_rbc, breaks = 30,
      col = "#f4a582", border = "white",
@@ -380,7 +380,7 @@ hist(pct_drop_rbc, breaks = 30,
      xlab = "%Δ RBC nadir", ylab = "Fréquence")
 abline(v = median(pct_drop_rbc, na.rm=TRUE), col = "#d6604d", lwd = 2)
 
-# ── 5. Neut nadir vs CL_ADC ──
+# -- 5. Neut nadir vs CL_ADC --
 plot(results$CL_ADC * 24, results$Neut_nadir,
      pch = 16, cex = 0.6,
      col = grade_cols[results$Grade_Neut],
@@ -390,7 +390,7 @@ abline(h = c(2.0, 1.5, 1.0, 0.5), lty = 2, col = c("grey60","orange","red","dark
 legend("topright", names(grade_cols), pch = 16,
        col = grade_cols, bty = "n", cex = 0.8)
 
-# ── 6. Neut nadir vs Slope_CMP ──
+# -- 6. Neut nadir vs Slope_CMP --
 plot(results$Slope_CMP, results$Neut_nadir,
      pch = 16, cex = 0.6,
      col = grade_cols[results$Grade_Neut],

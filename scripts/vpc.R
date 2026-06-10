@@ -1,6 +1,6 @@
 ############################################################
 # vpc.R
-# Visual Predictive Check — Fornari 2019
+# Visual Predictive Check -- Fornari 2019
 # Erreur log-additive (Table S4) sur 1000 simulations
 # sigma : MPP=0.33, CMP=0.19, MEP=0.33, Neut=0.17,
 #         Mono=0.17, Plt=0.17, Ret=0.36, RBC=0.06
@@ -10,7 +10,7 @@ library(gridExtra)
 library(grid)
 library(scales)
 
-# ── Valeurs sigma (Table S4) ────────────────────────────
+# -- Valeurs sigma (Table S4) ----------------------------
 SIGMA <- c(
   MPP  = 0.33,
   CMP  = 0.19,
@@ -92,7 +92,7 @@ plot_vpc_panel <- function(vpc_df, title, color = "steelblue",
 
   p <- ggplot(vpc_df, aes(x = days)) +
 
-    # Ruban bleu — intervalle de prédiction [5e, 95e]
+    # Ruban bleu -- intervalle de prédiction [5e, 95e]
     geom_ribbon(aes(ymin = p05, ymax = p95),
                 fill = color, alpha = 0.20) +
 
@@ -154,7 +154,7 @@ plot_vpc_panel <- function(vpc_df, title, color = "steelblue",
 # 3. GRILLE COMPLÈTE 4×2 VPC
 # ════════════════════════════════════════════════════════
 plot_vpc_all <- function(vpc_stats, pars,
-                         titre     = "VPC — Haematopoiesis",
+                         titre     = "VPC -- Haematopoiesis",
                          dose_days = NULL,
                          obs_list  = NULL) {
 
@@ -198,7 +198,7 @@ plot_vpc_all <- function(vpc_stats, pars,
 
   # Légende commune sous forme de texte
   legend_grob <- textGrob(
-    paste0("Ruban bleu = [5e–95e percentile]  |  ",
+    paste0("Ruban bleu = [5e-95e percentile]  |  ",
            "Ligne rouge = médiane simulée  |  ",
            "Tiret noir = prédiction déterministe  |  ",
            "● = données observées"),
@@ -239,12 +239,12 @@ save_vpc <- function(sim, pars, file, titre,
 }
 
 # ════════════════════════════════════════════════════════
-# 5. VPC HUMAIN — Neutrophiles + Plaquettes (Figure 4)
+# 5. VPC HUMAIN -- Neutrophiles + Plaquettes (Figure 4)
 #    Deux panneaux empilés verticalement (1 colonne × 2 lignes)
 #    comme dans la Figure 4 de Fornari 2019
 # ════════════════════════════════════════════════════════
 plot_vpc_human <- function(vpc_stats, pars,
-                           titre     = "VPC — Human (Figure 4)",
+                           titre     = "VPC -- Human (Figure 4)",
                            dose_days = NULL,
                            obs_list  = NULL) {
 
@@ -273,7 +273,7 @@ plot_vpc_human <- function(vpc_stats, pars,
   )
 
   legend_grob <- textGrob(
-    paste0("Ruban coloré = [5e–95e percentile]  |  ",
+    paste0("Ruban coloré = [5e-95e percentile]  |  ",
            "Ligne rouge = médiane simulée  |  ",
            "Tiret noir = prédiction déterministe  |  ",
            "● = données observées"),
@@ -302,7 +302,7 @@ save_vpc_human <- function(sim, pars, file, titre,
                            height     = 9) {
 
   # Supp. S11 : GFR=125 fixe, même PK pour tous les patients
-  cat(sprintf("  → VPC humain : %d patients (GFR=%g fixe — Supp. S11) + erreur résiduelle...\n",
+  cat(sprintf("  → VPC humain : %d patients (GFR=%g fixe -- Supp. S11) + erreur résiduelle...\n",
               n_sim, gfr_fixed))
 
   set.seed(42)
@@ -311,7 +311,7 @@ save_vpc_human <- function(sim, pars, file, titre,
   if (is.null(times)) times <- seq(0, 63 * 24, by = 1)
   n_t <- length(times)
 
-  # ── Même PK pour tous (Supp. S11/S12) ──────────────────────
+  # -- Même PK pour tous (Supp. S11/S12) ----------------------
   dose_fixe <- auc_target * (gfr_fixed + 25)   # Calvert dose fixe
   mat_Neut <- matrix(NA, nrow = n_sim, ncol = n_t)
   mat_Plt  <- matrix(NA, nrow = n_sim, ncol = n_t)
@@ -362,7 +362,7 @@ save_vpc_human <- function(sim, pars, file, titre,
       cat(sprintf("    %d/%d patients simulés\n", i, n_sim))
   }
 
-  # ── Percentiles ──────────────────────────────────────────────
+  # -- Percentiles ----------------------------------------------
   days_vec  <- times / 24
   make_stats <- function(mat, Yref) data.frame(
     days = days_vec,

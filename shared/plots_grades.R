@@ -1,6 +1,6 @@
 ############################################################
 # plots_grades.R
-# Grades NCI-CTCAE v5.0 — Neutropénie + Thrombocytopénie
+# Grades NCI-CTCAE v5.0 -- Neutropénie + Thrombocytopénie
 # Fonctions :
 #   save_grade_plots()    → rat  (Figure 3 style)
 #   save_grade_figure4c() → humain population (Figure 4c)
@@ -24,7 +24,7 @@ GRADE_COLORS <- c(G1 = "#fee08b", G2 = "#fc8d59",
                   G3 = "#d73027", G4 = "#7b0404")
 
 # ════════════════════════════════════════════════════════
-# 1. FONCTION UTILITAIRE — grade d'une valeur scalaire
+# 1. FONCTION UTILITAIRE -- grade d'une valeur scalaire
 # ════════════════════════════════════════════════════════
 assign_grade_neut <- function(x) {
   ifelse(x <  NEUT_THRESHOLDS["G4"], 4,
@@ -45,7 +45,7 @@ nadir_grade_neut <- function(vec) assign_grade_neut(min(vec, na.rm = TRUE))
 nadir_grade_plt  <- function(vec) assign_grade_plt( min(vec, na.rm = TRUE))
 
 # ════════════════════════════════════════════════════════
-# 2. PANNEAU GRADE — courbe + bandes de grade colorées
+# 2. PANNEAU GRADE -- courbe + bandes de grade colorées
 # ════════════════════════════════════════════════════════
 plot_grade_panel <- function(sim, yvar, title, color,
                              thresholds,
@@ -127,7 +127,7 @@ plot_grade_panel <- function(sim, yvar, title, color,
 }
 
 # ════════════════════════════════════════════════════════
-# 3. SAVE_GRADE_PLOTS — rat (Figure 3 style)
+# 3. SAVE_GRADE_PLOTS -- rat (Figure 3 style)
 #    Retourne liste avec nadir/grade/pct pour console
 # ════════════════════════════════════════════════════════
 save_grade_plots <- function(sim, pars, file, titre_base,
@@ -184,7 +184,7 @@ save_grade_plots <- function(sim, pars, file, titre_base,
 }
 
 # ════════════════════════════════════════════════════════
-# 4. SAVE_GRADE_FIGURE4C — humain population (Figure 4c)
+# 4. SAVE_GRADE_FIGURE4C -- humain population (Figure 4c)
 #    Simule n_patients avec GFR variable → % par grade
 # ════════════════════════════════════════════════════════
 save_grade_figure4c <- function(base_pars, init_state,
@@ -200,10 +200,10 @@ save_grade_figure4c <- function(base_pars, init_state,
                                 height     = 5) {
 
   set.seed(seed)
-  cat(sprintf("  → Figure 4c : %d patients (GFR=%g fixe, PK identique — Supp. S11/S12)...\n",
+  cat(sprintf("  → Figure 4c : %d patients (GFR=%g fixe, PK identique -- Supp. S11/S12)...\n",
               n_patients, gfr_fixed))
 
-  # ── IIV PD — variabilité résiduelle du modèle rat (Fornari 2019, Table S4) ──
+  # -- IIV PD -- variabilité résiduelle du modèle rat (Fornari 2019, Table S4) --
   # S11 : GFR=125 mL/min fixe, dose = AUC × (GFR+25) identique pour tous
   # S12 : "same PK per patient" → pas d'IIV sur CL ni sur la dose
   # IIV log-normales (ω = SD sur log) tirées de Fornari 2019 Table S4 :
@@ -304,7 +304,7 @@ save_grade_figure4c <- function(base_pars, init_state,
   cat(sprintf("  Thrombopénie : G1=%.1f%%  G2=%.1f%%  G3=%.1f%%  G4=%.1f%%\n",
               pct_plt[1],  pct_plt[2],  pct_plt[3],  pct_plt[4]))
 
-  # ── Barplot Figure 4c ─────────────────────────────────
+  # -- Barplot Figure 4c ---------------------------------
   df_plot <- data.frame(
     Grade    = rep(paste0("G", 1:4), 2),
     Pct      = c(pct_neut, pct_plt),

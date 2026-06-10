@@ -50,7 +50,7 @@ cat("Images converties :", n_imgs, "/ 4\n")
 # ======================================================
 pres <- read_pptx()
 
-# ── Slide 1 : Titre ───────────────────────────────────
+# -- Slide 1 : Titre -----------------------------------
 pres <- add_slide(pres, layout = "Title Slide", master = "Office Theme")
 pres <- ph_with(pres,
   value = "Modele PK/PD T-DXd\nToxicite hematologique",
@@ -59,7 +59,7 @@ pres <- ph_with(pres,
   value = "Rat (preclinique) -> Humain (clinique)\nDESTINY-Breast01 | FDA BLA 761139",
   location = ph_location_type(type = "subTitle"))
 
-# ── Slide 2 : Plan ────────────────────────────────────
+# -- Slide 2 : Plan ------------------------------------
 pres <- add_slide(pres, layout = "Title and Content", master = "Office Theme")
 pres <- ph_with(pres, value = "Plan",
                 location = ph_location_type(type = "title"))
@@ -82,7 +82,7 @@ plan_txt <- block_list(
 pres <- ph_with(pres, value = plan_txt,
                 location = ph_location_type(type = "body"))
 
-# ── Slide 3 : Structure du modele ─────────────────────
+# -- Slide 3 : Structure du modele ---------------------
 pres <- add_slide(pres, layout = "Title and Content", master = "Office Theme")
 pres <- ph_with(pres, value = "Structure du modele PK/PD",
                 location = ph_location_type(type = "title"))
@@ -110,7 +110,7 @@ struct_txt <- block_list(
 pres <- ph_with(pres, value = struct_txt,
                 location = ph_location_type(type = "body"))
 
-# ── Slide 4 : RAT -- validation seuils FDA ────────────
+# -- Slide 4 : RAT -- validation seuils FDA ------------
 pres <- add_slide(pres, layout = "Title Only", master = "Office Theme")
 pres <- ph_with(pres,
   value = "Rat -- Validation vs seuils FDA BLA 761139 (Table 6)",
@@ -121,7 +121,7 @@ if (file.exists(imgs$rat_summary)) {
     location = ph_location(left = 0.2, top = 1.4, width = 9.5, height = 5.6))
 }
 
-# ── Slide 5 : RAT -- profils temporels ───────────────
+# -- Slide 5 : RAT -- profils temporels ---------------
 pres <- add_slide(pres, layout = "Title Only", master = "Office Theme")
 pres <- ph_with(pres,
   value = "Rat -- Profils temporels sur 3 cycles (63 jours)",
@@ -132,7 +132,7 @@ if (file.exists(imgs$rat_profils)) {
     location = ph_location(left = 0.2, top = 1.5, width = 9.5, height = 5.2))
 }
 
-# ── Slide 6 : RAT -- resume chiffre ──────────────────
+# -- Slide 6 : RAT -- resume chiffre ------------------
 pres <- add_slide(pres, layout = "Title and Content", master = "Office Theme")
 pres <- ph_with(pres, value = "Rat -- Resultats cles",
                 location = ph_location_type(type = "title"))
@@ -155,7 +155,7 @@ rat_txt <- block_list(
 pres <- ph_with(pres, value = rat_txt,
                 location = ph_location_type(type = "body"))
 
-# ── Slide 7 : HUMAIN -- neutropenie grades ────────────
+# -- Slide 7 : HUMAIN -- neutropenie grades ------------
 pres <- add_slide(pres, layout = "Title Only", master = "Office Theme")
 pres <- ph_with(pres,
   value = "Humain -- Grades neutropenie : modele vs DESTINY-Breast01",
@@ -166,7 +166,7 @@ if (file.exists(imgs$hu_neut)) {
     location = ph_location(left = 0.7, top = 1.4, width = 8.5, height = 5.4))
 }
 
-# ── Slide 8 : HUMAIN -- anemie grades ────────────────
+# -- Slide 8 : HUMAIN -- anemie grades ----------------
 pres <- add_slide(pres, layout = "Title Only", master = "Office Theme")
 pres <- ph_with(pres,
   value = "Humain -- Grades anemie : modele vs DESTINY-Breast01",
@@ -177,7 +177,7 @@ if (file.exists(imgs$hu_anemie)) {
     location = ph_location(left = 0.7, top = 1.4, width = 8.5, height = 5.4))
 }
 
-# ── Slide 9 : HUMAIN -- resume chiffre ───────────────
+# -- Slide 9 : HUMAIN -- resume chiffre ---------------
 pres <- add_slide(pres, layout = "Title and Content", master = "Office Theme")
 pres <- ph_with(pres, value = "Humain -- Resultats cles (N = 200 patients)",
                 location = ph_location_type(type = "title"))
@@ -204,7 +204,7 @@ hu_txt <- block_list(
 pres <- ph_with(pres, value = hu_txt,
                 location = ph_location_type(type = "body"))
 
-# ── Slide 10 : Limitation ─────────────────────────────
+# -- Slide 10 : Limitation -----------------------------
 pres <- add_slide(pres, layout = "Title and Content", master = "Office Theme")
 pres <- ph_with(pres, value = "Limitation : accumulation de l'ADC entre cycles",
                 location = ph_location_type(type = "title"))
@@ -235,7 +235,7 @@ lim_txt <- block_list(
 pres <- ph_with(pres, value = lim_txt,
                 location = ph_location_type(type = "body"))
 
-# ── Slide 11 : Perspectives ───────────────────────────
+# -- Slide 11 : Perspectives ---------------------------
 pres <- add_slide(pres, layout = "Title and Content", master = "Office Theme")
 pres <- ph_with(pres, value = "Perspectives",
                 location = ph_location_type(type = "title"))
@@ -269,7 +269,7 @@ suite_txt <- block_list(
 pres <- ph_with(pres, value = suite_txt,
                 location = ph_location_type(type = "body"))
 
-# ── Slide 12 : Conclusion ─────────────────────────────
+# -- Slide 12 : Conclusion -----------------------------
 pres <- add_slide(pres, layout = "Title and Content", master = "Office Theme")
 pres <- ph_with(pres, value = "Conclusion",
                 location = ph_location_type(type = "title"))
@@ -297,7 +297,7 @@ concl_txt <- block_list(
 pres <- ph_with(pres, value = concl_txt,
                 location = ph_location_type(type = "body"))
 
-# ── Sauvegarde ────────────────────────────────────────
+# -- Sauvegarde ----------------------------------------
 out_path <- "TDXD_presentation.pptx"
 print(pres, target = out_path)
 cat(sprintf("\nPowerPoint genere : %s\n", out_path))

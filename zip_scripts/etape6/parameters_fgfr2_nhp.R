@@ -1,13 +1,13 @@
 ############################################################
 # parameters_fgfr2_nhp.R
-# Paramètres PK — Inhibiteur FGFR2 — SINGE CYNOMOLGUS (NHP)
+# Paramètres PK -- Inhibiteur FGFR2 -- SINGE CYNOMOLGUS (NHP)
 #
 # Méthode :
 #   1. Allométrie depuis paramètres rat calibrés (Table 6 données précliniques)
 #      scale_CL = (BW_nhp/BW_rat)^0.75   [=  8.0  pour 4/0.25 kg]
 #      scale_V  = (BW_nhp/BW_rat)^1.0    [= 16.0  pour 4/0.25 kg]
 #   2. Calibration directe sur données précliniques NHP
-#      "Étude toxicité IV — singe cynomolgus"
+#      "Étude toxicité IV -- singe cynomolgus"
 #      Doses Q3W : 3, 10, 30 mg/kg
 #
 # Différence clé vs rat :
@@ -15,7 +15,7 @@
 #   → k_int estimé depuis la non-linéarité CL(dose) observée
 #
 # Sources :
-#   Données précliniques internes — singe cynomolgus (pk2cmt_params.csv)
+#   Données précliniques internes -- singe cynomolgus (pk2cmt_params.csv)
 #   Allométrie de référence : Yin et al. 2020
 #
 # Unités : temps [h] | concentrations [mg/L = µg/mL]
@@ -23,27 +23,27 @@
 
 fgfr2_nhp <- list()
 
-# ── Poids corporels ──────────────────────────────────────
+# -- Poids corporels --------------------------------------
 BW_rat   <- 0.25   # kg  (étude rat FDA Table 6)
-BW_nhp   <- 4.0    # kg  (singe cynomolgus adulte, protocole FDA : 3–10 ans)
+BW_nhp   <- 4.0    # kg  (singe cynomolgus adulte, protocole FDA : 3-10 ans)
 
 # Facteurs allométriques NHP/rat
 allo_CL  <- (BW_nhp / BW_rat)^0.75   # 16^0.75 = 8.0
 allo_V   <- (BW_nhp / BW_rat)^1.0    # 16.0
 
-# ── Propriétés moléculaires (placeholder — à adapter pour FGFR2) ────
+# -- Propriétés moléculaires (placeholder -- à adapter pour FGFR2) ----
 fgfr2_nhp$DAR          <- 8
 fgfr2_nhp$MW_ADC       <- 148000  # g/mol
 fgfr2_nhp$MW_DXd       <- 718.8   # g/mol
 fgfr2_nhp$mass_frac_DXd <- 8 * 718.8 / 148000  # ≈ 0.03885
 
-# ── Paramètres rat calibrés FDA Table 6 (point de départ) ─
+# -- Paramètres rat calibrés FDA Table 6 (point de départ) -
 CL_rat  <- 1.01e-4    # L/h
 V1_rat  <- 0.01105    # L
 V2_rat  <- 0.01803    # L
 Q_rat   <- (0.174 / 24) * ((BW_rat / 70)^0.75)  # L/h
 
-# ── Allométrie rat → NHP ─────────────────────────────────
+# -- Allométrie rat → NHP ---------------------------------
 CL_ADC_allom  <- CL_rat   * allo_CL
 V1_ADC_allom  <- V1_rat   * allo_V
 V2_ADC_allom  <- V2_rat   * allo_V
@@ -54,7 +54,7 @@ V_DXd_rat    <- (17 * 1.73) * (BW_rat / 70)^1.0  # L
 CL_DXd_allom  <- CL_DXd_rat * allo_CL
 V_DXd_allom   <- V_DXd_rat  * allo_V
 
-# ── Cibles de calibration TK — données réelles NHP (pk2cmt_params.csv) ───
+# -- Cibles de calibration TK -- données réelles NHP (pk2cmt_params.csv) ---
 # Mapping : Animal_01 = 3 mg/kg | Animal_03 = 10 mg/kg | Animal_04 = 30 mg/kg
 # Fallback : FDA BLA 761139 Table 7 si le fichier est absent
 
@@ -66,7 +66,7 @@ if (file.exists(pk2cmt_tk_file)) {
 
   # Facteur de correction dose : 1.297 (correction dose réelle vs dose nominale)
   # Doses corrigées : 3→4 | 10→13 | 20→26 | 30→39 mg/kg
-  # 2 animaux par dose — moyennés
+  # 2 animaux par dose -- moyennés
   dose_factor <- 1.297
   doses_nhp   <- c(4, 13, 26, 39)
   dose_animal_map <- list(
@@ -79,7 +79,7 @@ if (file.exists(pk2cmt_tk_file)) {
   fda_tk_nhp <- lapply(doses_nhp, function(d) {
     animals <- dose_animal_map[[as.character(d)]]
     rows    <- pk2cmt_tk[pk2cmt_tk$Animal_Id %in% animals, ]
-    if (nrow(rows) == 0) return(NULL)   # dose sans données — ignorée
+    if (nrow(rows) == 0) return(NULL)   # dose sans données -- ignorée
     beta_h  <- mean(log(2) / rows$t12_beta_h)
     C0      <- mean(d * 1000 / rows$V1_mL_kg)
     AUCinf  <- mean(d * 1000 / (rows$CL_mL_h_kg * 24))
@@ -90,10 +90,10 @@ if (file.exists(pk2cmt_tk_file)) {
   })
   fda_tk_nhp <- Filter(Negate(is.null), fda_tk_nhp)   # retirer les NULL
   doses_avec_data <- sapply(fda_tk_nhp, function(x) x$dose_mgkg)
-  cat(sprintf("Cibles TK : données réelles NHP — doses disponibles : %s mg/kg\n",
+  cat(sprintf("Cibles TK : données réelles NHP -- doses disponibles : %s mg/kg\n",
               paste(doses_avec_data, collapse = ", ")))
 } else {
-  warning("pk2cmt_params.csv introuvable — fallback valeurs corrigées ×1.297")
+  warning("pk2cmt_params.csv introuvable -- fallback valeurs corrigées ×1.297")
   # Valeurs originales × 1.297 (dose et concentrations)
   fda_tk_nhp <- list(
     list(dose_mgkg=4,  C0_ADC=(101+95.3)/2  *1.297, AUC21d_ADC=(317+268)/2   *1.297, t_half_d=(3.95+3.85)/2),
@@ -105,7 +105,7 @@ if (file.exists(pk2cmt_tk_file)) {
 
 interval_h <- 21 * 24   # 504 h = Q3W
 
-# ── Calibration V1, CL, V2 ───────────────────────────────
+# -- Calibration V1, CL, V2 -------------------------------
 n_doses <- length(fda_tk_nhp)
 V1_v <- numeric(n_doses); CL_v <- numeric(n_doses); V2_v <- numeric(n_doses)
 
@@ -145,8 +145,8 @@ if (is.finite(denom_k21) && abs(denom_k21) > 1e-9) {
   V2_fda_nhp <- V2_ADC_allom   # fallback allométrique
 }
 
-# ── Consolidation des paramètres FGFR2 ────────────────────
-# PK 2-cmt linéaire — pas de TMDD :
+# -- Consolidation des paramètres FGFR2 --------------------
+# PK 2-cmt linéaire -- pas de TMDD :
 #   FGFR2 n'est pas exprimé sur les HSC/progéniteurs hématopoïétiques.
 #   L'hématotoxicité est due au payload (effet bystander), pas à
 #   l'internalisation ADC via FGFR2.  CL calibré sur données NCA NHP.
@@ -159,7 +159,7 @@ fgfr2_nhp$k_dam          <- 0.075
 fgfr2_nhp$k_rep          <- 0.017
 fgfr2_nhp$mgL_to_uM_ADC  <- 1000 / fgfr2_nhp$MW_ADC   # mg/L → µM  (MW=148000 g/mol)
 
-# ── Fonction d'administration FGFR2 ─────────────────────
+# -- Fonction d'administration FGFR2 ---------------------
 make_nhp_infusion <- function(dose_mgkg, BW_kg = 4.0,
                                Tinfu_h = 0.5, interval_h = NULL,
                                n_cycles = 1) {
@@ -177,7 +177,7 @@ make_nhp_infusion <- function(dose_mgkg, BW_kg = 4.0,
 }
 
 # ════════════════════════════════════════════════════════
-# CARBOPLATIN NHP PK — fit rxode2 (nca_analysis.R)
+# CARBOPLATIN NHP PK -- fit rxode2 (nca_analysis.R)
 # Animaux : Animal_01 / Animal_02  |  Dose : 3 mg/kg IV bolus
 # ════════════════════════════════════════════════════════
 # Paramètres lus depuis pk2cmt_params.csv (généré par nca_analysis.R)
@@ -196,7 +196,7 @@ if (file.exists(pk2cmt_file)) {
   cat(sprintf("  CL=%.4f  V1=%.4f  Q=%.4f  V2=%.4f  mL/h/kg ou mL/kg\n",
               CL_carbo_mLhkg, V1_carbo_mLkg, Q_carbo_mLhkg, V2_carbo_mLkg))
 } else {
-  warning("pk2cmt_params.csv introuvable — valeurs de secours utilisées. Lancez nca_analysis.R d'abord.")
+  warning("pk2cmt_params.csv introuvable -- valeurs de secours utilisées. Lancez nca_analysis.R d'abord.")
   CL_carbo_mLhkg <- 1.73
   V1_carbo_mLkg  <- 43.0
   Q_carbo_mLhkg  <- NA
@@ -212,9 +212,9 @@ carbo_nhp <- list(
   t_half_h       = 70,                       # h     (régression 96-168h)
   fu0            = 1.0,   # fraction libre initiale (1 = platine libre mesuré)
   fu_inf         = 1.0,   # fraction libre terminale
-  k_bind         = 0.0,   # liaison protéique (h⁻¹)
-  k_dam          = 0.017, # formation adduits ADN (h⁻¹ µM⁻¹)
-  k_rep          = 0.017, # réparation (h⁻¹)
+  k_bind         = 0.0,   # liaison protéique (h-)
+  k_dam          = 0.017, # formation adduits ADN (h- µM-)
+  k_rep          = 0.017, # réparation (h-)
   MW             = 371.25,
   mgL_to_uM      = 1000 / 371.25
 )
@@ -235,7 +235,7 @@ make_nhp_carbo_infusion <- function(dose_mgkg, BW_kg = BW_nhp,
   }
 }
 
-# État initial — inclut les compartiments carboplatin
+# État initial -- inclut les compartiments carboplatin
 fgfr2_nhp_state0 <- c(
   C_ADC1   = 0,
   C_ADC2   = 0,
