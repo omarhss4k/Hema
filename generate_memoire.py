@@ -1063,31 +1063,32 @@ add_table_simple(doc,
     [
         ["MPP",  "39,96", "26,96",  "76,80",  "⚠ Partiel"],
         ["CMP",   "3,63",  "2,37",  "10,46",  "✓ Satisfaisant"],
-        ["MEP",  "75,28", "79,35",  "96,74",  "⚠ Partiel"],
+        ["MEP",  "58,69", "50,69",  "91,19",  "⚠ Partiel"],
         ["Neut",  "3,78",  "2,67",   "7,83",  "✓ Satisfaisant"],
         ["Mono",  "5,46",  "2,71",  "15,12",  "✓ Satisfaisant"],
         ["Plt",  "33,27", "25,67",  "90,07",  "⚠ Partiel"],
         ["Ret",  "46,23", "40,97", "106,74",  "⚠ Partiel"],
-        ["RBC", "152,06",  "2,79", "713,10",  "✓ Satisfaisant*"],
+        ["RBC",   "2,74",  "2,78",   "4,05",  "✓ Satisfaisant*"],
     ],
     col_widths=[2.0, 3.0, 3.5, 3.0, 4.0])
 p = doc.add_paragraph()
 run = p.add_run(
     "Tableau 5. Métriques de validation — simulation vs données Fornari (2019), "
     "rat traité au carboplatine 40 mg/kg Q14D ×8 cycles. "
-    "* RBC : le biais max est lié à un artefact de digitalisation au point t=0 "
-    "(valeur 1003 × 10⁹/L incohérente avec la baseline physiologique ~8000 × 10⁹/L) ; "
-    "ce point a été exclu du calcul. En l'excluant, le résidu médian RBC est de 2,79%.")
+    "* RBC : le point t=0 incohérent avec la baseline physiologique du rat "
+    "(valeur digitalisée 1003 × 10⁹/L vs ~8000 × 10⁹/L attendus) a été exclu du calcul.")
 set_font(run, size=10, italic=True)
 doc.add_paragraph()
 add_paragraph(doc,
-    "Les lignées circulantes (Neut, Mono) présentent un excellent ajustement (RMSE < 6%). "
-    "Les progéniteurs médullaires (MPP, MEP) et les plaquettes montrent des résidus plus "
-    "élevés, reflet des incertitudes de digitalisation des figures originales pour des "
-    "populations de cellules rares ou peu représentées dans la littérature de validation. "
-    "Ces résultats confirment que l'implémentation computationnel (rxode2, feedbacks "
-    "homéostatiques) est correctement validée sur les cellules cliniquement pertinentes "
-    "pour l'évaluation de l'hématotoxicité.",
+    "Les cellules circulantes matures (CMP, neutrophiles, monocytes, érythrocytes) "
+    "présentent d'excellents résidus médians (< 5%) et un RMSE relatif inférieur à 6%, "
+    "confirmant la fidélité de l'implémentation sur les lignées cliniquement pertinentes. "
+    "Les progéniteurs médullaires (MPP, MEP) et les lignées à cinétique lente "
+    "(réticulocytes, plaquettes) présentent des résidus plus élevés (RMSE 33–59%, "
+    "résidus médians 25–51%), attribuables en partie aux incertitudes de digitalisation "
+    "des figures originales de Fornari (2019) et à la complexité des cinétiques de transit "
+    "érythroïde et mégacaryocytaire. Ces résultats valident le cadre computationnel "
+    "(rxode2, feedbacks homéostatiques) pour une utilisation dans les étapes suivantes.",
     first_line_indent=1.0)
 
 add_heading(doc, "3.1.3 Transposition rat → humain pour le carboplatine : validation intermédiaire", 3)
