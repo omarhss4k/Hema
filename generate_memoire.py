@@ -782,13 +782,11 @@ add_paragraph(doc,
 add_heading(doc, "Résumé statistique des grades simulés", 3)
 add_paragraph(doc,
     "Pour chaque toxicité, les résultats sont résumés par la proportion de patients "
-    "atteignant chaque grade (G0 à G4), le taux de tout grade (G≥1 = 100% − %G0) "
-    "et le taux de grade sévère (G3-4 = %G3 + %G4). "
-    "Rappelons que les grades CTCAE représentent des niveaux de sévérité croissante : "
-    "de G1 (anomalie légère, sans conséquence clinique) à G4 (anomalie critique, "
-    "engageant le pronostic vital) — la définition complète des seuils est donnée en §2.7. "
-    "Ces métriques sont directement comparables aux données de fréquence rapportées "
-    "dans les notices médicamenteuses et les publications d'essais cliniques.",
+    "atteignant chaque grade (G0 à G4 ; cf. §2.7 pour la définition des seuils), "
+    "le taux de tout grade (G≥1 = 100% − %G0) "
+    "et le taux de grade sévère (G3-4 = %G3 + %G4). Ces métriques sont directement "
+    "comparables aux données de fréquence rapportées dans les notices médicamenteuses "
+    "et les publications d'essais cliniques.",
     first_line_indent=1.0)
 
 add_heading(doc, "2.6 Évaluation de la performance prédictive", 2)
