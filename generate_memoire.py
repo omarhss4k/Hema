@@ -1158,11 +1158,29 @@ add_paragraph(doc,
     "avec les taux BLA superposés en lignes de référence.",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Les IC95% (méthode Wilson, N=300) sont : neutropénie tout grade 29% [24%–34%], "
-    "G3-4 14% [10%–19%] ; anémie tout grade 72% [67%–77%], G3-4 9% [6%–13%]. "
-    "La RMSE sur l'ensemble des 6 comparaisons prédites vs BLA est de 2,1 points de "
-    "pourcentage, et la MAE de 1,8 pp, témoignant d'un accord quantitatif remarquable.",
+    "Les IC95% (méthode Wilson, N=300) sont résumés dans le Tableau 6 ci-dessous, "
+    "ainsi que les métriques globales de performance (RMSE et MAE sur les 6 comparaisons).",
     first_line_indent=1.0)
+add_table_simple(doc,
+    ["Toxicité", "Métrique", "Modèle (%)", "IC95% [Wilson]", "BLA FDA (%)"],
+    [
+        ["Neutropénie",      "Tout grade", "29", "[24 – 34]", "29"],
+        ["Neutropénie",      "G3-4",       "14", "[10 – 19]", "16"],
+        ["Anémie",           "Tout grade", "72", "[67 – 77]", "70"],
+        ["Anémie",           "G3-4",       "9",  "[6 – 13]",  "9"],
+        ["Thrombocytopénie", "Tout grade", "40", "[34 – 46]", "37"],
+        ["Thrombocytopénie", "G3-4",       "3",  "[1 – 6]",   "3"],
+        ["**Global**",       "RMSE",       "2,1 pp", "—",     "—"],
+        ["**Global**",       "MAE",        "1,8 pp", "—",     "—"],
+    ],
+    col_widths=[3.5, 2.5, 2.5, 3.0, 3.0])
+p = doc.add_paragraph()
+run = p.add_run("Tableau 6. Métriques de validation — proportions de patients par grade simulées (N=300) "
+                "vs données cliniques FDA (DESTINY-Breast01, n=184, BLA 761139). "
+                "IC95% calculés par méthode Wilson. RMSE et MAE calculés sur les 6 comparaisons "
+                "(3 toxicités × 2 niveaux de sévérité).")
+set_font(run, size=10, italic=True)
+doc.add_paragraph()
 
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
