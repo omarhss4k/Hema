@@ -970,15 +970,12 @@ add_paragraph(doc,
     "DESTINY-Breast01 (n=184, T-DXd 5,4 mg/kg Q3W) :",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Ces données ne comportent pas de profils individuels de cytopénie en fonction "
-    "du temps, mais uniquement des pourcentages de grades agrégés sur l'ensemble "
-    "du traitement (grade maximal observé par patient, worst-case grading). "
-    "La validation repose donc sur la comparaison des distributions de grades CTCAE v5 "
-    "au nadir simulé — et non sur des profils temporels — ce qui constitue la seule "
-    "métrique disponible dans les rapports réglementaires publics. Cette métrique "
-    "est par ailleurs directement pertinente sur le plan clinique, car c'est le grade "
-    "maximal atteint qui conditionne les décisions de gestion thérapeutique "
-    "(réduction de dose, interruption, hospitalisation).",
+    "Ces données, issues d'un rapport réglementaire, ne comportent pas de profils "
+    "individuels de cytopénie en fonction du temps. Elles fournissent uniquement "
+    "les pourcentages de patients ayant atteint chaque grade de toxicité sur l'ensemble "
+    "du traitement (grade maximal par patient). "
+    "La validation des simulations repose donc sur la comparaison de ces distributions "
+    "de grades, qui constituent la seule métrique disponible pour ce type de données.",
     first_line_indent=1.0)
 add_table_simple(doc,
     ["Toxicité", "G0 (%)", "G1 (%)", "G2 (%)", "G3 (%)", "G4 (%)", "Tout grade (%)", "G3-4 (%)"],
