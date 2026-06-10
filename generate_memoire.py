@@ -637,12 +637,15 @@ add_paragraph(doc,
     "réalisée sur chaque profil individuel afin de fournir des valeurs initiales robustes "
     "à l'algorithme d'optimisation. Les paramètres NCA calculés sont :",
     first_line_indent=1.0)
-add_bullet(doc, "AUCinf : intégrale de la courbe concentration-temps extrapolée à l'infini")
-add_bullet(doc, "CL_NCA = Dose / AUCinf   [clairance]")
+add_bullet(doc, "Cmax : concentration maximale observée")
+add_bullet(doc, "Tmax : temps correspondant à Cmax")
+add_bullet(doc, "AUClast : intégrale par méthode des trapèzes linéaires jusqu'au dernier point quantifiable")
+add_bullet(doc, "AUCinf = AUClast + Clast/β   [extrapolation à l'infini]")
+add_bullet(doc, "t½β = ln(2) / β   [demi-vie terminale, estimée sur la phase log-linéaire terminale]")
+add_bullet(doc, "CL = Dose / AUCinf   [clairance]")
 add_bullet(doc, "C₀ : concentration initiale estimée par extrapolation à t = 0")
 add_bullet(doc, "V1_NCA = Dose / C₀   [volume central]")
-add_bullet(doc, "Vz = CL_NCA / β   [volume de distribution terminal]")
-add_bullet(doc, "t½β = ln(2) / β   [demi-vie terminale]")
+add_bullet(doc, "Vz = CL / β   [volume de distribution terminal]")
 add_paragraph(doc,
     "Ces estimations servent uniquement comme point de départ pour l'optimisation — "
     "les paramètres définitifs (CL, V1, Q, V2) sont ceux issus du modèle 2-compartiments "
