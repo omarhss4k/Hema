@@ -55,9 +55,9 @@ init_pars$k_circ_RBC  <- 0.00037  # ref. 13
 # IC50_MEP: rat=0.86, human=1.56 → ratio=0.551
 init_pars$Slope_MPP  <- 2.05 * (2.83 / 4.04)   # = 1.44
 init_pars$Slope_CMP  <- 1.47 * (2.83 / 4.04)   # = 1.03
-init_pars$Slope_MEP  <- 2.19 * (0.86 / 1.56)   # = 1.21
+init_pars$Slope_MEP  <- 1.00   # recalibré visuellement (IC50-scaled=1.21 trop fort sur Plt)
 init_pars$delta_Ret  <- 2.8    # same as rat (Table 2)
-init_pars$delta_Plt  <- 0.54   # same as rat (Table 2)
+init_pars$delta_Plt  <- 0.60   # légèrement ajusté depuis rat=0.54 pour meilleur fit Plt humain
 
 # -- IC50 colony-forming unit assays (Table S2) --
 # Utilisés pour scaler les Slope via Eq. 10 : Slope_H = Slope_R × (IC50_R/IC50_H)
