@@ -748,6 +748,14 @@ add_table_simple(doc,
         ["Poids corporel (kg)", "70,0", "15%", "Littérature clinique"],
     ],
     col_widths=[4.0, 3.5, 3.5, 4.5])
+p = doc.add_paragraph()
+run = p.add_run(
+    "Tableau 3. Paramètres de la simulation de population virtuelle (T-DXd, N=300). "
+    "Valeurs typiques et variabilité inter-individuelle (CV%) pour les paramètres PK "
+    "(issus de l'analyse de population FDA, BLA 761139) et PD (calibration rat). "
+    "Les paramètres individuels sont tirés selon θᵢ = θ_pop × exp(ηᵢ), ηᵢ ~ N(0, ω²).")
+set_font(run, size=10, italic=True)
+doc.add_paragraph()
 
 add_heading(doc, "Procédure de simulation Monte-Carlo", 3)
 add_paragraph(doc,
