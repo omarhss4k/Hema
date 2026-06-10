@@ -1174,9 +1174,10 @@ add_heading(doc, "3.2.2 Simulation de population humaine (N=300) et validation",
 add_paragraph(doc,
     "La simulation de population virtuelle (N=300 patients, T-DXd 5,4 mg/kg Q3W × 6) "
     "a été réalisée en intégrant la variabilité inter-individuelle sur les paramètres PK "
-    "et PD. Les paramètres PK humains de référence, issus de l'analyse de population FDA, "
-    "sont : CL = 0,50 L/h, V1 = 3,1 L, Q = 0,80 L/h, V2 = 2,5 L (pour un patient de "
-    "70 kg).",
+    "et PD. Les valeurs typiques et les coefficients de variation inter-individuels "
+    "utilisés sont détaillés dans le Tableau 3 (§2.5). "
+    "Les valeurs de variabilité — notamment CV=30% sur la clairance — sont les paramètres "
+    "les plus déterminants pour la dispersion des grades simulés entre patients.",
     first_line_indent=1.0)
 add_paragraph(doc,
     "Le Tableau 2 présente la distribution des grades CTCAE v5 issus des simulations "
