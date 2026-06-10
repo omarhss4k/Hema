@@ -439,18 +439,20 @@ add_paragraph(doc,
     "développement d'un pipeline computationnel de prédiction de l'hématotoxicité. "
     "Les objectifs sont structurés en quatre étapes progressives :",
     first_line_indent=1.0)
-add_bullet(doc, "Reproduire et valider le modèle semi-mécaniste de Fornari (2019) sur "
-            "les données de rat traitées au carboplatine, afin d'établir un cadre "
+add_bullet(doc, "Reproduire et valider le modèle semi-mécaniste de Fornari (2019) à partir "
+            "de données issues de rats traités au carboplatine, afin d'établir un cadre "
             "méthodologique de référence.")
-add_bullet(doc, "Appliquer et adapter ce cadre au T-DXd, en développant une simulation "
-            "de population virtuelle humaine (N=300) et en validant les prédictions "
-            "de grades CTCAE v5 contre les données cliniques FDA.")
-add_bullet(doc, "Étendre le pipeline à un composé en développement interne, en s'appuyant "
-            "sur des données précliniques NHP (8 primates non-humains, 4 niveaux de dose) "
-            "pour la caractérisation PK/PD.")
-add_bullet(doc, "Établir les bases méthodologiques d'une traduction clinique, en exploitant "
-            "les connaissances accumulées sur le T-DXd pour guider l'interprétation "
-            "des données NHP internes.")
+add_bullet(doc, "Appliquer ce cadre au T-DXd (trastuzumab deruxtecan), en développant une "
+            "simulation de population virtuelle humaine (N=300) et en aboutissant à une "
+            "prédiction des grades d'hématotoxicité CTCAE v5 en accord avec les données "
+            "cliniques présentes dans le dossier soumis à la FDA "
+            "(BLA 761139, DESTINY-Breast01, n=184).")
+add_bullet(doc, "Appliquer le pipeline à un composé en développement interne à partir de "
+            "données précliniques issues de primates non-humains (NHP) "
+            "(n=8, 4 niveaux de dose), incluant une analyse non-compartimentale (NCA), "
+            "un ajustement PK individuel à 2 compartiments et une calibration PD.")
+add_bullet(doc, "Établir les bases d'une transposition clinique basée sur les paramètres NHP, "
+            "en s'appuyant sur les connaissances accumulées sur le T-DXd.")
 
 doc.add_page_break()
 
