@@ -119,17 +119,17 @@ ax2.set_xlim(0, 10); ax2.set_ylim(0, 5)
 ax2.axis('off'); fig2.patch.set_facecolor('white')
 
 steps = [
-    (BLUE_M,  "ÉTAPE 1",  "Modèle\nhématopoïétique",  "Rat / carboplatine\nFornari 2019",         "RMSE < 15 %\nValidé ✓"),
-    ('#B5510D',"ÉTAPE 2",  "Hématotoxicité\nT-DXd",    "FDA BLA 761139\nN = 300 patients",         "29 % vs 29 % FDA\nValidé ✓"),
-    (TEAL,    "ÉTAPE 3",  "Hématotoxicité\ncomposé",   "NHP interne\n8 singes — confidentiel",     "PK/PD concordants\nCL ≈ 1,8 mL/h/kg"),
-    (PURPLE,  "ÉTAPE 4",  "Prédiction\nclinique",      "Transposition\nNHP → Humain",              "P(G≥3) < 10 %\nDossier IND/CTA"),
+    (BLUE_M,   "ÉTAPE 1",  "Modèle\nhématopoïétique",  "Rat & Humain\nCarboplatine\nFornari 2019"),
+    ('#B5510D', "ÉTAPE 2",  "Hématotoxicité\nT-DXd",    "FDA BLA 761139\nN = 300 patients\nRat → NHP → Humain"),
+    (TEAL,     "ÉTAPE 3",  "Hématotoxicité\ncomposé",   "NHP interne\n8 singes — confidentiel\n4 niveaux de dose"),
+    (PURPLE,   "ÉTAPE 4",  "Prédiction\nclinique",      "Transposition\nNHP → Humain\nAllométrie PK"),
 ]
 
-BW = 2.2   # largeur boîte
-BH = 4.2   # hauteur boîte
+BW = 2.2
+BH = 4.2
 GAP = 0.15
 
-for i, (color, num, title, data, result) in enumerate(steps):
+for i, (color, num, title, data) in enumerate(steps):
     x0 = i * (BW + GAP) + 0.1
 
     # Boîte principale
@@ -152,20 +152,11 @@ for i, (color, num, title, data, result) in enumerate(steps):
              fontweight='bold', color='white', zorder=3,
              multialignment='center', linespacing=1.3)
 
-    # Données
-    ax2.text(x0 + BW/2, 0.3 + BH - 1.95, data,
-             ha='center', va='center', fontsize=17,
-             color='#222222', zorder=3,
-             multialignment='center', linespacing=1.5)
-
-    # Résultat
-    ax2.add_patch(FancyBboxPatch((x0+0.1, 0.4), BW-0.2, 0.95,
-        boxstyle="round,pad=0.05", facecolor=color,
-        edgecolor=color, linewidth=0, alpha=0.18, zorder=2))
-    ax2.text(x0 + BW/2, 0.9, result,
-             ha='center', va='center', fontsize=16,
-             fontweight='bold', color=color, zorder=3,
-             multialignment='center', linespacing=1.4)
+    # Données (centré verticalement dans la zone restante)
+    ax2.text(x0 + BW/2, 0.3 + (BH - 1.4) / 2, data,
+             ha='center', va='center', fontsize=18,
+             color='#1A1A1A', zorder=3,
+             multialignment='center', linespacing=1.6)
 
 # Flèches entre étapes
 for i in range(3):
