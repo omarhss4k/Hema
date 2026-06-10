@@ -1101,45 +1101,43 @@ add_paragraph(doc,
 
 add_heading(doc, "3.1.3 Transposition rat → humain pour le carboplatine : validation intermédiaire", 3)
 add_paragraph(doc,
-    "Avant d'appliquer le modèle à un nouveau composé, une étape de validation "
-    "intermédiaire a été réalisée : transposer le modèle calibré chez le rat vers "
-    "l'humain, et vérifier que les profils simulés correspondent aux données publiées "
-    "par Fornari (2019). Cette étape permet de s'assurer que la méthode de transposition "
-    "est correcte avant de l'appliquer à un composé pour lequel on dispose de moins de données.",
+    "Avant de passer à de nouveaux composés, une étape de vérification a été réalisée : "
+    "le modèle, jusqu'ici calibré chez le rat, a été adapté à l'humain et ses prédictions "
+    "ont été comparées aux données humaines publiées par Fornari (2019). "
+    "L'objectif est de s'assurer que la méthode d'adaptation entre espèces fonctionne "
+    "correctement sur un composé bien documenté avant de l'utiliser sur un composé nouveau.",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "La transposition du rat à l'humain a nécessité deux types d'ajustements :",
+    "Deux adaptations ont été nécessaires pour passer du rat à l'humain :",
     first_line_indent=1.0)
-add_bullet(doc, "Pharmacocinétique : un humain n'est pas un grand rat. "
-            "Les organes qui éliminent le médicament (foie, reins) sont proportionnellement "
-            "plus petits chez les grands animaux. On utilise des lois d'allométrie — des "
-            "équations empiriques reliant la taille du corps aux paramètres PK — pour "
-            "recalculer la clairance et le volume de distribution adaptés à un humain de 70 kg "
-            "à partir des valeurs mesurées chez le rat de 70 g.")
-add_bullet(doc, "Pharmacodynamique : la sensibilité des cellules souches au carboplatine "
-            "n'est pas identique chez le rat et chez l'humain. Les Slopes (paramètres qui "
-            "quantifient l'effet toxique du médicament sur chaque type de précurseur) ont "
-            "été recalculés à partir des concentrations inhibitrices IC50 mesurées "
-            "expérimentalement sur cellules humaines et murines.")
+add_bullet(doc, "Le devenir du médicament dans l'organisme (PK) : "
+            "la dose administrée à un humain de 70 kg ne produit pas la même concentration "
+            "sanguine que chez un rat de 70 g. Les organes d'élimination (reins, foie) "
+            "sont proportionnellement plus petits chez les grands animaux, ce qui ralentit "
+            "l'élimination. Des lois d'allométrie — relations mathématiques empiriques "
+            "entre poids corporel et paramètres d'élimination — ont été utilisées pour "
+            "recalculer ces paramètres pour l'humain.")
+add_bullet(doc, "La sensibilité des cellules au médicament (PD) : "
+            "les cellules souches humaines ne réagissent pas exactement comme les cellules "
+            "de rat au carboplatine. La sensibilité a été recalculée à partir de mesures "
+            "expérimentales réalisées sur des cellules humaines et murines en culture, "
+            "puis affinée visuellement sur les profils simulés.")
 add_paragraph(doc,
-    "Le protocole simulé correspond à celui de la Figure 4 de Fornari (2019) : "
-    "carboplatine administré selon la formule de Calvert "
-    "(dose calculée pour atteindre une exposition cible AUC=5, soit environ 750 mg), "
-    "en 2 perfusions séparées de 3 semaines.",
+    "Le protocole simulé est celui de Fornari (2019) : carboplatine administré à une dose "
+    "adaptée à la fonction rénale du patient (environ 750 mg), en deux perfusions "
+    "espacées de 3 semaines.",
     first_line_indent=1.0)
 add_paragraph(doc,
-    "Les neutrophiles simulés reproduisent bien les données publiées "
-    "(nadir à 1,86 × 10⁹/L), ce qui confirme la validité de la méthode de transposition "
-    "pour la lignée myéloïde. "
-    "Pour les plaquettes, un ajustement visuel supplémentaire a été nécessaire : "
-    "deux paramètres ont été légèrement modifiés pour mieux coller aux données "
-    "(RMSE = 6,4% sur l'ensemble du profil, nadir simulé 152 vs 170 × 10⁹/L observé). "
-    "Une limite subsiste : le modèle ne reproduit pas l'aggravation d'un cycle à l'autre "
-    "— dans les données, le nadir est plus profond au 2ᵉ cycle qu'au 1ᵉʳ, "
-    "signe d'un épuisement progressif des cellules souches. "
-    "Le modèle tend au contraire à récupérer entre les cycles. "
-    "Ce comportement est une limite connue de l'architecture du modèle de Fornari "
-    "pour la lignée plaquettaire.",
+    "Pour les neutrophiles, les profils simulés reproduisent bien les données publiées : "
+    "la chute et la remontée après chaque injection correspondent à ce qu'observe Fornari. "
+    "Pour les plaquettes, les profils sont globalement cohérents — l'écart moyen entre "
+    "simulation et données est de 6,4% — mais le modèle présente une limite : "
+    "dans les données, la chute des plaquettes est plus sévère au 2ᵉ cycle qu'au 1ᵉʳ, "
+    "signe que la moelle osseuse s'est partiellement épuisée après la première perfusion. "
+    "Le modèle ne reproduit pas ce phénomène d'accumulation — les mécanismes de "
+    "régulation interne compensent trop fortement entre les deux cycles. "
+    "Cette limite est propre à l'architecture du modèle de Fornari et sera prise en "
+    "compte dans l'interprétation des résultats.",
     first_line_indent=1.0)
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
