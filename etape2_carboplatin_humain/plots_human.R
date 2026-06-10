@@ -1,6 +1,6 @@
 ############################################################
 # plots_human_neut_plt.R
-# Visualisation humaine — Neutrophils + Platelets uniquement
+# Visualisation humaine -- Neutrophils + Platelets uniquement
 ############################################################
 library(ggplot2)
 library(gridExtra)
@@ -9,7 +9,7 @@ library(scales)
 library(readr)
 library(dplyr)
 
-# ── Panneau individuel ───────────────────────────────────
+# -- Panneau individuel -----------------------------------
 plot_cell_panel <- function(sim, yvar, title, color,
                             baseline  = NULL,
                             dose_days = NULL,
@@ -75,9 +75,9 @@ plot_cell_panel <- function(sim, yvar, title, color,
           axis.text   = element_text(size = 7))
 }
 
-# ── Grille 1×2 : Neut + Plt uniquement ──────────────────
+# -- Grille 1×2 : Neut + Plt uniquement ------------------
 plot_human_neut_plt <- function(sim, pars,
-                                titre     = "Hematopoiesis – Human",
+                                titre     = "Hematopoiesis - Human",
                                 dose_days = NULL,
                                 obs_list  = NULL) {
   
@@ -98,7 +98,7 @@ plot_human_neut_plt <- function(sim, pars,
                top = textGrob(titre, gp = gpar(fontface = "bold", fontsize = 11)))
 }
 
-# ── Lecture des données observées ────────────────────────
+# -- Lecture des données observées ------------------------
 read_wpd <- function(path) {
   df <- read_csv(path, col_names = c("time", "value"),
                  skip = 1, show_col_types = FALSE)
@@ -113,21 +113,21 @@ obs_list_human <- list(
   Plt  = read_wpd(file.path(data_dir, "Plt_H.csv"))
 )
 
-# ── Appel principal ──────────────────────────────────────
+# -- Appel principal --------------------------------------
 # Doses humaines : 2 cycles Q21D (jours 0 et 21)
 if (exists("sim_hu")) {
   plot_human_neut_plt(
     sim       = sim_hu,
     pars      = init_pars,
-    titre     = "Hematopoiesis – Carboplatin (Human) Q21D × 2",
+    titre     = "Hematopoiesis - Carboplatin (Human) Q21D × 2",
     dose_days = c(0, 21),
     obs_list  = obs_list_human
   )
 }
 
-# ── Sauvegarde PDF ───────────────────────────────────────
+# -- Sauvegarde PDF ---------------------------------------
 save_human_neut_plt <- function(sim, pars, file,
-                                titre     = "Hematopoiesis – Human",
+                                titre     = "Hematopoiesis - Human",
                                 dose_days = NULL,
                                 obs_list  = NULL,
                                 width = 10, height = 5) {
