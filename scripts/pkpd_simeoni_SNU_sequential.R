@@ -174,15 +174,31 @@ sim_ctrl_fn <- function(L0, L1, tv0, times_out) {
 
 sim_treated <- function(dose_ugkg, tv0, params, times_out) {
   t_all <- sort(unique(c(0, times_out)))
+  # Garantir que params est un vecteur nommé sans attributs parasites
+  params <- as.numeric(params)
+  names(params) <- c("CL", "V1", "V2", "Q", "L0", "L1", "k1", "k2")
   out <- tryCatch(
     as.data.frame(lsoda(
-      y     = c(A1 = dose_ugkg, A2 = 0, x1 = tv0, x2 = 0, x3 = 0, x4 = 0),
-      times = t_all,
-      func  = simeoni_rhs,
-      parms = params,
-      atol  = 1e-6, rtol = 1e-6
+      y        = c(A1 = dose_ugkg, A2 = 0, x1 = tv0, x2 = 0, x3 = 0, x4 = 0),
+      times    = t_all,
+      func     = simeoni_rhs,
+      parms    = params,
+      atol     = 1e-6, rtol = 1e-6,
+      maxsteps = 50000
     )),
-    error = function(e) NULL
+    error   = function(e) { message("lsoda error: ", conditionMessage(e)); NULL },
+    warning = function(w) {
+      suppressWarnings(
+        as.data.frame(lsoda(
+          y        = c(A1 = dose_ugkg, A2 = 0, x1 = tv0, x2 = 0, x3 = 0, x4 = 0),
+          times    = t_all,
+          func     = simeoni_rhs,
+          parms    = params,
+          atol     = 1e-4, rtol = 1e-4,
+          maxsteps = 100000
+        ))
+      )
+    }
   )
   if (is.null(out) || any(is.na(out$x1))) return(rep(NA_real_, length(times_out)))
   w_tot <- pmax(out$x1, 0) + pmax(out$x2, 0) + pmax(out$x3, 0) + pmax(out$x4, 0)
@@ -247,14 +263,24 @@ fit_local_A <- nlminb(
                    rel.tol = 1e-12, x.tol = 1e-12)
 )
 
-L0_est <- exp(fit_local_A$par[1])
-L1_est <- exp(fit_local_A$par[2])
+# Garder le meilleur des deux optimiseurs
+if (fit_local_A$objective < fit_de_A$optim$bestval) {
+  best_par_A   <- fit_local_A$par
+  best_val_A   <- fit_local_A$objective
+  source_A     <- "nlminb"
+} else {
+  best_par_A   <- as.numeric(fit_de_A$optim$bestmem)
+  best_val_A   <- fit_de_A$optim$bestval
+  source_A     <- "DEoptim"
+}
+L0_est <- exp(best_par_A[1])
+L1_est <- exp(best_par_A[2])
 
-cat(sprintf("→ L0 (λ0)  = %.6f /j   (doublement = %.1f j)\n",
-            L0_est, log(2)/L0_est))
-cat(sprintf("→ L1 (λ1)  = %.2f mm³/j\n", L1_est))
+cat(sprintf("→ L0 (λ0)  = %.6f /j   (doublement = %.1f j)  [%s]\n",
+            L0_est, log(2)/L0_est, source_A))
+cat(sprintf("→ L1 (λ1)  = %.2f mm³/j  [%s]\n", L1_est, source_A))
 cat(sprintf("   Objectif DEoptim = %.6f\n", fit_de_A$optim$bestval))
-cat(sprintf("   Objectif final   = %.6f\n", fit_local_A$objective))
+cat(sprintf("   Objectif final   = %.6f\n", best_val_A))
 
 # =============================================================================
 # 5B. ÉTAPE B — Ajustement efficacité : k1 et k2 sur groupes traités
@@ -281,7 +307,12 @@ objective_traites <- function(logpar) {
   k2 <- exp(logpar[2])
   if (k1 <= 0 || k2 <= 0) return(1e12)
 
-  params_all <- c(pk_fixed, L0 = L0_est, L1 = L1_est, k1 = k1, k2 = k2)
+  # Construction explicite avec unname() pour éviter tout conflit d'attributs
+  params_all <- c(
+    CL = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
+    V2 = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
+    L0 = L0_est, L1 = L1_est, k1 = k1, k2 = k2
+  )
 
   pred_d1p2 <- sim_treated(1200,  tv0_d1p2,  params_all, times_d[ok_d1p2])
   if (any(is.na(pred_d1p2))) return(1e12)
@@ -298,6 +329,21 @@ objective_traites <- function(logpar) {
   sum(1/sem_d1p2[ok_d1p2]^2   * (log(tv_d1p2[ok_d1p2])   - log(pred_d1p2))^2,  na.rm = TRUE) +
   sum(1/sem_d5p6[ok_d5p6]^2   * (log(tv_d5p6[ok_d5p6])   - log(pred_d5p6))^2,  na.rm = TRUE) +
   sum(1/sem_d11p8[ok_d11p8]^2 * (log(tv_d11p8[ok_d11p8]) - log(pred_d11p8))^2, na.rm = TRUE)
+}
+
+# ── Test de sanité : vérifier que sim_treated fonctionne avant l'optimisation ──
+k1_test  <- 4 / 7
+k2_test  <- L0_est / sqrt(Cmax_1p2 * Cmax_5p6)
+params_test <- c(
+  CL = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
+  V2 = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
+  L0 = L0_est, L1 = L1_est, k1 = k1_test, k2 = k2_test
+)
+test_pred <- sim_treated(1200, tv0_d1p2, params_test, times_d[ok_d1p2])
+if (all(is.na(test_pred))) {
+  stop("ERREUR : sim_treated retourne NA même avec des paramètres de départ raisonnables. Vérifier les PK et les données.")
+} else {
+  cat(sprintf("  Test sim_treated 1.2mg/kg : OK (pred[1]=%.1f mm³)\n", test_pred[1]))
 }
 
 k1_init <- 4 / 7
@@ -329,13 +375,23 @@ fit_local_B <- nlminb(
                    rel.tol = 1e-12, x.tol = 1e-12)
 )
 
-k1_est <- exp(fit_local_B$par[1])
-k2_est <- exp(fit_local_B$par[2])
+# Garder le meilleur des deux optimiseurs
+if (fit_local_B$objective < fit_de_B$optim$bestval) {
+  best_par_B <- fit_local_B$par
+  best_val_B <- fit_local_B$objective
+  source_B   <- "nlminb"
+} else {
+  best_par_B <- as.numeric(fit_de_B$optim$bestmem)
+  best_val_B <- fit_de_B$optim$bestval
+  source_B   <- "DEoptim"
+}
+k1_est <- exp(best_par_B[1])
+k2_est <- exp(best_par_B[2])
 
-cat(sprintf("→ k1 = %.5f /j   (MTT = %.1f j)\n", k1_est, 4/k1_est))
-cat(sprintf("→ k2 = %.3e L/µg/j\n", k2_est))
+cat(sprintf("→ k1 = %.5f /j   (MTT = %.1f j)  [%s]\n", k1_est, 4/k1_est, source_B))
+cat(sprintf("→ k2 = %.3e L/µg/j  [%s]\n", k2_est, source_B))
 cat(sprintf("   Objectif DEoptim = %.6f\n", fit_de_B$optim$bestval))
-cat(sprintf("   Objectif final   = %.6f\n", fit_local_B$objective))
+cat(sprintf("   Objectif final   = %.6f\n", best_val_B))
 
 # =============================================================================
 # 6. PARAMÈTRES DÉRIVÉS FINAUX
@@ -358,9 +414,11 @@ cat(sprintf("MTT = %.1f j\n", mtt))
 # 7. SIMULATION FINALE
 # =============================================================================
 
-params_best <- c(pk_fixed,
-                 L0 = L0_est, L1 = L1_est,
-                 k1 = k1_est, k2 = k2_est)
+params_best <- c(
+  CL = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
+  V2 = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
+  L0 = L0_est, L1 = L1_est, k1 = k1_est, k2 = k2_est
+)
 
 times_sim <- seq(0, max(times_d, na.rm = TRUE) * 1.05, by = 0.5)
 
