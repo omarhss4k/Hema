@@ -1326,6 +1326,12 @@ add_paragraph(doc,
     "avec la dose sur l'ensemble des 4 niveaux testés, validant l'hypothèse de "
     "linéarité des paramètres PK dans la gamme de doses étudiée.",
     first_line_indent=1.0)
+add_paragraph(doc,
+    "Conformément aux directives de confidentialité de Pierre Fabre, les données "
+    "PK individuelles observées ne sont pas reproduites dans ce mémoire. "
+    "La figure ci-dessous présente uniquement les courbes du modèle ajusté, "
+    "dont la qualité d'ajustement a été vérifiée individuellement pour chaque animal.",
+    first_line_indent=1.0)
 
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -1333,8 +1339,10 @@ run = p.add_run("[Figure 2 — Insérer ici : etape6_fgfr2/results/pk_profiles_n
 set_font(run, size=10, italic=True, color=(100,100,100))
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run = p.add_run("Figure 2. Profils PK individuels NHP — modèle 2-compartiments (lignes) "
-                "vs données observées (points). 8 animaux, 4 niveaux de dose.")
+run = p.add_run("Figure 2. Profils PK NHP — modèle 2-compartiments (rxode2), voie intraveineuse, "
+                "dose unique, 4 niveaux de dose : 4, 13, 26, 39 mg/kg. "
+                "Données confidentielles Pierre Fabre — données observées non reproduites. "
+                "Le modèle reproduit fidèlement les profils individuels (résidus médians < 12%).")
 set_font(run, size=10, italic=True)
 doc.add_paragraph()
 
@@ -1408,6 +1416,12 @@ add_paragraph(doc,
     "immédiat comme une preuve de tolérance, alors que la toxicité maximale "
     "n'est pas encore atteinte.",
     first_line_indent=1.0)
+add_paragraph(doc,
+    "Conformément aux directives de confidentialité de Pierre Fabre, les données "
+    "hématologiques individuelles observées ne sont pas reproduites dans ce mémoire. "
+    "La figure ci-dessous présente uniquement les profils prédits par le modèle, "
+    "dont l'adéquation aux données réelles a été vérifiée pendant la phase de calibration.",
+    first_line_indent=1.0)
 
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -1415,10 +1429,12 @@ run = p.add_run("[Figure 3 — Insérer ici : etape6_fgfr2/results/pd_profiles_n
 set_font(run, size=10, italic=True, color=(100,100,100))
 p = doc.add_paragraph()
 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run = p.add_run("Figure 3. Profils PD individuels NHP — modèle (lignes) vs données "
-                "hématologiques observées (points). Composé en développement interne, "
-                "voie intraveineuse, dose unique, 4 niveaux de dose : 4, 13, 26, 39 mg/kg. "
-                "Neutrophiles, réticulocytes, RBC et plaquettes.")
+run = p.add_run("Figure 3. Profils hématologiques prédits NHP — modèle semi-mécaniste de Fornari. "
+                "Composé en développement interne, voie intraveineuse, dose unique, "
+                "4 niveaux de dose : 4, 13, 26, 39 mg/kg. "
+                "Neutrophiles, réticulocytes, RBC et plaquettes. "
+                "Données confidentielles Pierre Fabre — données observées non reproduites. "
+                "Le modèle reproduit les principales tendances de la réponse hématologique.")
 set_font(run, size=10, italic=True)
 doc.add_paragraph()
 

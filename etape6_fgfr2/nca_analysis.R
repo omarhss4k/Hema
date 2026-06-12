@@ -283,31 +283,27 @@ animal_shapes <- c(
 theme_pk <- theme_bw(base_size = 13) +
   theme(plot.title = element_text(face = "bold"))
 
-# 7a. Linéaire
+# 7a. Linéaire — données observées retirées (confidentialité Pierre Fabre)
 p_linear <- ggplot() +
-  geom_line(data  = pred_df, aes(x=time, y=conc, color=Dose, group=subject), linewidth=0.9) +
-  geom_point(data = obs_df,  aes(x=time, y=conc, color=Dose, shape=subject), size=3, na.rm=TRUE) +
+  geom_line(data = pred_df, aes(x=time, y=conc, color=Dose, group=subject), linewidth=1.1) +
   scale_color_manual(values = dose_cols_nca) +
-  scale_shape_manual(values = animal_shapes) +
-  labs(title    = "PK Profile -- 2-Compartment Model (rxode2 fit)",
-       subtitle = "Points = observations ; lines = fitted model | ●○ = animal 1/2 per dose",
-       x = "Time (h)", y = "Concentration (ng/mL)",
-       color = "Dose", shape = "Animal") +
+  labs(title    = "Profil PK — modèle 2 compartiments (rxode2)",
+       subtitle = "Lignes = modèle ajusté individuel — données observées non reproduites (confidentielles)",
+       x = "Temps (h)", y = "Concentration (ng/mL)",
+       color = "Dose") +
   theme_pk
 print(p_linear)
 ggsave("nca_linear.png", plot = p_linear, width = 8, height = 5, dpi = 300)
 
-# 7b. Semi-logarithmique
+# 7b. Semi-logarithmique — données observées retirées (confidentialité Pierre Fabre)
 p_semilog <- ggplot() +
-  geom_line(data  = pred_df, aes(x=time, y=conc, color=Dose, group=subject), linewidth=0.9) +
-  geom_point(data = obs_df,  aes(x=time, y=conc, color=Dose, shape=subject), size=3, na.rm=TRUE) +
+  geom_line(data = pred_df, aes(x=time, y=conc, color=Dose, group=subject), linewidth=1.1) +
   scale_color_manual(values = dose_cols_nca) +
-  scale_shape_manual(values = animal_shapes) +
   scale_y_log10() +
-  labs(title    = "PK Profile -- 2-Compartment Model (rxode2 fit) -- Semi-log scale",
-       subtitle = "Points = observations ; lines = fitted model | ●○ = animal 1/2 per dose",
-       x = "Time (h)", y = "Concentration (ng/mL) -- log",
-       color = "Dose", shape = "Animal") +
+  labs(title    = "Profil PK — modèle 2 compartiments (rxode2) — échelle semi-log",
+       subtitle = "Lignes = modèle ajusté individuel — données observées non reproduites (confidentielles)",
+       x = "Temps (h)", y = "Concentration (ng/mL) — log",
+       color = "Dose") +
   theme_pk
 print(p_semilog)
 ggsave("nca_semilog.png", plot = p_semilog, width = 8, height = 5, dpi = 300)

@@ -96,6 +96,8 @@ obs_long <- if (obs_has_data) {
     filter(!is.na(Valeur))
 } else NULL
 
+# Données observées retirées pour confidentialité (Pierre Fabre)
+# Le modèle reproduit bien les tendances — voir §3.3.3 pour discussion
 p_cells <- ggplot(df_cells, aes(x = time_d, y = Valeur, color = Dose)) +
   geom_vline(xintercept = dose_days, linetype = "dashed",
              color = "grey70", linewidth = 0.4) +
@@ -105,24 +107,13 @@ p_cells <- ggplot(df_cells, aes(x = time_d, y = Valeur, color = Dose)) +
   geom_line(linewidth = 1.1) +
   geom_point(data = nadir_df, shape = 25, size = 3,
              fill = "white", stroke = 1.5) +
-  { if (!is.null(obs_long))
-      geom_point(data = obs_long,
-                 aes(x = jour, y = Valeur, color = Dose, shape = Animal_Id),
-                 size = 2.8, stroke = 1.1, inherit.aes = FALSE)
-  } +
-  { if (!is.null(obs_long))
-      scale_shape_manual(
-        values = setNames(c(16, 17, 15, 18, 1, 2, 0, 5),
-                          levels(obs_long$Animal_Id)),
-        name = "Animal")
-  } +
   scale_color_manual(values = dose_cols) +
   scale_x_continuous(breaks = seq(0, 120, by = 21),
                      labels = paste0("D", seq(0, 120, by = 21))) +
   facet_wrap(~Cellule, scales = "free_y", ncol = 2) +
-  labs(title    = "Predicted Hematological Profiles -- FGFR2 inhibitor Q3W × 3 cycles (+ recovery)",
-       subtitle = "▽ nadir  |  ··· baseline  |  --- dose day  |  filled circles = observations",
-       x = "Time (days)", y = NULL) +
+  labs(title    = "Profils hématologiques prédits — composé en développement interne, Q3W × 3 cycles",
+       subtitle = "▽ nadir  |  ··· baseline  |  --- jour de dose  |  données observées non reproduites (confidentielles)",
+       x = "Temps (jours)", y = NULL) +
   theme_poster
 
 ggsave("results/poster_PD_4panels.pdf",
