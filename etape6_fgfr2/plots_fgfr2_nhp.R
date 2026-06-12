@@ -609,9 +609,6 @@ if (obs_has_data) {
     geom_vline(xintercept = dose_days, linetype = "dotted",
                color = "grey75", linewidth = 0.35) +
     geom_line(linewidth = 1.1) +
-    geom_point(data = obs_ind_pct,
-               aes(x = jour, y = Pct, color = Cellule),
-               shape = 19, size = 2.4, inherit.aes = FALSE) +
     scale_color_manual(values = cell_cols_ind, name = "Cell type") +
     scale_x_continuous(breaks = c(-3, 0, 2, 8, 12, 15, 22, 25),
                        labels = c("D-3","D0","D2","D8","D12","D15","D22","D25")) +
@@ -619,9 +616,9 @@ if (obs_has_data) {
     scale_y_continuous(labels = function(x) paste0(x, "%")) +
     facet_wrap(~ Animal_label, ncol = 4) +
     labs(
-      title    = "Individual Predicted Profiles -- FGFR2 inhibitor NHP",
-      subtitle = "Line = model prediction  |  Points = observations  |  % of individual day-3 baseline  |  --- 100%  |  ··· dose day",
-      x = "Time (days)", y = "% of individual baseline"
+      title    = "Profils prédits individuels — composé en développement interne, NHP",
+      subtitle = "Lignes = prédiction du modèle  |  % de la baseline individuelle (J-3)  |  --- 100%  |  ··· jour de dose  |  données observées non reproduites (confidentielles)",
+      x = "Temps (jours)", y = "% de la baseline individuelle"
     ) +
     theme_poster +
     theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10))
