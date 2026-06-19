@@ -109,14 +109,14 @@ plot_all_cells <- function(sim, pars,
                     pars$RBC0,  dose_days, get_obs("RBC"))
   )
 
-  arrangeGrob(grobs = panels, ncol = 2,
+  arrangeGrob(grobs = panels, ncol = 4,
               top = textGrob(titre, gp = gpar(fontface = "bold", fontsize = 15)))
 }
 
 # -- Sauvegarder en PDF + PNG -----------------------------
 save_all_cells <- function(sim, pars, file, titre,
                            dose_days = NULL, obs_list = NULL,
-                           width = 12, height = 11) {
+                           width = 22, height = 9) {
   p <- plot_all_cells(sim, pars, titre = titre,
                       dose_days = dose_days, obs_list = obs_list)
 
