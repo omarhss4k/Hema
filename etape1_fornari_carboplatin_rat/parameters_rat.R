@@ -6,7 +6,10 @@
 
 init_pars <- list()
 
-# -- PK (allométrie rat 250g depuis humain) --
+# -- PK rat (Fornari 2019, Table S3) --
+# Paramètres estimés par ajustement sur données PK carboplatine rat
+# (étude in-house 30 mg/kg IV + littérature 20 mg/kg IV)
+# Source : Fornari et al. 2019, Supplementary Table S3
 BW_h <- 70; BW_r <- 0.25
 init_pars$CL <- 0.42 
 init_pars$V1 <- 0.06
