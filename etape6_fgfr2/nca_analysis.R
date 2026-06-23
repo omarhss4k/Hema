@@ -263,14 +263,25 @@ pred_df <- pred_df %>%
   left_join(pk_raw %>% select(subject, dose_mg_kg) %>% distinct(), by = "subject") %>%
   mutate(Dose = paste0(round(dose_mg_kg), " mg/kg"))
 
-dose_levels_nca <- c("4 mg/kg", "13 mg/kg", "26 mg/kg", "39 mg/kg")
+dose_levels_nca  <- c("4 mg/kg", "13 mg/kg", "26 mg/kg", "39 mg/kg")
+dose_labels_nca  <- c("4 mg/kg" = "Dose 1", "13 mg/kg" = "Dose 2",
+                      "26 mg/kg" = "Dose 3", "39 mg/kg" = "Dose 4")
+
 obs_df$Dose  <- factor(obs_df$Dose,  levels = dose_levels_nca)
 pred_df$Dose <- factor(pred_df$Dose, levels = dose_levels_nca)
 
-dose_cols_nca <- c("4 mg/kg"  = "#2166ac",
-                   "13 mg/kg" = "#4dac26",
-                   "26 mg/kg" = "#f4a582",
-                   "39 mg/kg" = "#d6604d")
+# Moyenne des 2 animaux par dose → 1 courbe par dose
+pred_mean_df <- pred_df %>%
+  group_by(Dose, time) %>%
+  summarise(conc = mean(conc), .groups = "drop")
+
+dose_cols_nca <- c("Dose 1" = "#2166ac",
+                   "Dose 2" = "#4dac26",
+                   "Dose 3" = "#f4a582",
+                   "Dose 4" = "#d6604d")
+
+pred_mean_df$Dose <- factor(dose_labels_nca[as.character(pred_mean_df$Dose)],
+                             levels = c("Dose 1","Dose 2","Dose 3","Dose 4"))
 
 # Formes manuelles : même forme par dose (2 animaux/dose), plein vs creux
 animal_shapes <- c(
@@ -283,25 +294,25 @@ animal_shapes <- c(
 theme_pk <- theme_bw(base_size = 13) +
   theme(plot.title = element_text(face = "bold"))
 
-# 7a. Linéaire — données observées retirées (confidentialité Pierre Fabre)
+# 7a. Linéaire — 1 courbe moyenne par dose, labels anonymisés
 p_linear <- ggplot() +
-  geom_line(data = pred_df, aes(x=time, y=conc, color=Dose, group=subject), linewidth=1.1) +
+  geom_line(data = pred_mean_df, aes(x=time, y=conc, color=Dose, group=Dose), linewidth=1.3) +
   scale_color_manual(values = dose_cols_nca) +
   labs(title    = "Profil PK — modèle 2 compartiments (rxode2)",
-       subtitle = "Lignes = modèle ajusté individuel — données observées non reproduites (confidentielles)",
+       subtitle = "Courbe moyenne par niveau de dose — données observées non reproduites (confidentielles)",
        x = "Temps (h)", y = "Concentration (ng/mL)",
        color = "Dose") +
   theme_pk
 print(p_linear)
 ggsave("nca_linear.png", plot = p_linear, width = 8, height = 5, dpi = 300)
 
-# 7b. Semi-logarithmique — données observées retirées (confidentialité Pierre Fabre)
+# 7b. Semi-logarithmique — 1 courbe moyenne par dose, labels anonymisés
 p_semilog <- ggplot() +
-  geom_line(data = pred_df, aes(x=time, y=conc, color=Dose, group=subject), linewidth=1.1) +
+  geom_line(data = pred_mean_df, aes(x=time, y=conc, color=Dose, group=Dose), linewidth=1.3) +
   scale_color_manual(values = dose_cols_nca) +
   scale_y_log10() +
   labs(title    = "Profil PK — modèle 2 compartiments (rxode2) — échelle semi-log",
-       subtitle = "Lignes = modèle ajusté individuel — données observées non reproduites (confidentielles)",
+       subtitle = "Courbe moyenne par niveau de dose — données observées non reproduites (confidentielles)",
        x = "Temps (h)", y = "Concentration (ng/mL) — log",
        color = "Dose") +
   theme_pk
