@@ -319,7 +319,32 @@ p_semilog <- ggplot() +
 print(p_semilog)
 ggsave("nca_semilog.png", plot = p_semilog, width = 8, height = 5, dpi = 300)
 
-cat("\nGraphiques exportés : nca_linear.png  nca_semilog.png\n")
+# 7c. Avec données observées — ordonnée masquée (valeurs confidentielles)
+# Renommer obs_df avec labels Dose 1/2/3/4
+obs_df_labeled <- obs_df %>%
+  mutate(Dose = factor(dose_labels_nca[as.character(Dose)],
+                       levels = c("Dose 1","Dose 2","Dose 3","Dose 4")))
+
+p_with_obs <- ggplot() +
+  geom_line(data = pred_mean_df,
+            aes(x = time, y = conc, color = Dose, group = Dose),
+            linewidth = 1.3) +
+  geom_point(data = obs_df_labeled,
+             aes(x = time, y = conc, color = Dose),
+             size = 2.5, shape = 16, alpha = 0.75) +
+  scale_color_manual(values = dose_cols_nca) +
+  scale_y_log10(labels = NULL) +   # axe log, valeurs masquées
+  labs(title    = "Profil PK — modele 2 compartiments (rxode2) — echelle semi-log",
+       subtitle = "Lignes = modele ajuste | Points = observations | Valeurs en ordonnee non reproduites (confidentielles)",
+       x = "Temps (h)",
+       y = "Concentration (echelle log — valeurs masquees)",
+       color = "Dose") +
+  theme_pk +
+  theme(axis.ticks.y = element_blank())
+print(p_with_obs)
+ggsave("nca_semilog_with_obs.png", plot = p_with_obs, width = 8, height = 5, dpi = 300)
+
+cat("\nGraphiques exportes : nca_linear.png  nca_semilog.png  nca_semilog_with_obs.png\n")
 
 # -- 8. Tableau récapitulatif paramètres PK ------------------------------------
 # Colonnes : Animal | Dose | Cmax | t½β | CL | V1 | Q | V2
