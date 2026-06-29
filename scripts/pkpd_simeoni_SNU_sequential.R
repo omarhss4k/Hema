@@ -26,6 +26,12 @@ library(DEoptim)
 library(ggplot2)
 library(readxl)
 
+# Forcer l'encodage UTF-8 pour les caracteres speciaux dans les graphiques
+options(encoding = "UTF-8")
+if (.Platform$OS.type == "windows") {
+  try(windowsFonts(sans = windowsFont("Arial Unicode MS")), silent = TRUE)
+}
+
 # =============================================================================
 # 1. PARAMÈTRES PK STRUCTURAUX FIXÉS (CL, V1, V2, Q — voie linéaire)
 # =============================================================================
@@ -371,26 +377,42 @@ cat(sprintf("   Objectif retenu  : %.8f\n", best_val_A))
 #
 #   k2 dérivé analytiquement : k2 = L0_est / TSC
 #
-#   Bornes :
-#     k1   ∈ [log(0.2),           log(4.0)       ]   MTT ∈ [1, 20 j]
-#     TSC  ∈ [log(Cmax_1p2/3),    log(Cmax_5p6)  ]   µg/L
-#     Vmax ∈ [log(100),           log(50000)     ]   µg/kg/j  (élimination saturable)
-#     Km   ∈ [log(10),            log(5000)      ]   µg/L
+#   Bornes (révisées après analyse du premier run) :
+#
+#   k1   : [log(0.2), log(4.0)]   MTT in [1, 20 j]
+#
+#   TSC  : [log(Cmax_1p2 / 10), log(Cmax_5p6 * 2)]
+#          Elargie vers le bas (TSC < Cmax_1p2 tolerable si MTT long)
+#          et vers le haut (TSC > Cmax_5p6 pour permettre cytostase a 5.6 mg/kg)
+#
+#   Vmax : [log(50), log(200000)]  ug/kg/j — plage plus large
+#
+#   Km   : [log(1), log(Cmax_11p8 * 5)]
+#          Borne basse a 1 ug/L, borne haute >> Cmax_11p8 pour couvrir
+#          le cas lineaire (Km >> C1) et le cas totalement sature (Km << C1)
 # =============================================================================
 
-cat("\n══════════════════════════════════════════════════════════\n")
-cat("ÉTAPE B — Ajustement groupes traités : k1, TSC, Vmax, Km\n")
-cat("══════════════════════════════════════════════════════════\n")
-cat(sprintf("L0 fixé = %.6f /j  |  L1 fixé = %.2f mm³/j\n", L0_est, L1_est))
+cat("\n===========================================================\n")
+cat("ETAPE B — Ajustement groupes traites : k1, TSC, Vmax, Km\n")
+cat("===========================================================\n")
+cat(sprintf("L0 fixe = %.6f /j  |  L1 fixe = %.2f mm3/j\n", L0_est, L1_est))
 
-TSC_lower <- Cmax_1p2 / 3
-TSC_upper <- Cmax_5p6
-cat(sprintf("Bornes TSC  : [%.0f, %.0f] µg/L\n",  TSC_lower, TSC_upper))
-cat(sprintf("Bornes Vmax : [100, 50000] µg/kg/j\n"))
-cat(sprintf("Bornes Km   : [10, 5000] µg/L\n"))
+TSC_lower <- Cmax_1p2 / 10
+TSC_upper <- Cmax_5p6  * 2
+Km_lower  <- 1
+Km_upper  <- Cmax_11p8 * 5
 
-lower_B <- c(log(0.2),         log(TSC_lower), log(100),   log(10))
-upper_B <- c(log(4.0),         log(TSC_upper), log(50000), log(5000))
+cat(sprintf("Bornes TSC  : [%.0f, %.0f] ug/L\n",  TSC_lower, TSC_upper))
+cat(sprintf("Bornes Vmax : [50, 200000] ug/kg/j\n"))
+cat(sprintf("Bornes Km   : [%.0f, %.0f] ug/L\n",  Km_lower, Km_upper))
+
+# Avertissement si Km_upper << Cmax : signalerait une saturation permanente
+if (Km_upper < Cmax_1p2) {
+  cat("  [INFO] Km_upper < Cmax_1p2 : la voie TMDD sera toujours saturee\n")
+}
+
+lower_B <- c(log(0.2),     log(TSC_lower), log(50),    log(Km_lower))
+upper_B <- c(log(4.0),     log(TSC_upper), log(200000), log(Km_upper))
 
 objective_traites <- function(logpar) {
   k1   <- exp(logpar[1])
@@ -487,13 +509,30 @@ Vmax_est <- exp(best_par_B[3])
 Km_est   <- exp(best_par_B[4])
 k2_est   <- L0_est / TSC_est
 
-cat(sprintf("\n→ k1   = %.5f /j     [MTT = %.1f j]  (%s)\n", k1_est, 4 / k1_est, src_B))
-cat(sprintf("→ TSC  = %.0f µg/L  (%s)\n",    TSC_est,  src_B))
-cat(sprintf("→ Vmax = %.1f µg/kg/j  (%s)\n", Vmax_est, src_B))
-cat(sprintf("→ Km   = %.1f µg/L  (%s)\n",    Km_est,   src_B))
-cat(sprintf("   (k2 dérivé = %.3e L/µg/j)\n", k2_est))
+cat(sprintf("\n-> k1   = %.5f /j     [MTT = %.1f j]  (%s)\n", k1_est, 4 / k1_est, src_B))
+cat(sprintf("-> TSC  = %.0f ug/L  (%s)\n",    TSC_est,  src_B))
+cat(sprintf("-> Vmax = %.1f ug/kg/j  (%s)\n", Vmax_est, src_B))
+cat(sprintf("-> Km   = %.1f ug/L  (%s)\n",    Km_est,   src_B))
+cat(sprintf("   (k2 derive = %.3e L/ug/j)\n",  k2_est))
 cat(sprintf("   Objectif DEoptim : %.8f\n", fit_de_B$optim$bestval))
 cat(sprintf("   Objectif retenu  : %.8f\n", best_val_B))
+
+# Diagnostic : parametre(s) contre borne — signal d'identifiabilite
+tol_bnd <- 0.02   # 2% de la plage log
+on_lower <- function(est, lo) abs(log(est) - lo) < tol_bnd * abs(upper_B[1] - lower_B[1])
+if (abs(log(TSC_est)  - log(TSC_lower)) < tol_bnd * (log(TSC_upper) - log(TSC_lower)))
+  cat("  [AVERTISSEMENT] TSC est sur sa borne inferieure — envisager d'elargir ou de revenir au modele lineaire\n")
+if (abs(log(Km_est)   - log(Km_lower))  < tol_bnd * (log(Km_upper)  - log(Km_lower)))
+  cat("  [AVERTISSEMENT] Km est sur sa borne inferieure — TMDD totalement saturee, non identifiable\n")
+if (abs(log(Km_est)   - log(Km_upper))  < tol_bnd * (log(Km_upper)  - log(Km_lower)))
+  cat("  [AVERTISSEMENT] Km est sur sa borne superieure — TMDD negligeable, equivalent a PK lineaire\n")
+if (abs(log(Vmax_est) - log(50))        < tol_bnd * (log(200000)    - log(50)))
+  cat("  [AVERTISSEMENT] Vmax est sur sa borne inferieure\n")
+cat(sprintf("  Ratio C1_max / Km (dose 5.6 mg/kg) = %.1f  %s\n",
+            (5600 / unname(pk_fixed["V1"])) / Km_est,
+            ifelse((5600 / unname(pk_fixed["V1"])) / Km_est > 100,
+                   "-> saturation quasi-totale (Km non identifiable)",
+                   "-> regime MM significatif (Km identifiable)")))
 
 # =============================================================================
 # 6. RÉSUMÉ FINAL
@@ -501,19 +540,19 @@ cat(sprintf("   Objectif retenu  : %.8f\n", best_val_B))
 
 mtt <- 4 / k1_est
 
-cat("\n══════════════════════════════════════════════════════════\n")
-cat("PARAMÈTRES FINAUX — SNU  (ajustement séquentiel + TMDD)\n")
-cat("══════════════════════════════════════════════════════════\n")
-cat(sprintf("λ0 (L0) = %.6f /j           [Étape A — %s]\n", L0_est,   src_A))
-cat(sprintf("λ1 (L1) = %.2f mm³/j        [Étape A — %s]\n", L1_est,   src_A))
-cat(sprintf("k1      = %.5f /j            [Étape B — %s]\n", k1_est,   src_B))
-cat(sprintf("TSC     = %.0f µg/L          [Étape B — %s]\n", TSC_est,  src_B))
-cat(sprintf("Vmax    = %.1f µg/kg/j       [Étape B — %s]\n", Vmax_est, src_B))
-cat(sprintf("Km      = %.1f µg/L          [Étape B — %s]\n", Km_est,   src_B))
-cat("──────────────────────────────────────────────────────────\n")
+cat("\n===========================================================\n")
+cat("PARAMETRES FINAUX — SNU  (ajustement sequentiel + TMDD)\n")
+cat("===========================================================\n")
+cat(sprintf("L0      = %.6f /j           [Etape A — %s]\n", L0_est,   src_A))
+cat(sprintf("L1      = %.2f mm3/j        [Etape A — %s]\n", L1_est,   src_A))
+cat(sprintf("k1      = %.5f /j            [Etape B — %s]\n", k1_est,   src_B))
+cat(sprintf("TSC     = %.0f ug/L          [Etape B — %s]\n", TSC_est,  src_B))
+cat(sprintf("Vmax    = %.1f ug/kg/j       [Etape B — %s]\n", Vmax_est, src_B))
+cat(sprintf("Km      = %.1f ug/L          [Etape B — %s]\n", Km_est,   src_B))
+cat("-----------------------------------------------------------\n")
 cat(sprintf("MTT     = %.1f j\n", mtt))
-cat(sprintf("k2      = %.3e L/µg/j  (dérivé : L0/TSC)\n", k2_est))
-cat(sprintf("Plausibilité TSC : Cmax(1.2mg)=%.0f | TSC=%.0f | Cmax(5.6mg)=%.0f µg/L\n",
+cat(sprintf("k2      = %.3e L/ug/j  (derive : L0/TSC)\n", k2_est))
+cat(sprintf("Plausibilite TSC : Cmax(1.2mg)=%.0f | TSC=%.0f | Cmax(5.6mg)=%.0f ug/L\n",
             Cmax_1p2, TSC_est, Cmax_5p6))
 
 # =============================================================================
@@ -565,10 +604,10 @@ cols <- c("Vehicule"    = "#888888",
 ymax <- max(df_obs$TV + df_obs$sem, na.rm = TRUE)
 
 subtitle_txt <- paste0(
-  "A: λ0=", round(L0_est, 4), "/j | λ1=", format(round(L1_est), big.mark = " "), "mm³/j",
+  "A: L0=", round(L0_est, 4), "/j | L1=", format(round(L1_est), big.mark = " "), "mm3/j",
   "  ||  ",
-  "B: k1=", round(k1_est, 3), "/j | TSC=", round(TSC_est, 0), "µg/L",
-  " | Vmax=", round(Vmax_est, 0), "µg/kg/j | Km=", round(Km_est, 0), "µg/L",
+  "B: k1=", round(k1_est, 3), "/j | TSC=", round(TSC_est, 0), "ug/L",
+  " | Vmax=", round(Vmax_est, 0), "ug/kg/j | Km=", round(Km_est, 0), "ug/L",
   " | MTT=", round(mtt, 1), "j"
 )
 
@@ -595,10 +634,10 @@ p_simeoni <- ggplot() +
   scale_color_manual(values = cols) +
   coord_cartesian(ylim = c(-ymax * 0.12, ymax * 1.1), clip = "off") +
   labs(
-    title    = "Modèle PK/PD TGI — Simeoni (2004) + TMDD — Fc-silent FGFR2-huBPA-LP1 — SNU",
+    title    = "PK/PD TGI - Simeoni (2004) + TMDD - Fc-silent FGFR2-huBPA-LP1 - SNU",
     subtitle = subtitle_txt,
     x        = "Temps (jours)",
-    y        = "Volume tumoral (mm³)",
+    y        = "Volume tumoral (mm3)",
     color    = NULL
   ) +
   theme_bw(base_size = 13) +
