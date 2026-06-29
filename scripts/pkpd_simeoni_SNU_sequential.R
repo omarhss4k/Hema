@@ -1,24 +1,34 @@
 # =============================================================================
-# Modèle PK/PD TGI — Simeoni (2004) + PK TMDD — Fc-silent FGFR2-huBPA-LP1
-# Cohorte : SNU (xénogreffe souris)
+# Modele PK/PD TGI — Simeoni (2004) — Fc-silent FGFR2-huBPA-LP1
+# Cohorte : SNU (xenogreffe souris)
 #
-# PK  : 2 compartiments IV bolus — élimination MIXTE (linéaire + Michaelis-Menten)
-#   dA1/dt = -[CL/V1]·A1  -  [Vmax·C1/(Km+C1)]  -  [Q/V1]·A1  +  [Q/V2]·A2
-#   dA2/dt =  [Q/V1]·A1   -  [Q/V2]·A2
+# PK  : 2 compartiments IV bolus lineaire (parametres fixes)
+#   dA1/dt = -(CL/V1 + Q/V1)*A1 + (Q/V2)*A2
+#   dA2/dt =  (Q/V1)*A1 - (Q/V2)*A2
+#   C1 = A1/V1
 #
-# PD  : Modèle de Simeoni — compartiments de transit
-#   dx1/dt = [g(w)/w - k2·C1] · x1
-#   dx2/dt =  k2·C1·x1 - k1·x2
-#   ...
-#   k2 = L0/TSC  (dérivé), TSC estimé directement
-#   MTT = 4/k1
+# PD  : Modele de Simeoni (compartiments de transit)
+#   dx1/dt = [g(w)/w - k2*C1] * x1
+#   dx2/dt =  k2*C1*x1 - k1*x2
+#   dx3/dt =  k1*x2 - k1*x3
+#   dx4/dt =  k1*x3 - k1*x4
+#   g(w) = L0*w / (1 + (L0*w/L1)^psi)^(1/psi)   psi = 20
 #
-# Ajustement SÉQUENTIEL :
-#   Étape A — Croissance       : L0 et L1   (groupe véhicule — INTOUCHABLE)
-#   Étape B — Efficacité + PK  : k1, TSC, Vmax, Km  (groupes traités)
+#   TSC (ug/L) : concentration seuil de cytotoxicite — estimee directement
+#   k2 = L0/TSC (derive)
+#   MTT = 4/k1  (jours)
 #
-# Schéma posologique : dose unique IV bolus au jour 0
-# Groupes : Véhicule | 1.2 mg/kg | 5.6 mg/kg | 11.8 mg/kg
+# Ajustement SEQUENTIEL :
+#   Etape A — Croissance  : L0 et L1 sur le groupe vehicule uniquement
+#   Etape B — Efficacite  : k1 et TSC sur les 3 groupes traites (L0/L1 fixes)
+#
+#   Bornes TSC : [Cmax_1p2, Cmax_5p6]
+#     Justification biologique :
+#       1.2 mg/kg → tumeur qui CROIT  → TSC > Cmax_1p2 = 14 200 ug/L
+#       5.6 mg/kg → regression nette  → TSC < Cmax_5p6  = 56 300 ug/L
+#
+# Schema posologique : dose unique IV bolus au jour 0
+# Groupes : Vehicule | 1.2 mg/kg | 5.6 mg/kg | 11.8 mg/kg
 # =============================================================================
 
 library(deSolve)
@@ -26,19 +36,13 @@ library(DEoptim)
 library(ggplot2)
 library(readxl)
 
-# Forcer l'encodage UTF-8 pour les caracteres speciaux dans les graphiques
-options(encoding = "UTF-8")
-if (.Platform$OS.type == "windows") {
-  try(windowsFonts(sans = windowsFont("Arial Unicode MS")), silent = TRUE)
-}
-
 # =============================================================================
-# 1. PARAMÈTRES PK STRUCTURAUX FIXÉS (CL, V1, V2, Q — voie linéaire)
+# 1. PARAMETRES PK FIXES
 # =============================================================================
 
 pk_data <- read.csv("pk_resultats_20260611_110140.csv", stringsAsFactors = FALSE)
 
-# ×1000 : mL/kg → L/kg    ×24 : /h → /j
+# x1000 : mL/kg -> L/kg    x24 : /h -> /j
 pk_fixed <- c(
   CL = (pk_data$CL[1] * 1000) * 24,
   V1 =  pk_data$V1[1] * 1000,
@@ -46,27 +50,29 @@ pk_fixed <- c(
   Q  = (pk_data$Q[1]  * 1000) * 24
 )
 
-cat("=== Paramètres PK structuraux fixés (souris, unités journalières) ===\n")
+cat("=== Parametres PK fixes (souris, unites journalieres) ===\n")
 cat(sprintf("CL = %.5e L/j/kg\n", pk_fixed["CL"]))
 cat(sprintf("V1 = %.5e L/kg\n",   pk_fixed["V1"]))
 cat(sprintf("V2 = %.5e L/kg\n",   pk_fixed["V2"]))
 cat(sprintf("Q  = %.5e L/j/kg\n", pk_fixed["Q"]))
 
-# Cmax (ng/mL ≡ µg/L) — bornes TSC et Km
+# Cmax (ng/mL = ug/L) issues du CSV
 Cmax_1p2  <- pk_data$cmax[pk_data$Animal == "A"]
 Cmax_5p6  <- pk_data$cmax[pk_data$Animal == "C"]
 Cmax_11p8 <- pk_data$cmax[pk_data$Animal == "D"]
 
-cat(sprintf("\nCmax (µg/L) : 1.2 mg/kg = %.0f | 5.6 mg/kg = %.0f | 11.8 mg/kg = %.0f\n",
+cat(sprintf("\nCmax (ug/L) : 1.2 mg/kg = %.0f | 5.6 mg/kg = %.0f | 11.8 mg/kg = %.0f\n",
             Cmax_1p2, Cmax_5p6, Cmax_11p8))
-cat(sprintf("→ Fenêtre TSC attendue : [%.0f, %.0f] µg/L\n", Cmax_1p2, Cmax_5p6))
+cat(sprintf("-> Fenetre TSC biologique : [%.0f, %.0f] ug/L\n", Cmax_1p2, Cmax_5p6))
+cat("   Justification : 1.2 mg/kg ne cause pas de regression (TSC > Cmax_1p2)\n")
+cat("                   5.6 mg/kg cause une regression nette (TSC < Cmax_5p6)\n")
 
 # =============================================================================
-# 2. DONNÉES TUMORALES — SNU
+# 2. DONNEES TUMORALES — SNU
 #
-# Structure Excel — 2 blocs séparés par une ligne d'en-tête "Time" :
-#   Bloc 1 : moyennes  col 1=Temps, 2=Véhicule, 3=1.2mg/kg, 4=5.6mg/kg, 5=11.8mg/kg
-#   Bloc 2 : SEM       (mêmes colonnes)
+# Structure Excel — 2 blocs separes par une ligne d'en-tete "Time" :
+#   Bloc 1 : moyennes  col 1=Temps, 2=Vehicule, 3=1.2mg/kg, 4=5.6mg/kg, 5=11.8mg/kg
+#   Bloc 2 : SEM       (memes colonnes)
 # =============================================================================
 
 raw_snu <- suppressMessages(
@@ -113,11 +119,11 @@ ok_d1p2  <- !is.na(tv_d1p2)
 ok_d5p6  <- !is.na(tv_d5p6)
 ok_d11p8 <- !is.na(tv_d11p8)
 
-cat(sprintf("\nTV0 (j0) : Ctrl=%.0f | 1.2mg=%.0f | 5.6mg=%.0f | 11.8mg=%.0f mm³\n",
+cat(sprintf("\nTV0 (j0) : Ctrl=%.0f | 1.2mg=%.0f | 5.6mg=%.0f | 11.8mg=%.0f mm3\n",
             tv0_ctrl, tv0_d1p2, tv0_d5p6, tv0_d11p8))
 
 # =============================================================================
-# 3A. ODE — MODÈLE PK LINÉAIRE (utilisé par Étape A uniquement)  ← NE PAS MODIFIER
+# 3. EQUATIONS DU MODELE DE SIMEONI  <- NE PAS MODIFIER
 # =============================================================================
 
 PSI <- 20
@@ -161,48 +167,7 @@ simeoni_ctrl_rhs <- function(t, state, parms) {
 }
 
 # =============================================================================
-# 3B. ODE — MODÈLE PK AVEC ÉLIMINATION SATURABLE (Michaelis-Menten / TMDD)
-#
-#   dA1/dt = -elim_lineaire - elim_tmdd - (Q/V1)·A1 + (Q/V2)·A2
-#     elim_lineaire = (CL/V1) · A1          [µg/kg/j]
-#     elim_tmdd     = Vmax·C1 / (Km + C1)   [µg/kg/j]   Vmax en µg/kg/j, Km en µg/L
-#
-#   Tous les compartiments PD restent identiques.
-# =============================================================================
-
-simeoni_rhs_tmdd <- function(t, state, parms) {
-  A1 <- max(state["A1"], 0); A2 <- max(state["A2"], 0)
-  x1 <- max(state["x1"], 0); x2 <- max(state["x2"], 0)
-  x3 <- max(state["x3"], 0); x4 <- max(state["x4"], 0)
-
-  CL   <- parms["CL"];   V1  <- parms["V1"]
-  V2   <- parms["V2"];   Q   <- parms["Q"]
-  L0   <- parms["L0"];   L1  <- parms["L1"]
-  k1   <- parms["k1"];   k2  <- parms["k2"]
-  Vmax <- parms["Vmax"]; Km  <- parms["Km"]
-
-  C1 <- A1 / V1
-
-  elim_lineaire <- (CL / V1) * A1
-  elim_tmdd     <- (Vmax * C1) / (Km + C1)
-
-  dA1 <- -elim_lineaire - elim_tmdd - (Q / V1) * A1 + (Q / V2) * A2
-  dA2 <-  (Q / V1) * A1 - (Q / V2) * A2
-
-  w  <- x1 + x2 + x3 + x4
-  gw <- L0 * w / (1 + (L0 * w / L1)^PSI)^(1/PSI)
-  growth_rate <- if (w > 1e-12) gw / w else L0
-
-  dx1 <- (growth_rate - k2 * C1) * x1
-  dx2 <- k2 * C1 * x1 - k1 * x2
-  dx3 <- k1 * x2 - k1 * x3
-  dx4 <- k1 * x3 - k1 * x4
-
-  list(c(A1 = dA1, A2 = dA2, x1 = dx1, x2 = dx2, x3 = dx3, x4 = dx4))
-}
-
-# =============================================================================
-# 4A. FONCTIONS DE SIMULATION — PK LINÉAIRE  ← NE PAS MODIFIER
+# 4. FONCTIONS DE SIMULATION  <- NE PAS MODIFIER
 # =============================================================================
 
 sim_ctrl_fn <- function(L0, L1, tv0, times_out) {
@@ -222,7 +187,7 @@ sim_ctrl_fn <- function(L0, L1, tv0, times_out) {
 }
 
 sim_treated <- function(dose_ugkg, tv0, params, times_out) {
-  t_all <- sort(unique(c(0, times_out)))
+  t_all  <- sort(unique(c(0, times_out)))
   params <- setNames(as.numeric(params),
                      c("CL", "V1", "V2", "Q", "L0", "L1", "k1", "k2"))
   out <- tryCatch(
@@ -254,58 +219,18 @@ sim_treated <- function(dose_ugkg, tv0, params, times_out) {
 }
 
 # =============================================================================
-# 4B. FONCTION DE SIMULATION — PK TMDD (Michaelis-Menten)
-#
-#   params doit contenir 10 éléments nommés :
-#   CL, V1, V2, Q, L0, L1, k1, k2, Vmax, Km
+# 5A. ETAPE A — INTOUCHABLE
+#     Croissance : L0 et L1 sur le groupe vehicule uniquement.
+#     Bornes L0 : doublement dans [3, 14 j]
+#     Bornes L1 : [TV_max observe, 200 x TV_max]
 # =============================================================================
 
-sim_treated_tmdd <- function(dose_ugkg, tv0, params, times_out) {
-  t_all  <- sort(unique(c(0, times_out)))
-  params <- setNames(as.numeric(params),
-                     c("CL", "V1", "V2", "Q", "L0", "L1", "k1", "k2", "Vmax", "Km"))
-  out <- tryCatch(
-    as.data.frame(lsoda(
-      y        = c(A1 = dose_ugkg, A2 = 0, x1 = tv0, x2 = 0, x3 = 0, x4 = 0),
-      times    = t_all,
-      func     = simeoni_rhs_tmdd,
-      parms    = params,
-      atol     = 1e-6, rtol = 1e-6,
-      maxsteps = 50000
-    )),
-    error   = function(e) { message("lsoda (TMDD) error: ", conditionMessage(e)); NULL },
-    warning = function(w) {
-      suppressWarnings(
-        as.data.frame(lsoda(
-          y        = c(A1 = dose_ugkg, A2 = 0, x1 = tv0, x2 = 0, x3 = 0, x4 = 0),
-          times    = t_all,
-          func     = simeoni_rhs_tmdd,
-          parms    = params,
-          atol     = 1e-4, rtol = 1e-4,
-          maxsteps = 100000
-        ))
-      )
-    }
-  )
-  if (is.null(out) || any(is.na(out$x1))) return(rep(NA_real_, length(times_out)))
-  w_tot <- pmax(out$x1, 0) + pmax(out$x2, 0) + pmax(out$x3, 0) + pmax(out$x4, 0)
-  approx(out$time, w_tot, xout = times_out, rule = 2)$y
-}
-
-# =============================================================================
-# 5A. ÉTAPE A — INTOUCHABLE
-#     Ajustement de la croissance : L0 et L1 sur le groupe véhicule uniquement.
-#     Bornes L0 : doublement ∈ [3, 14 j]
-#     Bornes L1 : [TV_max observé, 200 × TV_max]
-# =============================================================================
-
-cat("\n══════════════════════════════════════════════════════════\n")
-cat("ÉTAPE A — Ajustement véhicule : L0 et L1\n")
-cat("══════════════════════════════════════════════════════════\n")
+cat("\n===========================================================\n")
+cat("ETAPE A — Ajustement vehicule : L0 et L1\n")
+cat("===========================================================\n")
 
 lm_ctrl <- lm(log(tv_ctrl[ok_ctrl]) ~ times_d[ok_ctrl])
 L0_init <- max(coef(lm_ctrl)[2], 0.005)
-L1_init <- max(tv_ctrl[ok_ctrl], na.rm = TRUE) * L0_init * 50
 
 lower_A <- c(log(0.05),
              log(max(tv_ctrl[ok_ctrl], na.rm = TRUE)))
@@ -363,83 +288,63 @@ if (fit_local_A$objective < fit_de_A$optim$bestval) {
 L0_est <- exp(best_par_A[1])
 L1_est <- exp(best_par_A[2])
 
-cat(sprintf("\n→ λ0 (L0) = %.6f /j   [doublement = %.1f j]  (%s)\n",
+cat(sprintf("\n-> L0 = %.6f /j   [doublement = %.1f j]  (%s)\n",
             L0_est, log(2) / L0_est, src_A))
-cat(sprintf("→ λ1 (L1) = %.2f mm³/j  (%s)\n", L1_est, src_A))
+cat(sprintf("-> L1 = %.2f mm3/j  (%s)\n", L1_est, src_A))
 cat(sprintf("   Objectif DEoptim : %.8f\n", fit_de_A$optim$bestval))
 cat(sprintf("   Objectif retenu  : %.8f\n", best_val_A))
 
 # =============================================================================
-# 5B. ÉTAPE B — Ajustement efficacité + PK non-linéaire
+# 5B. ETAPE B — Efficacite : k1 et TSC sur les groupes traites
 #
-#   Paramètres estimés (4) en log-espace : k1, TSC, Vmax, Km
-#   L0_est et L1_est fixés depuis l'Étape A.
+#   L0_est et L1_est fixes depuis l'Etape A.
+#   k2 derive : k2 = L0_est / TSC
 #
-#   k2 dérivé analytiquement : k2 = L0_est / TSC
+#   Bornes TSC : [Cmax_1p2, Cmax_5p6]
+#     => TSC doit etre superieur a Cmax_1p2 (1.2 mg/kg sans effet de regression)
+#        et inferieur a Cmax_5p6 (5.6 mg/kg avec regression franche)
 #
-#   Bornes (révisées après analyse du premier run) :
-#
-#   k1   : [log(0.2), log(4.0)]   MTT in [1, 20 j]
-#
-#   TSC  : [log(Cmax_1p2 / 10), log(Cmax_5p6 * 2)]
-#          Elargie vers le bas (TSC < Cmax_1p2 tolerable si MTT long)
-#          et vers le haut (TSC > Cmax_5p6 pour permettre cytostase a 5.6 mg/kg)
-#
-#   Vmax : [log(50), log(200000)]  ug/kg/j — plage plus large
-#
-#   Km   : [log(1), log(Cmax_11p8 * 5)]
-#          Borne basse a 1 ug/L, borne haute >> Cmax_11p8 pour couvrir
-#          le cas lineaire (Km >> C1) et le cas totalement sature (Km << C1)
+#   Bornes k1 : MTT dans [2, 21 j]  =>  k1 dans [4/21, 4/2]
 # =============================================================================
 
 cat("\n===========================================================\n")
-cat("ETAPE B — Ajustement groupes traites : k1, TSC, Vmax, Km\n")
+cat("ETAPE B — Ajustement groupes traites : k1 et TSC\n")
 cat("===========================================================\n")
 cat(sprintf("L0 fixe = %.6f /j  |  L1 fixe = %.2f mm3/j\n", L0_est, L1_est))
 
-TSC_lower <- Cmax_1p2 / 10
-TSC_upper <- Cmax_5p6  * 2
-Km_lower  <- 1
-Km_upper  <- Cmax_11p8 * 5
+TSC_lower <- Cmax_1p2       # borne biologique : TSC > Cmax_1p2 obligatoire
+TSC_upper <- Cmax_5p6       # borne biologique : TSC < Cmax_5p6 obligatoire
 
-cat(sprintf("Bornes TSC  : [%.0f, %.0f] ug/L\n",  TSC_lower, TSC_upper))
-cat(sprintf("Bornes Vmax : [50, 200000] ug/kg/j\n"))
-cat(sprintf("Bornes Km   : [%.0f, %.0f] ug/L\n",  Km_lower, Km_upper))
+cat(sprintf("Bornes TSC : [%.0f, %.0f] ug/L  (= [Cmax_1p2, Cmax_5p6])\n",
+            TSC_lower, TSC_upper))
+cat(sprintf("Bornes k1  : [%.4f, %.4f] /j    (MTT dans [2, 21 j])\n",
+            4/21, 4/2))
 
-# Avertissement si Km_upper << Cmax : signalerait une saturation permanente
-if (Km_upper < Cmax_1p2) {
-  cat("  [INFO] Km_upper < Cmax_1p2 : la voie TMDD sera toujours saturee\n")
-}
-
-lower_B <- c(log(0.2),     log(TSC_lower), log(50),    log(Km_lower))
-upper_B <- c(log(4.0),     log(TSC_upper), log(200000), log(Km_upper))
+lower_B <- c(log(4 / 21), log(TSC_lower))
+upper_B <- c(log(4 / 2),  log(TSC_upper))
 
 objective_traites <- function(logpar) {
-  k1   <- exp(logpar[1])
-  TSC  <- exp(logpar[2])
-  Vmax <- exp(logpar[3])
-  Km   <- exp(logpar[4])
-  if (any(c(k1, TSC, Vmax, Km) <= 0)) return(1e12)
+  k1  <- exp(logpar[1])
+  TSC <- exp(logpar[2])
+  if (k1 <= 0 || TSC <= 0) return(1e12)
 
-  k2 <- L0_est / TSC   # TSC = L0/k2
+  k2 <- L0_est / TSC
 
   params_all <- c(
-    CL   = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
-    V2   = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
-    L0   = L0_est, L1 = L1_est,
-    k1   = k1, k2 = k2,
-    Vmax = Vmax, Km = Km
+    CL = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
+    V2 = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
+    L0 = L0_est, L1 = L1_est, k1 = k1, k2 = k2
   )
 
-  pred_d1p2 <- sim_treated_tmdd(1200,  tv0_d1p2,  params_all, times_d[ok_d1p2])
+  pred_d1p2 <- sim_treated(1200,  tv0_d1p2,  params_all, times_d[ok_d1p2])
   if (any(is.na(pred_d1p2))) return(1e12)
   pred_d1p2 <- pmax(pred_d1p2, 0.1)
 
-  pred_d5p6 <- sim_treated_tmdd(5600,  tv0_d5p6,  params_all, times_d[ok_d5p6])
+  pred_d5p6 <- sim_treated(5600,  tv0_d5p6,  params_all, times_d[ok_d5p6])
   if (any(is.na(pred_d5p6))) return(1e12)
   pred_d5p6 <- pmax(pred_d5p6, 0.1)
 
-  pred_d11p8 <- sim_treated_tmdd(11800, tv0_d11p8, params_all, times_d[ok_d11p8])
+  pred_d11p8 <- sim_treated(11800, tv0_d11p8, params_all, times_d[ok_d11p8])
   if (any(is.na(pred_d11p8))) return(1e12)
   pred_d11p8 <- pmax(pred_d11p8, 0.1)
 
@@ -448,24 +353,19 @@ objective_traites <- function(logpar) {
   sum(1 / sem_d11p8[ok_d11p8]^2 * (log(tv_d11p8[ok_d11p8]) - log(pred_d11p8))^2, na.rm = TRUE)
 }
 
-# ── Test de sanité avant de lancer DEoptim ──────────────────────────────────
+# Test de sanite avant DEoptim
 params_sanity <- c(
-  CL   = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
-  V2   = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
-  L0   = L0_est, L1 = L1_est,
-  k1   = 4 / 7,
-  k2   = L0_est / sqrt(Cmax_1p2 * Cmax_5p6),
-  Vmax = 1000,
-  Km   = 500
+  CL = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
+  V2 = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
+  L0 = L0_est, L1 = L1_est,
+  k1 = 4 / 7,
+  k2 = L0_est / sqrt(Cmax_1p2 * Cmax_5p6)
 )
-test_ok <- sim_treated_tmdd(1200, tv0_d1p2, params_sanity, times_d[ok_d1p2])
+test_ok <- sim_treated(1200, tv0_d1p2, params_sanity, times_d[ok_d1p2])
 if (all(is.na(test_ok))) {
-  stop(paste(
-    "ERREUR : sim_treated_tmdd retourne NA avec des paramètres de départ raisonnables.",
-    "Vérifier les unités PK, les données Excel et la définition de simeoni_rhs_tmdd."
-  ))
+  stop("ERREUR : sim_treated retourne NA avec des parametres raisonnables.")
 }
-cat(sprintf("  [Sanity check] sim_treated_tmdd 1.2 mg/kg : OK  (pred[1] = %.1f mm³)\n",
+cat(sprintf("  [Sanity check] sim_treated 1.2 mg/kg : OK  (pred[1] = %.1f mm3)\n",
             test_ok[1]))
 
 set.seed(42)
@@ -474,13 +374,13 @@ fit_de_B <- DEoptim(
   lower   = lower_B,
   upper   = upper_B,
   control = DEoptim.control(
-    NP      = 120,           # plus de particules pour 4 dimensions
-    itermax = 1000,
+    NP      = 80,
+    itermax = 800,
     F       = 0.8,
     CR      = 0.9,
     trace   = 100,
     reltol  = 1e-8,
-    steptol = 250
+    steptol = 200
   )
 )
 
@@ -489,7 +389,7 @@ fit_local_B <- nlminb(
   objective = objective_traites,
   lower     = lower_B,
   upper     = upper_B,
-  control   = list(eval.max = 5000, iter.max = 2000,
+  control   = list(eval.max = 3000, iter.max = 1000,
                    rel.tol  = 1e-12, x.tol = 1e-12)
 )
 
@@ -503,76 +403,64 @@ if (fit_local_B$objective < fit_de_B$optim$bestval) {
   src_B      <- "DEoptim"
 }
 
-k1_est   <- exp(best_par_B[1])
-TSC_est  <- exp(best_par_B[2])
-Vmax_est <- exp(best_par_B[3])
-Km_est   <- exp(best_par_B[4])
-k2_est   <- L0_est / TSC_est
+k1_est  <- exp(best_par_B[1])
+TSC_est <- exp(best_par_B[2])
+k2_est  <- L0_est / TSC_est
 
-cat(sprintf("\n-> k1   = %.5f /j     [MTT = %.1f j]  (%s)\n", k1_est, 4 / k1_est, src_B))
-cat(sprintf("-> TSC  = %.0f ug/L  (%s)\n",    TSC_est,  src_B))
-cat(sprintf("-> Vmax = %.1f ug/kg/j  (%s)\n", Vmax_est, src_B))
-cat(sprintf("-> Km   = %.1f ug/L  (%s)\n",    Km_est,   src_B))
-cat(sprintf("   (k2 derive = %.3e L/ug/j)\n",  k2_est))
+cat(sprintf("\n-> k1  = %.5f /j   [MTT = %.1f j]  (%s)\n", k1_est, 4 / k1_est, src_B))
+cat(sprintf("-> TSC = %.0f ug/L  (%s)\n", TSC_est, src_B))
+cat(sprintf("   k2 derive = %.3e L/ug/j\n", k2_est))
 cat(sprintf("   Objectif DEoptim : %.8f\n", fit_de_B$optim$bestval))
 cat(sprintf("   Objectif retenu  : %.8f\n", best_val_B))
 
-# Diagnostic : parametre(s) contre borne — signal d'identifiabilite
-tol_bnd <- 0.02   # 2% de la plage log
-on_lower <- function(est, lo) abs(log(est) - lo) < tol_bnd * abs(upper_B[1] - lower_B[1])
-if (abs(log(TSC_est)  - log(TSC_lower)) < tol_bnd * (log(TSC_upper) - log(TSC_lower)))
-  cat("  [AVERTISSEMENT] TSC est sur sa borne inferieure — envisager d'elargir ou de revenir au modele lineaire\n")
-if (abs(log(Km_est)   - log(Km_lower))  < tol_bnd * (log(Km_upper)  - log(Km_lower)))
-  cat("  [AVERTISSEMENT] Km est sur sa borne inferieure — TMDD totalement saturee, non identifiable\n")
-if (abs(log(Km_est)   - log(Km_upper))  < tol_bnd * (log(Km_upper)  - log(Km_lower)))
-  cat("  [AVERTISSEMENT] Km est sur sa borne superieure — TMDD negligeable, equivalent a PK lineaire\n")
-if (abs(log(Vmax_est) - log(50))        < tol_bnd * (log(200000)    - log(50)))
-  cat("  [AVERTISSEMENT] Vmax est sur sa borne inferieure\n")
-cat(sprintf("  Ratio C1_max / Km (dose 5.6 mg/kg) = %.1f  %s\n",
-            (5600 / unname(pk_fixed["V1"])) / Km_est,
-            ifelse((5600 / unname(pk_fixed["V1"])) / Km_est > 100,
-                   "-> saturation quasi-totale (Km non identifiable)",
-                   "-> regime MM significatif (Km identifiable)")))
+# Verification position de TSC dans la fenetre
+tol <- 0.02 * (log(TSC_upper) - log(TSC_lower))
+if (abs(log(TSC_est) - log(TSC_lower)) < tol)
+  cat("  [AVERTISSEMENT] TSC sur borne inferieure — la dose 1.2 mg/kg est jugee active\n")
+if (abs(log(TSC_est) - log(TSC_upper)) < tol)
+  cat("  [AVERTISSEMENT] TSC sur borne superieure — la dose 5.6 mg/kg est jugee inactive\n")
 
 # =============================================================================
-# 6. RÉSUMÉ FINAL
+# 6. RESUME FINAL
 # =============================================================================
 
 mtt <- 4 / k1_est
 
 cat("\n===========================================================\n")
-cat("PARAMETRES FINAUX — SNU  (ajustement sequentiel + TMDD)\n")
+cat("PARAMETRES FINAUX — SNU  (ajustement sequentiel, PK lineaire)\n")
 cat("===========================================================\n")
-cat(sprintf("L0      = %.6f /j           [Etape A — %s]\n", L0_est,   src_A))
-cat(sprintf("L1      = %.2f mm3/j        [Etape A — %s]\n", L1_est,   src_A))
-cat(sprintf("k1      = %.5f /j            [Etape B — %s]\n", k1_est,   src_B))
-cat(sprintf("TSC     = %.0f ug/L          [Etape B — %s]\n", TSC_est,  src_B))
-cat(sprintf("Vmax    = %.1f ug/kg/j       [Etape B — %s]\n", Vmax_est, src_B))
-cat(sprintf("Km      = %.1f ug/L          [Etape B — %s]\n", Km_est,   src_B))
+cat(sprintf("L0  = %.6f /j          [Etape A — %s]\n", L0_est,  src_A))
+cat(sprintf("L1  = %.2f mm3/j       [Etape A — %s]\n", L1_est,  src_A))
+cat(sprintf("k1  = %.5f /j          [Etape B — %s]\n", k1_est,  src_B))
+cat(sprintf("TSC = %.0f ug/L        [Etape B — %s]\n", TSC_est, src_B))
 cat("-----------------------------------------------------------\n")
-cat(sprintf("MTT     = %.1f j\n", mtt))
-cat(sprintf("k2      = %.3e L/ug/j  (derive : L0/TSC)\n", k2_est))
-cat(sprintf("Plausibilite TSC : Cmax(1.2mg)=%.0f | TSC=%.0f | Cmax(5.6mg)=%.0f ug/L\n",
+cat(sprintf("MTT = %.1f j\n", mtt))
+cat(sprintf("k2  = %.3e L/ug/j  (= L0/TSC)\n", k2_est))
+cat(sprintf("Plausibilite : Cmax(1.2mg)=%.0f | TSC=%.0f | Cmax(5.6mg)=%.0f ug/L\n",
             Cmax_1p2, TSC_est, Cmax_5p6))
+cat(sprintf("  C1_max/TSC @ 1.2 mg/kg : %.1f  (< 1 = pas d'effet, > 1 = effet)\n",
+            (1200 / unname(pk_fixed["V1"])) / TSC_est))
+cat(sprintf("  C1_max/TSC @ 5.6 mg/kg : %.1f\n",
+            (5600 / unname(pk_fixed["V1"])) / TSC_est))
+cat(sprintf("  C1_max/TSC @ 11.8 mg/kg: %.1f\n",
+            (11800 / unname(pk_fixed["V1"])) / TSC_est))
 
 # =============================================================================
 # 7. SIMULATION FINALE
 # =============================================================================
 
 params_best <- c(
-  CL   = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
-  V2   = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
-  L0   = L0_est,  L1   = L1_est,
-  k1   = k1_est,  k2   = k2_est,
-  Vmax = Vmax_est, Km  = Km_est
+  CL = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
+  V2 = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
+  L0 = L0_est, L1 = L1_est, k1 = k1_est, k2 = k2_est
 )
 
 times_sim <- seq(0, max(times_d, na.rm = TRUE) * 1.05, by = 0.5)
 
 pred_ctrl_sim  <- sim_ctrl_fn(L0_est, L1_est, tv0_ctrl, times_sim)
-pred_d1p2_sim  <- sim_treated_tmdd(1200,  tv0_d1p2,  params_best, times_sim)
-pred_d5p6_sim  <- sim_treated_tmdd(5600,  tv0_d5p6,  params_best, times_sim)
-pred_d11p8_sim <- sim_treated_tmdd(11800, tv0_d11p8, params_best, times_sim)
+pred_d1p2_sim  <- sim_treated(1200,  tv0_d1p2,  params_best, times_sim)
+pred_d5p6_sim  <- sim_treated(5600,  tv0_d5p6,  params_best, times_sim)
+pred_d11p8_sim <- sim_treated(11800, tv0_d11p8, params_best, times_sim)
 
 niv <- c("Vehicule", "1.2 mg/kg", "5.6 mg/kg", "11.8 mg/kg")
 
@@ -606,9 +494,7 @@ ymax <- max(df_obs$TV + df_obs$sem, na.rm = TRUE)
 subtitle_txt <- paste0(
   "A: L0=", round(L0_est, 4), "/j | L1=", format(round(L1_est), big.mark = " "), "mm3/j",
   "  ||  ",
-  "B: k1=", round(k1_est, 3), "/j | TSC=", round(TSC_est, 0), "ug/L",
-  " | Vmax=", round(Vmax_est, 0), "ug/kg/j | Km=", round(Km_est, 0), "ug/L",
-  " | MTT=", round(mtt, 1), "j"
+  "B: k1=", round(k1_est, 3), "/j | TSC=", round(TSC_est, 0), "ug/L | MTT=", round(mtt, 1), "j"
 )
 
 p_simeoni <- ggplot() +
@@ -634,7 +520,7 @@ p_simeoni <- ggplot() +
   scale_color_manual(values = cols) +
   coord_cartesian(ylim = c(-ymax * 0.12, ymax * 1.1), clip = "off") +
   labs(
-    title    = "PK/PD TGI - Simeoni (2004) + TMDD - Fc-silent FGFR2-huBPA-LP1 - SNU",
+    title    = "PK/PD TGI - Simeoni (2004) - Fc-silent FGFR2-huBPA-LP1 - SNU",
     subtitle = subtitle_txt,
     x        = "Temps (jours)",
     y        = "Volume tumoral (mm3)",
@@ -643,14 +529,14 @@ p_simeoni <- ggplot() +
   theme_bw(base_size = 13) +
   theme(
     legend.position = "right",
-    plot.subtitle   = element_text(size = 8.5, color = "grey50"),
+    plot.subtitle   = element_text(size = 9, color = "grey50"),
     plot.margin     = margin(t = 5, r = 10, b = 25, l = 5)
   )
 
 print(p_simeoni)
-ggsave("scripts/plot_PKPD_simeoni_SNU_tmdd.png", p_simeoni,
-       width = 10, height = 5.5, dpi = 150)
-cat("\nGraphique sauvegardé : scripts/plot_PKPD_simeoni_SNU_tmdd.png\n")
+ggsave("scripts/plot_PKPD_simeoni_SNU.png", p_simeoni,
+       width = 9, height = 5.5, dpi = 150)
+cat("\nGraphique sauvegarde : scripts/plot_PKPD_simeoni_SNU.png\n")
 
 # =============================================================================
 # 9. SAUVEGARDE
@@ -663,8 +549,6 @@ simeoni_results_SNU <- list(
   k1            = k1_est,
   TSC_ugL       = TSC_est,
   k2            = k2_est,
-  Vmax_ugkgj    = Vmax_est,
-  Km_ugL        = Km_est,
   MTT_days      = mtt,
   obj_A_DEoptim = fit_de_A$optim$bestval,
   obj_A_final   = best_val_A,
@@ -672,5 +556,5 @@ simeoni_results_SNU <- list(
   obj_B_final   = best_val_B
 )
 
-save(simeoni_results_SNU, file = "scripts/resultats_PKPD_simeoni_SNU_tmdd.RData")
-cat("Résultats sauvegardés : scripts/resultats_PKPD_simeoni_SNU_tmdd.RData\n")
+save(simeoni_results_SNU, file = "scripts/resultats_PKPD_simeoni_SNU.RData")
+cat("Resultats sauvegardes : scripts/resultats_PKPD_simeoni_SNU.RData\n")
