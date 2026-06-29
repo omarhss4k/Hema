@@ -39,10 +39,13 @@ library(readxl)
 # =============================================================================
 # 1. PARAMETRES PK FIXES
 # =============================================================================
-# NOTE TMDD : Km fixe a KM_FIXED = 1 ug/L (valeur optimale runs precedents,
-#   C1 >> Km a toutes les doses => regime zeroth-order => decline lineaire
-#   de la concentration => duree d'effet plus longue qu'avec PK purement
-#   lineaire). Seul Vmax est estime dans l'Etape B.
+# NOTE TMDD : Km et Vmax fixes (parametres PK, non identifiables depuis donnees PD).
+#   Km = 1 ug/L  : C1 >> Km => regime zeroth-order (decline lineaire de C1).
+#   Vmax = VMAX_FIXED ug/kg/j : fixe pour garantir que le drug reste actif a
+#     5.6 mg/kg pendant toute la fenetre d'observation (50j).
+#     Condition : (Dose_5p6 - TSC*V1) / Vmax > 50j
+#     => Vmax < (5600 - TSC*V1) / 50 ~ 100 ug/kg/j pour TSC~3000.
+#   Seuls k1 et TSC sont estimes en Etape B.
 
 pk_data <- read.csv("pk_resultats_20260611_110140.csv", stringsAsFactors = FALSE)
 
@@ -65,12 +68,15 @@ Cmax_1p2  <- pk_data$cmax[pk_data$Animal == "A"]
 Cmax_5p6  <- pk_data$cmax[pk_data$Animal == "C"]
 Cmax_11p8 <- pk_data$cmax[pk_data$Animal == "D"]
 
-KM_FIXED <- 1   # ug/L — fixe (regime zeroth-order, C1 >> Km a toutes les doses)
+KM_FIXED   <- 1    # ug/L — fixe (C1 >> Km => regime zeroth-order)
+VMAX_FIXED <- 50   # ug/kg/j — fixe : drug actif a 5.6mg/kg pendant >100j
 
 cat(sprintf("\nCmax (ug/L) : 1.2 mg/kg = %.0f | 5.6 mg/kg = %.0f | 11.8 mg/kg = %.0f\n",
             Cmax_1p2, Cmax_5p6, Cmax_11p8))
-cat(sprintf("Km fixe = %.0f ug/L  (C1/Km @ 1.2mg/kg = %.0fx => regime zeroth-order)\n",
+cat(sprintf("Km   fixe = %.0f ug/L      (C1/Km @ 1.2mg/kg = %.0fx => regime zeroth-order)\n",
             KM_FIXED, Cmax_1p2 / KM_FIXED))
+cat(sprintf("Vmax fixe = %.0f ug/kg/j  (drug actif a 5.6mg/kg pendant ~%.0fj)\n",
+            VMAX_FIXED, (5600 - 3000 * pk_data$V1[1] * 1000) / VMAX_FIXED))
 
 # =============================================================================
 # 2. DONNEES TUMORALES — SNU
@@ -367,47 +373,40 @@ cat(sprintf("   Objectif DEoptim : %.8f\n", fit_de_A$optim$bestval))
 cat(sprintf("   Objectif retenu  : %.8f\n", best_val_A))
 
 # =============================================================================
-# 5B. ETAPE B — Efficacite : k1, TSC, Vmax (Km fixe = KM_FIXED)
+# 5B. ETAPE B — Efficacite : k1 et TSC (Km et Vmax fixes)
 #
 #   L0_est et L1_est fixes depuis l'Etape A.
-#   Km fixe = KM_FIXED ug/L (C1 >> Km => regime zeroth-order).
+#   Km   fixe = KM_FIXED   ug/L  : regime zeroth-order
+#   Vmax fixe = VMAX_FIXED ug/kg/j : non identifiable depuis donnees PD,
+#     fixe pour garantir suppression soutenue a 5.6 mg/kg sur 50j.
 #   k2 derive : k2 = L0_est / TSC
-#   Vmax [ug/kg/j] : taux d'elimination MM maximal
 #
 #   Bornes TSC : [Cmax_1p2/10, Cmax_5p6]
-#     Libres — le profil PK TMDD (regime ZO) permet TSC bas avec effet
-#     negligeable a 1.2 mg/kg si MTT est long.
-#   Bornes k1 : MTT dans [3, 25 j]
-#   Bornes Vmax : [1, 100000] ug/kg/j
+#   Bornes k1  : MTT dans [3, 25 j]
 # =============================================================================
 
 cat("\n===========================================================\n")
-cat("ETAPE B — Ajustement groupes traites : k1, TSC, Vmax (Km fixe)\n")
+cat("ETAPE B — Ajustement groupes traites : k1 et TSC (Km, Vmax fixes)\n")
 cat("===========================================================\n")
 cat(sprintf("L0 fixe = %.6f /j  |  L1 fixe = %.2f mm3/j\n", L0_est, L1_est))
-cat(sprintf("Km fixe = %.0f ug/L\n", KM_FIXED))
+cat(sprintf("Km   fixe = %.0f ug/L\n",    KM_FIXED))
+cat(sprintf("Vmax fixe = %.0f ug/kg/j\n", VMAX_FIXED))
 
-TSC_lower  <- Cmax_1p2 / 10
-TSC_upper  <- Cmax_5p6
-k1_lower   <- 4 / 25
-k1_upper   <- 4 / 3
-# Borne Vmax : pour que 5.6 mg/kg reste actif ~50j, Vmax < (5600-TSC*V1)/50 ~ 108.
-# On plafonne a 500 pour guider l'optimiseur vers le regime de suppression prolongee.
-Vmax_lower <- 1
-Vmax_upper <- 500
+TSC_lower <- Cmax_1p2 / 10
+TSC_upper <- Cmax_5p6
+k1_lower  <- 4 / 25
+k1_upper  <- 4 / 3
 
-cat(sprintf("Bornes TSC  : [%.0f, %.0f] ug/L\n",   TSC_lower,  TSC_upper))
-cat(sprintf("Bornes k1   : [%.4f, %.4f] /j    (MTT dans [3, 25 j])\n", k1_lower, k1_upper))
-cat(sprintf("Bornes Vmax : [%.0f, %.0f] ug/kg/j\n", Vmax_lower, Vmax_upper))
+cat(sprintf("Bornes TSC : [%.0f, %.0f] ug/L\n", TSC_lower, TSC_upper))
+cat(sprintf("Bornes k1  : [%.4f, %.4f] /j    (MTT dans [3, 25 j])\n", k1_lower, k1_upper))
 
-lower_B <- c(log(k1_lower), log(TSC_lower), log(Vmax_lower))
-upper_B <- c(log(k1_upper), log(TSC_upper), log(Vmax_upper))
+lower_B <- c(log(k1_lower), log(TSC_lower))
+upper_B <- c(log(k1_upper), log(TSC_upper))
 
 objective_traites <- function(logpar) {
-  k1   <- exp(logpar[1])
-  TSC  <- exp(logpar[2])
-  Vmax <- exp(logpar[3])
-  if (k1 <= 0 || TSC <= 0 || Vmax <= 0) return(1e12)
+  k1  <- exp(logpar[1])
+  TSC <- exp(logpar[2])
+  if (k1 <= 0 || TSC <= 0) return(1e12)
 
   k2 <- L0_est / TSC
 
@@ -415,7 +414,7 @@ objective_traites <- function(logpar) {
     CL = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
     V2 = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
     L0 = L0_est, L1 = L1_est, k1 = k1, k2 = k2,
-    Vmax = Vmax, Km = KM_FIXED
+    Vmax = VMAX_FIXED, Km = KM_FIXED
   )
 
   pred_d1p2 <- sim_treated_tmdd(1200,  tv0_d1p2,  params_all, times_d[ok_d1p2])
@@ -442,7 +441,7 @@ params_sanity <- c(
   L0 = L0_est, L1 = L1_est,
   k1 = 4 / 15,
   k2 = L0_est / 3000,
-  Vmax = 50, Km = KM_FIXED
+  Vmax = VMAX_FIXED, Km = KM_FIXED
 )
 test_ok <- sim_treated_tmdd(1200, tv0_d1p2, params_sanity, times_d[ok_d1p2])
 if (all(is.na(test_ok))) {
@@ -486,32 +485,26 @@ if (fit_local_B$objective < fit_de_B$optim$bestval) {
   src_B      <- "DEoptim"
 }
 
-k1_est   <- exp(best_par_B[1])
-TSC_est  <- exp(best_par_B[2])
-Vmax_est <- exp(best_par_B[3])
-k2_est   <- L0_est / TSC_est
+k1_est  <- exp(best_par_B[1])
+TSC_est <- exp(best_par_B[2])
+k2_est  <- L0_est / TSC_est
 
-cat(sprintf("\n-> k1   = %.5f /j   [MTT = %.1f j]  (%s)\n", k1_est, 4 / k1_est, src_B))
-cat(sprintf("-> TSC  = %.0f ug/L  (%s)\n",  TSC_est,  src_B))
-cat(sprintf("-> Vmax = %.2f ug/kg/j  (%s)\n", Vmax_est, src_B))
+cat(sprintf("\n-> k1  = %.5f /j   [MTT = %.1f j]  (%s)\n", k1_est, 4 / k1_est, src_B))
+cat(sprintf("-> TSC = %.0f ug/L  (%s)\n", TSC_est, src_B))
 cat(sprintf("   k2 derive = %.3e L/ug/j\n", k2_est))
 cat(sprintf("   Objectif DEoptim : %.8f\n", fit_de_B$optim$bestval))
 cat(sprintf("   Objectif retenu  : %.8f\n", best_val_B))
 
 # Verification position des parametres sur leurs bornes
 tol <- 0.02
-if (abs(log(TSC_est)  - log(TSC_lower))  < tol * (log(TSC_upper)  - log(TSC_lower)))
+if (abs(log(TSC_est) - log(TSC_lower)) < tol * (log(TSC_upper) - log(TSC_lower)))
   cat("  [AVERT] TSC sur borne inferieure\n")
-if (abs(log(TSC_est)  - log(TSC_upper))  < tol * (log(TSC_upper)  - log(TSC_lower)))
+if (abs(log(TSC_est) - log(TSC_upper)) < tol * (log(TSC_upper) - log(TSC_lower)))
   cat("  [AVERT] TSC sur borne superieure\n")
-if (abs(log(k1_est)   - log(k1_upper))   < tol * (log(k1_upper)   - log(k1_lower)))
+if (abs(log(k1_est)  - log(k1_upper))  < tol * (log(k1_upper)  - log(k1_lower)))
   cat(sprintf("  [AVERT] k1 sur borne superieure (MTT=%.1fj)\n", 4/k1_est))
-if (abs(log(k1_est)   - log(k1_lower))   < tol * (log(k1_upper)   - log(k1_lower)))
+if (abs(log(k1_est)  - log(k1_lower))  < tol * (log(k1_upper)  - log(k1_lower)))
   cat(sprintf("  [AVERT] k1 sur borne inferieure (MTT=%.1fj)\n", 4/k1_est))
-if (abs(log(Vmax_est) - log(Vmax_upper)) < tol * (log(Vmax_upper) - log(Vmax_lower)))
-  cat("  [AVERT] Vmax sur borne superieure\n")
-if (abs(log(Vmax_est) - log(Vmax_lower)) < tol * (log(Vmax_upper) - log(Vmax_lower)))
-  cat("  [AVERT] Vmax sur borne inferieure\n")
 
 # =============================================================================
 # 6. RESUME FINAL
@@ -522,11 +515,11 @@ mtt <- 4 / k1_est
 cat("\n===========================================================\n")
 cat("PARAMETRES FINAUX — SNU  (ajustement sequentiel, TMDD Km fixe)\n")
 cat("===========================================================\n")
-cat(sprintf("L0   = %.6f /j         [Etape A — %s]\n", L0_est,   src_A))
-cat(sprintf("L1   = %.2f mm3/j      [Etape A — %s]\n", L1_est,   src_A))
-cat(sprintf("k1   = %.5f /j         [Etape B — %s]\n", k1_est,   src_B))
-cat(sprintf("TSC  = %.0f ug/L       [Etape B — %s]\n", TSC_est,  src_B))
-cat(sprintf("Vmax = %.2f ug/kg/j    [Etape B — %s]\n", Vmax_est, src_B))
+cat(sprintf("L0   = %.6f /j         [Etape A — %s]\n", L0_est,    src_A))
+cat(sprintf("L1   = %.2f mm3/j      [Etape A — %s]\n", L1_est,    src_A))
+cat(sprintf("k1   = %.5f /j         [Etape B — %s]\n", k1_est,    src_B))
+cat(sprintf("TSC  = %.0f ug/L       [Etape B — %s]\n", TSC_est,   src_B))
+cat(sprintf("Vmax = %.0f ug/kg/j    [fixe]\n",          VMAX_FIXED))
 cat(sprintf("Km   = %.0f ug/L       [fixe]\n",          KM_FIXED))
 cat("-----------------------------------------------------------\n")
 cat(sprintf("MTT = %.1f j\n", mtt))
@@ -588,7 +581,7 @@ subtitle_txt <- paste0(
   "A: L0=", round(L0_est, 4), "/j | L1=", format(round(L1_est), big.mark = " "), "mm3/j",
   "  ||  ",
   "B: k1=", round(k1_est, 3), "/j | TSC=", round(TSC_est, 0), "ug/L",
-  " | Vmax=", round(Vmax_est, 1), "ug/kg/j | MTT=", round(mtt, 1), "j"
+  " | Vmax=", VMAX_FIXED, "(fixe) | MTT=", round(mtt, 1), "j"
 )
 
 p_simeoni <- ggplot() +
@@ -642,7 +635,7 @@ simeoni_results_SNU <- list(
   L1            = L1_est,
   k1            = k1_est,
   TSC_ugL       = TSC_est,
-  Vmax_ugkgj    = Vmax_est,
+  Vmax_ugkgj    = VMAX_FIXED,
   Km_ugL        = KM_FIXED,
   k2            = k2_est,
   MTT_days      = mtt,
