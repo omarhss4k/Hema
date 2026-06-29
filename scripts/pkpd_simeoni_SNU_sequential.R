@@ -391,8 +391,10 @@ TSC_lower  <- Cmax_1p2 / 10
 TSC_upper  <- Cmax_5p6
 k1_lower   <- 4 / 25
 k1_upper   <- 4 / 3
+# Borne Vmax : pour que 5.6 mg/kg reste actif ~50j, Vmax < (5600-TSC*V1)/50 ~ 108.
+# On plafonne a 500 pour guider l'optimiseur vers le regime de suppression prolongee.
 Vmax_lower <- 1
-Vmax_upper <- 1e5
+Vmax_upper <- 500
 
 cat(sprintf("Bornes TSC  : [%.0f, %.0f] ug/L\n",   TSC_lower,  TSC_upper))
 cat(sprintf("Bornes k1   : [%.4f, %.4f] /j    (MTT dans [3, 25 j])\n", k1_lower, k1_upper))
