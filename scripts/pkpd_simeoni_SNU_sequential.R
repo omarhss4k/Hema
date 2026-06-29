@@ -304,7 +304,11 @@ cat(sprintf("   Objectif retenu  : %.8f\n", best_val_A))
 #     => TSC doit etre superieur a Cmax_1p2 (1.2 mg/kg sans effet de regression)
 #        et inferieur a Cmax_5p6 (5.6 mg/kg avec regression franche)
 #
-#   Bornes k1 : MTT dans [2, 21 j]  =>  k1 dans [4/21, 4/2]
+#   Bornes k1 : MTT dans [5, 25 j]  =>  k1 dans [4/25, 4/5]
+#     Justification : la litterature Simeoni (2004) rapporte MTT = 5-25 j
+#     pour les xenogreffes. MTT = 2j est physiologiquement impossible
+#     (transit des cellules endommagees avant apoptose).
+#     Un MTT court forcait le modele a une repousse trop rapide.
 # =============================================================================
 
 cat("\n===========================================================\n")
@@ -312,16 +316,18 @@ cat("ETAPE B — Ajustement groupes traites : k1 et TSC\n")
 cat("===========================================================\n")
 cat(sprintf("L0 fixe = %.6f /j  |  L1 fixe = %.2f mm3/j\n", L0_est, L1_est))
 
-TSC_lower <- Cmax_1p2       # borne biologique : TSC > Cmax_1p2 obligatoire
-TSC_upper <- Cmax_5p6       # borne biologique : TSC < Cmax_5p6 obligatoire
+TSC_lower <- Cmax_1p2       # TSC > Cmax_1p2 : 1.2 mg/kg sans effet de regression
+TSC_upper <- Cmax_5p6       # TSC < Cmax_5p6 : 5.6 mg/kg avec regression franche
+k1_lower  <- 4 / 25         # MTT_max = 25 j
+k1_upper  <- 4 / 5          # MTT_min =  5 j  (physiologique minimum)
 
 cat(sprintf("Bornes TSC : [%.0f, %.0f] ug/L  (= [Cmax_1p2, Cmax_5p6])\n",
             TSC_lower, TSC_upper))
-cat(sprintf("Bornes k1  : [%.4f, %.4f] /j    (MTT dans [2, 21 j])\n",
-            4/21, 4/2))
+cat(sprintf("Bornes k1  : [%.4f, %.4f] /j    (MTT dans [5, 25 j])\n",
+            k1_lower, k1_upper))
 
-lower_B <- c(log(4 / 21), log(TSC_lower))
-upper_B <- c(log(4 / 2),  log(TSC_upper))
+lower_B <- c(log(k1_lower), log(TSC_lower))
+upper_B <- c(log(k1_upper), log(TSC_upper))
 
 objective_traites <- function(logpar) {
   k1  <- exp(logpar[1])
@@ -413,12 +419,17 @@ cat(sprintf("   k2 derive = %.3e L/ug/j\n", k2_est))
 cat(sprintf("   Objectif DEoptim : %.8f\n", fit_de_B$optim$bestval))
 cat(sprintf("   Objectif retenu  : %.8f\n", best_val_B))
 
-# Verification position de TSC dans la fenetre
-tol <- 0.02 * (log(TSC_upper) - log(TSC_lower))
-if (abs(log(TSC_est) - log(TSC_lower)) < tol)
-  cat("  [AVERTISSEMENT] TSC sur borne inferieure — la dose 1.2 mg/kg est jugee active\n")
-if (abs(log(TSC_est) - log(TSC_upper)) < tol)
-  cat("  [AVERTISSEMENT] TSC sur borne superieure — la dose 5.6 mg/kg est jugee inactive\n")
+# Verification position des parametres sur leurs bornes
+tol_tsc <- 0.02 * (log(TSC_upper) - log(TSC_lower))
+tol_k1  <- 0.02 * (log(k1_upper)  - log(k1_lower))
+if (abs(log(TSC_est) - log(TSC_lower)) < tol_tsc)
+  cat("  [AVERTISSEMENT] TSC sur borne inferieure (Cmax_1p2) — a elargir vers le bas\n")
+if (abs(log(TSC_est) - log(TSC_upper)) < tol_tsc)
+  cat("  [AVERTISSEMENT] TSC sur borne superieure (Cmax_5p6) — 5.6 mg/kg juge inactif\n")
+if (abs(log(k1_est) - log(k1_upper)) < tol_k1)
+  cat("  [AVERTISSEMENT] k1 sur borne superieure (MTT=5j) — a elargir upper si necessaire\n")
+if (abs(log(k1_est) - log(k1_lower)) < tol_k1)
+  cat("  [AVERTISSEMENT] k1 sur borne inferieure (MTT=25j) — a elargir lower si necessaire\n")
 
 # =============================================================================
 # 6. RESUME FINAL
