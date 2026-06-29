@@ -300,15 +300,16 @@ cat(sprintf("   Objectif retenu  : %.8f\n", best_val_A))
 #   L0_est et L1_est fixes depuis l'Etape A.
 #   k2 derive : k2 = L0_est / TSC
 #
-#   Bornes TSC : [Cmax_1p2, Cmax_5p6]
-#     => TSC doit etre superieur a Cmax_1p2 (1.2 mg/kg sans effet de regression)
-#        et inferieur a Cmax_5p6 (5.6 mg/kg avec regression franche)
+#   Bornes TSC : [Cmax_1p2/10, Cmax_5p6]
+#     Borne basse libre (< Cmax_1p2) : le modele peut predire un effet minimal
+#     a 1.2 mg/kg masque par la variabilite des donnees.
+#     Borne haute = Cmax_5p6 : 5.6 mg/kg induit une regression franche.
+#     Justification : avec MTT long (~15j), meme TSC < Cmax_1p2 peut produire
+#     un effet negligeable a 1.2 mg/kg (drogue au-dessus de TSC seulement ~6j,
+#     cellules en transit meurent apres la fin de l'observation).
 #
-#   Bornes k1 : MTT dans [5, 25 j]  =>  k1 dans [4/25, 4/5]
-#     Justification : la litterature Simeoni (2004) rapporte MTT = 5-25 j
-#     pour les xenogreffes. MTT = 2j est physiologiquement impossible
-#     (transit des cellules endommagees avant apoptose).
-#     Un MTT court forcait le modele a une repousse trop rapide.
+#   Bornes k1 : MTT dans [3, 21 j]  =>  k1 dans [4/21, 4/3]
+#     Litterature Simeoni 2004 : MTT typique = 5-25 j pour xenogreffes.
 # =============================================================================
 
 cat("\n===========================================================\n")
@@ -316,14 +317,13 @@ cat("ETAPE B — Ajustement groupes traites : k1 et TSC\n")
 cat("===========================================================\n")
 cat(sprintf("L0 fixe = %.6f /j  |  L1 fixe = %.2f mm3/j\n", L0_est, L1_est))
 
-TSC_lower <- Cmax_1p2       # TSC > Cmax_1p2 : 1.2 mg/kg sans effet de regression
-TSC_upper <- Cmax_5p6       # TSC < Cmax_5p6 : 5.6 mg/kg avec regression franche
-k1_lower  <- 4 / 25         # MTT_max = 25 j
-k1_upper  <- 4 / 5          # MTT_min =  5 j  (physiologique minimum)
+TSC_lower <- Cmax_1p2 / 10   # libre en-dessous de Cmax_1p2
+TSC_upper <- Cmax_5p6         # 5.6 mg/kg actif => TSC < Cmax_5p6
+k1_lower  <- 4 / 21           # MTT_max = 21 j
+k1_upper  <- 4 / 3            # MTT_min =  3 j
 
-cat(sprintf("Bornes TSC : [%.0f, %.0f] ug/L  (= [Cmax_1p2, Cmax_5p6])\n",
-            TSC_lower, TSC_upper))
-cat(sprintf("Bornes k1  : [%.4f, %.4f] /j    (MTT dans [5, 25 j])\n",
+cat(sprintf("Bornes TSC : [%.0f, %.0f] ug/L\n", TSC_lower, TSC_upper))
+cat(sprintf("Bornes k1  : [%.4f, %.4f] /j    (MTT dans [3, 21 j])\n",
             k1_lower, k1_upper))
 
 lower_B <- c(log(k1_lower), log(TSC_lower))
