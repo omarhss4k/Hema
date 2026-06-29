@@ -22,10 +22,10 @@
 #   Etape A — Croissance  : L0 et L1 sur le groupe vehicule uniquement
 #   Etape B — Efficacite  : k1 et TSC sur les 3 groupes traites (L0/L1 fixes)
 #
-#   Bornes TSC : [Cmax_1p2, Cmax_5p6]
+#   Bornes TSC : [Cmax_1p2/10, Cmax_1p2]
 #     Justification biologique :
-#       1.2 mg/kg → tumeur qui CROIT  → TSC > Cmax_1p2 = 14 200 ug/L
-#       5.6 mg/kg → regression nette  → TSC < Cmax_5p6  = 56 300 ug/L
+#       1.2 mg/kg → effet observe (~350 vs ~1500 mm3 a j49) → TSC < Cmax_1p2
+#       Borne basse = Cmax_1p2/10 pour autoriser solutions a TSC tres bas
 #
 # Schema posologique : dose unique IV bolus au jour 0
 # Groupes : Vehicule | 1.2 mg/kg | 5.6 mg/kg | 11.8 mg/kg
@@ -63,9 +63,9 @@ Cmax_11p8 <- pk_data$cmax[pk_data$Animal == "D"]
 
 cat(sprintf("\nCmax (ug/L) : 1.2 mg/kg = %.0f | 5.6 mg/kg = %.0f | 11.8 mg/kg = %.0f\n",
             Cmax_1p2, Cmax_5p6, Cmax_11p8))
-cat(sprintf("-> Fenetre TSC biologique : [%.0f, %.0f] ug/L\n", Cmax_1p2, Cmax_5p6))
-cat("   Justification : 1.2 mg/kg ne cause pas de regression (TSC > Cmax_1p2)\n")
-cat("                   5.6 mg/kg cause une regression nette (TSC < Cmax_5p6)\n")
+cat(sprintf("-> Fenetre TSC biologique : [%.0f, %.0f] ug/L\n", Cmax_1p2 / 10, Cmax_1p2))
+cat("   Justification : donnees 1.2 mg/kg montrent effet reel (TSC < Cmax_1p2)\n")
+cat("                   TSC_upper = Cmax_1p2 ; TSC_lower = Cmax_1p2/10\n")
 
 # =============================================================================
 # 2. DONNEES TUMORALES — SNU
@@ -300,15 +300,12 @@ cat(sprintf("   Objectif retenu  : %.8f\n", best_val_A))
 #   L0_est et L1_est fixes depuis l'Etape A.
 #   k2 derive : k2 = L0_est / TSC
 #
-#   Bornes TSC : [Cmax_1p2/10, Cmax_5p6]
-#     Borne basse libre (< Cmax_1p2) : le modele peut predire un effet minimal
-#     a 1.2 mg/kg masque par la variabilite des donnees.
-#     Borne haute = Cmax_5p6 : 5.6 mg/kg induit une regression franche.
-#     Justification : avec MTT long (~15j), meme TSC < Cmax_1p2 peut produire
-#     un effet negligeable a 1.2 mg/kg (drogue au-dessus de TSC seulement ~6j,
-#     cellules en transit meurent apres la fin de l'observation).
+#   Bornes TSC : [Cmax_1p2/10, Cmax_1p2]
+#     Borne haute = Cmax_1p2 : les donnees 1.2 mg/kg montrent ~350mm3 a j49
+#     vs ~1500mm3 vehicule => effet reel a 1.2 mg/kg => TSC < Cmax_1p2.
+#     Borne basse = Cmax_1p2/10 : autorise TSC tres bas (solution TMDD-like).
 #
-#   Bornes k1 : MTT dans [3, 21 j]  =>  k1 dans [4/21, 4/3]
+#   Bornes k1 : MTT dans [3, 25 j]  =>  k1 dans [4/25, 4/3]
 #     Litterature Simeoni 2004 : MTT typique = 5-25 j pour xenogreffes.
 # =============================================================================
 
@@ -317,13 +314,13 @@ cat("ETAPE B — Ajustement groupes traites : k1 et TSC\n")
 cat("===========================================================\n")
 cat(sprintf("L0 fixe = %.6f /j  |  L1 fixe = %.2f mm3/j\n", L0_est, L1_est))
 
-TSC_lower <- Cmax_1p2 / 10   # libre en-dessous de Cmax_1p2
-TSC_upper <- Cmax_5p6         # 5.6 mg/kg actif => TSC < Cmax_5p6
-k1_lower  <- 4 / 21           # MTT_max = 21 j
+TSC_lower <- Cmax_1p2 / 10   # autorise TSC tres bas (solution TMDD-like)
+TSC_upper <- Cmax_1p2         # effet observe a 1.2 mg/kg => TSC < Cmax_1p2
+k1_lower  <- 4 / 25           # MTT_max = 25 j
 k1_upper  <- 4 / 3            # MTT_min =  3 j
 
 cat(sprintf("Bornes TSC : [%.0f, %.0f] ug/L\n", TSC_lower, TSC_upper))
-cat(sprintf("Bornes k1  : [%.4f, %.4f] /j    (MTT dans [3, 21 j])\n",
+cat(sprintf("Bornes k1  : [%.4f, %.4f] /j    (MTT dans [3, 25 j])\n",
             k1_lower, k1_upper))
 
 lower_B <- c(log(k1_lower), log(TSC_lower))
