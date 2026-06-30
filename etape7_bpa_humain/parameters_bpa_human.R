@@ -44,8 +44,33 @@ Slope_CMP_BPA_s1 <- Slope_sensitive_tdxd     * (IC50_CMP_tdxd_nM / IC50_CMP_BPA_
 Slope_MEP_BPA_s2 <- Slope_MEP_sensitive_tdxd * (IC50_MEP_tdxd_nM / IC50_MEP_BPA_nM)
 Slope_CMP_BPA_s2 <- Slope_sensitive_tdxd     * (IC50_CMP_tdxd_nM / IC50_CMP_BPA_s2)
 
-# -- PK BPA : placeholder T-DXd (a remplacer) ---------------------------------
-bpa_pars <- tdxd_pars_hu
+# -- PK BPA : coller ici les parametres exportes depuis le Shiny ---------------
+#
+#   1. Ouvrir le Shiny PK (shiny_pk/app.R)
+#   2. Charger les donnees PK BPA (concentration vs temps)
+#   3. Onglet "Modelisation" -> ajuster le modele 2 compartiments
+#   4. Lire les valeurs CL, V1, V2, Q dans le tableau "Parametres"
+#   5. Remplacer les valeurs ci-dessous :
+#
+#   UNITES ATTENDUES : CL en L/h, V en L  (BW=70 kg)
+#   Si le Shiny sort en L/kg/h et L/kg, multiplier par BW_KG=70
+
+BPA_CL  <- tdxd_pars_hu$CL_ADC   # REMPLACER par valeur Shiny  [L/h]
+BPA_V1  <- tdxd_pars_hu$V1_ADC   # REMPLACER par valeur Shiny  [L]
+BPA_V2  <- tdxd_pars_hu$V2_ADC   # REMPLACER par valeur Shiny  [L]
+BPA_Q   <- tdxd_pars_hu$Q_ADC    # REMPLACER par valeur Shiny  [L/h]
+
+# Exemple une fois les donnees disponibles :
+# BPA_CL <- 0.012    # L/h
+# BPA_V1 <- 3.5      # L
+# BPA_V2 <- 6.2      # L
+# BPA_Q  <- 0.008    # L/h
+
+bpa_pars        <- tdxd_pars_hu   # herite tous les autres params (payload, k_int, etc.)
+bpa_pars$CL_ADC <- BPA_CL         # <- seuls ces 4 parametres changent
+bpa_pars$V1_ADC <- BPA_V1
+bpa_pars$V2_ADC <- BPA_V2
+bpa_pars$Q_ADC  <- BPA_Q
 
 # -- IIV (log-normal) ---------------------------------------------------------
 omega_CL        <- 0.35   # Yin 2020
