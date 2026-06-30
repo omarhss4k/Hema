@@ -5,7 +5,8 @@
 #
 # PK : placeholder T-DXd (Yin 2020) -- à remplacer par PK BPA
 # PD : Fornari 2019 + Slopes calibrés par ratio IC50 vs T-DXd
-#   Slope_CMP ≈ 1440  |  Slope_MEP ≈ 1.19
+#   Slope_CMP ~ 1 440 000  (Slope_tdxd_hu x 190/7.8,  ~24x T-DXd)
+#   Slope_MEP ~ 1 190      (Slope_tdxd_hu x 184/155,  ~1.19x T-DXd)
 #
 # IIV log-normal (sans mixture) : ω_CL=0.35 ω_V1=0.20 ω_Slope=0.33
 ############################################################

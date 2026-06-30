@@ -28,14 +28,21 @@ IC50_CMP_BPA_s1  <- 7.8     # myeloid Simu 1 (sous-traitant)
 IC50_CMP_BPA_s2  <- 0.015   # myeloid Simu 2 (interne)
 
 # -- Slopes BPA calcules par ratio IC50 ---------------------------------------
-# Simu 1 (sous-traitant)
+# Slope_BPA = Slope_tdxd_human * (IC50_tdxd_nM / IC50_BPA_nM)
+# Rappel : Slope_sensitive_tdxd (humain) ~ 59 000 (calibre FDA BLA)
+#          Slope_MEP_sensitive_tdxd      ~ 1 000
+#
+# Simu 1 (sous-traitant) :
+#   Slope_CMP = 59000 * (190/7.8)   ~ 1 440 000  (24x plus potent que T-DXd)
+#   Slope_MEP = 1000  * (184/155)   ~     1 190
 Slope_MEP_BPA_s1 <- Slope_MEP_sensitive_tdxd * (IC50_MEP_tdxd_nM / IC50_MEP_BPA_nM)
 Slope_CMP_BPA_s1 <- Slope_sensitive_tdxd     * (IC50_CMP_tdxd_nM / IC50_CMP_BPA_s1)
 
-# Simu 2 (interne)
+# Simu 2 (interne) :
+#   Slope_CMP = 59000 * (190/0.015) ~ 747 000 000 (EXTREME : 12 667x plus potent)
+#   -> kill_CMP = 1 garanti des la premiere dose pour 100% des patients
 Slope_MEP_BPA_s2 <- Slope_MEP_sensitive_tdxd * (IC50_MEP_tdxd_nM / IC50_MEP_BPA_nM)
 Slope_CMP_BPA_s2 <- Slope_sensitive_tdxd     * (IC50_CMP_tdxd_nM / IC50_CMP_BPA_s2)
-# NOTE : Slope_CMP_BPA_s2 >> 100 000 -> toxicite myeloide quasi-complete attendue
 
 # -- PK BPA : placeholder T-DXd (a remplacer) ---------------------------------
 bpa_pars <- tdxd_pars_hu

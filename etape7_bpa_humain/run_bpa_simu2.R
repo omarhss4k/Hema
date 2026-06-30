@@ -3,7 +3,8 @@
 # Simulation de population -- anti-FLT3_chBPA-STINGa20 ADC
 # Scenario 2 (interne) : IC50_MEP=155 nM, IC50_CMP=0.015 nM
 #
-# ATTENTION : Slope_CMP ≈ 748 000 (EXTREME -- borne theorique)
+# ATTENTION : Slope_CMP ~ 747 000 000 (EXTREME -- Slope_tdxd_hu x 190/0.015)
+#             kill_CMP=1 garanti des la 1ere dose pour 100% des patients
 # PK : placeholder T-DXd (Yin 2020)
 # IIV log-normal (sans mixture) : ω_CL=0.35 ω_V1=0.20 ω_Slope=0.33
 ############################################################
