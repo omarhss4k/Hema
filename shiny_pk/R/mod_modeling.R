@@ -301,21 +301,38 @@ mod_modeling_server <- function(id, pk_data) {
       ft <- active_fit()$fit
 
       rse_vec <- setNames(unname(ft$rse), gsub("^%RSE_","", names(ft$rse)))
+      n_comp  <- active_fit()$n_comp
+
+      # Unités dépendent des données entrées (dose en mg/kg, conc en µg/mL)
+      units_primary <- if (n_comp == 1L)
+        c("L/kg/h", "L/kg")
+      else
+        c("L/kg/h", "L/kg", "L/kg", "L/kg/h")
+
+      units_derived <- if (n_comp == 1L)
+        c("h-1", "h")
+      else
+        c("h-1", "h-1", "h-1", "h-1", "h-1", "h", "h", "L/kg")
+
+      units_crit <- rep("—", 4)
 
       primary_df <- data.frame(
         Parametre = names(ft$params),
+        Unite     = units_primary,
         Valeur    = unname(ft$params),
         `%RSE`    = unname(rse_vec[names(ft$params)]),
         check.names = FALSE
       )
       derived_df <- data.frame(
         Parametre = names(unlist(ft$derived)),
+        Unite     = units_derived[seq_along(unlist(ft$derived))],
         Valeur    = unname(unlist(ft$derived)),
         `%RSE`    = NA_real_,
         check.names = FALSE
       )
       crit_df <- data.frame(
         Parametre = c("AIC","BIC","RSS","n_obs"),
+        Unite     = units_crit,
         Valeur    = c(ft$AIC, ft$BIC, ft$RSS, as.numeric(ft$n_obs)),
         `%RSE`    = NA_real_,
         check.names = FALSE
