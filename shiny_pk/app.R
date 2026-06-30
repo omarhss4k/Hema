@@ -8,6 +8,9 @@ library(readxl)
 library(writexl)
 library(dplyr)
 library(PKNCA)
+library(gridExtra)
+library(grid)
+library(ggplot2)
 
 source("R/pk_functions.R")
 source("R/mod_data.R")
@@ -94,7 +97,7 @@ server <- function(input, output, session) {
   data_out  <- mod_data_server("data")
   nca_out   <- mod_nca_server("nca",       data_out)
   model_out <- mod_modeling_server("modeling", data_out)
-  mod_export_server("export", nca_out, model_out)
+  mod_export_server("export", nca_out, model_out, data_out)
 
   # ── Tab gating : disable on startup, enable after data validation ────────────
 
