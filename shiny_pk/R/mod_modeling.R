@@ -273,19 +273,19 @@ mod_modeling_server <- function(id, pk_data) {
       rse_vec <- setNames(unname(ft$rse), gsub("^%RSE_","", names(ft$rse)))
 
       primary_df <- data.frame(
-        Paramètre = names(ft$params),
+        Parametre = names(ft$params),
         Valeur    = unname(ft$params),
         `%RSE`    = unname(rse_vec[names(ft$params)]),
         check.names = FALSE
       )
       derived_df <- data.frame(
-        Paramètre = names(unlist(ft$derived)),
+        Parametre = names(unlist(ft$derived)),
         Valeur    = unname(unlist(ft$derived)),
         `%RSE`    = NA_real_,
         check.names = FALSE
       )
       crit_df <- data.frame(
-        Paramètre = c("AIC","BIC","RSS","n_obs"),
+        Parametre = c("AIC","BIC","RSS","n_obs"),
         Valeur    = c(ft$AIC, ft$BIC, ft$RSS, as.numeric(ft$n_obs)),
         `%RSE`    = NA_real_,
         check.names = FALSE
