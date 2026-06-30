@@ -73,6 +73,20 @@ mod_modeling_ui <- function(id) {
               plotly::plotlyOutput(ns("obs_vs_pred"), height = "340px")
             )
           )
+        ),
+        nav_panel(
+          title = tagList(tags$i(class = "bi bi-people me-1"), "Individuel"),
+          layout_columns(
+            col_widths = c(12),
+            card(
+              card_header(uiOutput(ns("ind_table_header"))),
+              DT::dataTableOutput(ns("ind_table"))
+            )
+          ),
+          card(
+            card_header("Courbes individuelles"),
+            plotly::plotlyOutput(ns("ind_plot"), height = "420px")
+          )
         )
       )
     )
@@ -84,7 +98,8 @@ mod_modeling_ui <- function(id) {
 mod_modeling_server <- function(id, pk_data) {
   moduleServer(id, function(input, output, session) {
 
-    fit_result <- reactiveVal(NULL)
+    fit_result  <- reactiveVal(NULL)
+    ind_result  <- reactiveVal(NULL)
 
     # ── Fitting ───────────────────────────────────────────────────────────────
 
@@ -132,8 +147,23 @@ mod_modeling_server <- function(id, pk_data) {
         sim1 <- if (!is.null(fit1$params)) sim_for(fit1, 1L) else NULL
         sim2 <- if (!is.null(fit2$params)) sim_for(fit2, 2L) else NULL
 
+        setProgress(0.9, detail = "Estimation individuelle…")
+
+        ind1 <- tryCatch(
+          fit_pk_individual(d$data, d$dose_col, d$time_col, d$conc_col, d$animal_col,
+                            n_comp = 1L, init_params = inits[c("CL","V1")]),
+          error = function(e) NULL
+        )
+        ind2 <- tryCatch(
+          fit_pk_individual(d$data, d$dose_col, d$time_col, d$conc_col, d$animal_col,
+                            n_comp = 2L, init_params = inits),
+          error = function(e) NULL
+        )
+
         setProgress(1)
       })
+
+      ind_result(list(ind1 = ind1, ind2 = ind2))
 
       for (info in list(list(fit1,"1-cmt"), list(fit2,"2-cmt"))) {
         ft <- info[[1]]; label <- info[[2]]
@@ -402,6 +432,80 @@ mod_modeling_server <- function(id, pk_data) {
         yaxis = list(title = "Concentration observée", type = "log"),
         hovermode = "closest",
         legend = list(title = list(text = "Animal"))
+      )
+    })
+
+    # ── Individual results ────────────────────────────────────────────────────
+
+    active_ind <- reactive({
+      req(ind_result())
+      r      <- ind_result()
+      choice <- input$plot_model
+      if (choice == "best") {
+        aic1 <- fit_result()$fit1$AIC; aic2 <- fit_result()$fit2$AIC
+        choice <- if (!is.null(aic1) && !is.null(aic2) && is.finite(aic1) && is.finite(aic2))
+          if (aic1 <= aic2) "1" else "2" else "2"
+      }
+      if (choice == "1") list(ind=r$ind1, n_comp=1L, label="1 compartiment")
+      else               list(ind=r$ind2, n_comp=2L, label="2 compartiments")
+    })
+
+    output$ind_table_header <- renderUI({
+      req(active_ind())
+      tagList("Parametres individuels — ",
+              tags$span(class="text-primary", active_ind()$label))
+    })
+
+    output$ind_table <- DT::renderDataTable({
+      req(active_ind())
+      df <- active_ind()$ind
+      if (is.null(df)) return(NULL)
+
+      num_cols <- names(df)[sapply(df, is.numeric)]
+      DT::datatable(df, rownames=FALSE,
+        options=list(dom="t", scrollX=TRUE, pageLength=20),
+        class="compact stripe"
+      ) %>% DT::formatRound(columns=num_cols, digits=4)
+    })
+
+    output$ind_plot <- plotly::renderPlotly({
+      req(active_ind(), pk_data())
+      ai <- active_ind()
+      d  <- pk_data()
+      df <- d$data
+
+      if (is.null(ai$ind)) return(plotly::plot_ly())
+
+      t_max <- max(df[[d$time_col]], na.rm=TRUE)
+      t_sim <- seq(0, t_max, length.out=300)
+
+      p <- plotly::plot_ly()
+
+      for (i in seq_len(nrow(ai$ind))) {
+        row   <- ai$ind[i, ]
+        id    <- row$animal
+        sub   <- df[df[[d$animal_col]] == id, ]
+        dv    <- mean(sub[[d$dose_col]], na.rm=TRUE)
+
+        params <- c(CL=row$CL, V1=row$V1)
+        if (ai$n_comp == 2L) params <- c(params, V2=row$V2, Q=row$Q)
+
+        s <- simulate_pk(params, dv, t_sim, ai$n_comp)
+
+        p <- plotly::add_trace(p, x=sub[[d$time_col]], y=sub[[d$conc_col]],
+          type="scatter", mode="markers", name=id,
+          marker=list(size=9, symbol="circle-open", line=list(width=2)),
+          legendgroup=id, showlegend=TRUE)
+
+        p <- plotly::add_trace(p, x=s$time, y=s$conc,
+          type="scatter", mode="lines", name=paste0(id," (fit)"),
+          line=list(width=2), legendgroup=id, showlegend=FALSE)
+      }
+
+      p %>% plotly::layout(
+        xaxis=list(title=paste0("Temps (",d$time_col,")")),
+        yaxis=list(title=paste0("Concentration (",d$conc_col,")"), type="log"),
+        hovermode="x unified"
       )
     })
 

@@ -296,6 +296,52 @@ fit_pk_model <- function(df, dose_col, time_col, conc_col, animal_col,
   )
 }
 
+# ── Individual fitting ────────────────────────────────────────────────────────
+
+#' Fit PK model individually for each animal
+#' @return data.frame : one row per animal with params, %RSE, AIC, BIC
+fit_pk_individual <- function(df, dose_col, time_col, conc_col, animal_col,
+                              n_comp = 2, init_params = NULL) {
+  animals <- unique(df[[animal_col]])
+
+  rows <- lapply(animals, function(id) {
+    sub <- df[df[[animal_col]] == id, ]
+    fit <- tryCatch(
+      fit_pk_model(sub, dose_col, time_col, conc_col, animal_col,
+                   n_comp = n_comp, init_params = init_params),
+      error = function(e) NULL
+    )
+    if (is.null(fit)) {
+      row <- data.frame(animal = as.character(id), stringsAsFactors = FALSE)
+    } else {
+      rse_clean <- setNames(unname(fit$rse), gsub("^%RSE_", "", names(fit$rse)))
+      row <- data.frame(
+        animal      = as.character(id),
+        CL          = unname(fit$params["CL"]),
+        V1          = unname(fit$params["V1"]),
+        stringsAsFactors = FALSE
+      )
+      if (n_comp == 2L) {
+        row$V2 <- unname(fit$params["V2"])
+        row$Q  <- unname(fit$params["Q"])
+      }
+      derived <- unlist(fit$derived)
+      for (nm in names(derived)) row[[nm]] <- unname(derived[nm])
+      row$AIC  <- fit$AIC
+      row$BIC  <- fit$BIC
+      row$`%RSE_CL` <- unname(rse_clean["CL"])
+      row$`%RSE_V1` <- unname(rse_clean["V1"])
+      if (n_comp == 2L) {
+        row$`%RSE_V2` <- unname(rse_clean["V2"])
+        row$`%RSE_Q`  <- unname(rse_clean["Q"])
+      }
+    }
+    row
+  })
+
+  do.call(dplyr::bind_rows, rows)
+}
+
 # ── Simulation ────────────────────────────────────────────────────────────────
 
 #' Simulate IV bolus PK profile via analytical solution (exact for 1- and 2-cmt)
