@@ -35,7 +35,7 @@ mod_modeling_ui <- function(id) {
       ),
 
       hr(),
-      tags$b("Modèle affiché dans le graphique"),
+      tags$b("Modèle affiché"),
       radioButtons(
         ns("plot_model"), NULL,
         choices  = c("Meilleur (AIC)" = "best",
@@ -48,18 +48,32 @@ mod_modeling_ui <- function(id) {
     # ── Right panel : results ─────────────────────────────────────────────────
     tagList(
 
-      # Comparison card
       uiOutput(ns("comparison_card")),
 
-      # Detailed parameters of selected model
       card(
         card_header(uiOutput(ns("param_table_header"))),
         DT::dataTableOutput(ns("param_table"))
       ),
 
-      card(
-        card_header("Ajustement : observé vs prédit"),
-        plotly::plotlyOutput(ns("fit_plot"), height = "420px")
+      navset_card_tab(
+        nav_panel(
+          title = tagList(tags$i(class = "bi bi-graph-up me-1"), "Ajustement"),
+          plotly::plotlyOutput(ns("fit_plot"), height = "420px")
+        ),
+        nav_panel(
+          title = tagList(tags$i(class = "bi bi-scatter-chart me-1"), "Résidus"),
+          layout_columns(
+            col_widths = c(6, 6),
+            card(
+              card_header("Résidus vs Temps"),
+              plotly::plotlyOutput(ns("resid_vs_time"), height = "340px")
+            ),
+            card(
+              card_header("Observé vs Prédit"),
+              plotly::plotlyOutput(ns("obs_vs_pred"), height = "340px")
+            )
+          )
+        )
       )
     )
   )
@@ -72,7 +86,7 @@ mod_modeling_server <- function(id, pk_data) {
 
     fit_result <- reactiveVal(NULL)
 
-    # ── Fitting — triggered by button, fits BOTH models ───────────────────────
+    # ── Fitting ───────────────────────────────────────────────────────────────
 
     observeEvent(input$run_fit, {
       d <- isolate(req(pk_data()))
@@ -87,32 +101,16 @@ mod_modeling_server <- function(id, pk_data) {
       withProgress(message = "Optimisation PK en cours…", value = 0, {
 
         setProgress(0.1, detail = "Ajustement 1 compartiment…")
-
         fit1 <- tryCatch(
-          fit_pk_model(
-            df          = d$data,
-            dose_col    = d$dose_col,
-            time_col    = d$time_col,
-            conc_col    = d$conc_col,
-            animal_col  = d$animal_col,
-            n_comp      = 1L,
-            init_params = inits[c("CL", "V1")]
-          ),
+          fit_pk_model(d$data, d$dose_col, d$time_col, d$conc_col, d$animal_col,
+                       n_comp = 1L, init_params = inits[c("CL","V1")]),
           error = function(e) list(ok = FALSE, message = conditionMessage(e))
         )
 
         setProgress(0.4, detail = "Ajustement 2 compartiments…")
-
         fit2 <- tryCatch(
-          fit_pk_model(
-            df          = d$data,
-            dose_col    = d$dose_col,
-            time_col    = d$time_col,
-            conc_col    = d$conc_col,
-            animal_col  = d$animal_col,
-            n_comp      = 2L,
-            init_params = inits
-          ),
+          fit_pk_model(d$data, d$dose_col, d$time_col, d$conc_col, d$animal_col,
+                       n_comp = 2L, init_params = inits),
           error = function(e) list(ok = FALSE, message = conditionMessage(e))
         )
 
@@ -137,22 +135,15 @@ mod_modeling_server <- function(id, pk_data) {
         setProgress(1)
       })
 
-      # Notifications
-      for (info in list(list(fit1, "1-cmt"), list(fit2, "2-cmt"))) {
+      for (info in list(list(fit1,"1-cmt"), list(fit2,"2-cmt"))) {
         ft <- info[[1]]; label <- info[[2]]
         if (!is.null(ft$convergence) && ft$convergence != 0)
-          showNotification(
-            paste0(label, " — convergence douteuse (code ", ft$convergence, ")"),
-            type = "warning", duration = 10
-          )
+          showNotification(paste0(label, " — convergence douteuse (code ", ft$convergence, ")"),
+                           type = "warning", duration = 10)
       }
-
       showNotification("Optimisation terminée.", type = "message", duration = 4)
 
-      fit_result(list(
-        fit1  = fit1,  sim1 = sim1,
-        fit2  = fit2,  sim2 = sim2
-      ))
+      fit_result(list(fit1=fit1, sim1=sim1, fit2=fit2, sim2=sim2))
     })
 
     # ── Comparison card ───────────────────────────────────────────────────────
@@ -161,72 +152,55 @@ mod_modeling_server <- function(id, pk_data) {
       req(fit_result())
       r <- fit_result()
 
-      aic1 <- r$fit1$AIC;  bic1 <- r$fit1$BIC
-      aic2 <- r$fit2$AIC;  bic2 <- r$fit2$BIC
+      aic1 <- r$fit1$AIC; bic1 <- r$fit1$BIC
+      aic2 <- r$fit2$AIC; bic2 <- r$fit2$BIC
+      fmt  <- function(x) if (is.null(x) || !is.finite(x)) "—" else sprintf("%.1f", x)
 
-      fmt <- function(x) if (is.null(x) || !is.finite(x)) "—" else sprintf("%.1f", x)
-
-      winner_aic <- if (!is.null(aic1) && !is.null(aic2) && is.finite(aic1) && is.finite(aic2)) {
-        if (aic1 < aic2) "1-cmt" else "2-cmt"
-      } else "—"
+      winner_aic <- if (!is.null(aic1) && !is.null(aic2) && is.finite(aic1) && is.finite(aic2))
+        if (aic1 < aic2) "1-cmt" else "2-cmt" else "—"
 
       delta_aic <- if (!is.null(aic1) && !is.null(aic2) && is.finite(aic1) && is.finite(aic2))
         sprintf("ΔAIC = %.1f", abs(aic2 - aic1)) else ""
 
-      winner_color <- function(model) {
-        if (winner_aic == model) "text-success fw-bold" else "text-muted"
-      }
+      winner_color <- function(m) if (winner_aic == m) "text-success fw-bold" else "text-muted"
 
       card(
         card_header(tagList(
-          tags$i(class = "bi bi-bar-chart-fill me-1"),
-          "Comparaison des modèles",
+          tags$i(class = "bi bi-bar-chart-fill me-1"), "Comparaison des modèles",
           tags$span(class = "ms-2 badge bg-info text-dark", delta_aic)
         )),
         layout_columns(
           col_widths = c(6, 6),
-
-          # 1-compartiment
           card(
             class = if (winner_aic == "1-cmt") "border-success" else "",
             card_header(tagList(
               tags$span(class = winner_color("1-cmt"), "1 compartiment"),
-              if (winner_aic == "1-cmt")
-                tags$span(class = "ms-2 badge bg-success", "Meilleur AIC")
+              if (winner_aic == "1-cmt") tags$span(class = "ms-2 badge bg-success", "Meilleur AIC")
             )),
-            tags$table(
-              class = "table table-sm mb-0",
-              tags$tbody(
-                tags$tr(tags$td("AIC"), tags$td(class = winner_color("1-cmt"), fmt(aic1))),
-                tags$tr(tags$td("BIC"), tags$td(fmt(bic1))),
-                tags$tr(tags$td("n param."), tags$td("2  (CL, V1)"))
-              )
-            )
+            tags$table(class = "table table-sm mb-0", tags$tbody(
+              tags$tr(tags$td("AIC"), tags$td(class = winner_color("1-cmt"), fmt(aic1))),
+              tags$tr(tags$td("BIC"), tags$td(fmt(bic1))),
+              tags$tr(tags$td("n param."), tags$td("2  (CL, V1)"))
+            ))
           ),
-
-          # 2-compartiments
           card(
             class = if (winner_aic == "2-cmt") "border-success" else "",
             card_header(tagList(
               tags$span(class = winner_color("2-cmt"), "2 compartiments"),
-              if (winner_aic == "2-cmt")
-                tags$span(class = "ms-2 badge bg-success", "Meilleur AIC")
+              if (winner_aic == "2-cmt") tags$span(class = "ms-2 badge bg-success", "Meilleur AIC")
             )),
-            tags$table(
-              class = "table table-sm mb-0",
-              tags$tbody(
-                tags$tr(tags$td("AIC"), tags$td(class = winner_color("2-cmt"), fmt(aic2))),
-                tags$tr(tags$td("BIC"), tags$td(fmt(bic2))),
-                tags$tr(tags$td("n param."), tags$td("4  (CL, V1, V2, Q)"))
-              )
-            )
+            tags$table(class = "table table-sm mb-0", tags$tbody(
+              tags$tr(tags$td("AIC"), tags$td(class = winner_color("2-cmt"), fmt(aic2))),
+              tags$tr(tags$td("BIC"), tags$td(fmt(bic2))),
+              tags$tr(tags$td("n param."), tags$td("4  (CL, V1, V2, Q)"))
+            ))
           )
         ),
         if (nchar(delta_aic) > 0) tags$p(
           class = "text-muted small mt-2 mb-0 px-1",
-          if (abs(r$fit2$AIC - r$fit1$AIC) < 2)
-            "ΔAIC < 2 : les deux modèles sont équivalents — préférer le plus parcimonieux (1-cmt)."
-          else if (abs(r$fit2$AIC - r$fit1$AIC) < 10)
+          if (abs(aic2 - aic1) < 2)
+            "ΔAIC < 2 : modèles équivalents — préférer le plus parcimonieux (1-cmt)."
+          else if (abs(aic2 - aic1) < 10)
             "ΔAIC 2–10 : légère préférence pour le meilleur AIC."
           else
             "ΔAIC > 10 : forte préférence pour le meilleur AIC."
@@ -234,35 +208,60 @@ mod_modeling_server <- function(id, pk_data) {
       )
     })
 
-    # ── Active model (for table + plot) ──────────────────────────────────────
+    # ── Active model ──────────────────────────────────────────────────────────
 
     active_fit <- reactive({
       req(fit_result())
-      r <- fit_result()
-
+      r      <- fit_result()
       choice <- input$plot_model
       if (choice == "best") {
         aic1 <- r$fit1$AIC; aic2 <- r$fit2$AIC
-        if (!is.null(aic1) && !is.null(aic2) && is.finite(aic1) && is.finite(aic2))
-          choice <- if (aic1 <= aic2) "1" else "2"
-        else
-          choice <- "2"
+        choice <- if (!is.null(aic1) && !is.null(aic2) && is.finite(aic1) && is.finite(aic2))
+          if (aic1 <= aic2) "1" else "2" else "2"
       }
+      if (choice == "1") list(fit=r$fit1, sim=r$sim1, n_comp=1L, label="1 compartiment")
+      else               list(fit=r$fit2, sim=r$sim2, n_comp=2L, label="2 compartiments")
+    })
 
-      if (choice == "1")
-        list(fit = r$fit1, sim = r$sim1, n_comp = 1L, label = "1 compartiment")
-      else
-        list(fit = r$fit2, sim = r$sim2, n_comp = 2L, label = "2 compartiments")
+    # ── Residuals helper ──────────────────────────────────────────────────────
+
+    resid_df <- reactive({
+      req(active_fit(), pk_data())
+      af <- active_fit()
+      d  <- pk_data()
+      df <- d$data
+
+      dose_by_grp <- tapply(df[[d$dose_col]], df[[d$animal_col]], mean, na.rm = TRUE)
+
+      rows <- lapply(unique(df[[d$animal_col]]), function(id) {
+        sub  <- df[df[[d$animal_col]] == id, ]
+        dv   <- unname(dose_by_grp[as.character(id)])
+        t_obs <- sub[[d$time_col]]
+        C_obs <- sub[[d$conc_col]]
+        C_pred <- if (af$n_comp == 1L)
+          .pred_1comp(dv, af$fit$params["CL"], af$fit$params["V1"], t_obs)
+        else
+          .pred_2comp(dv, af$fit$params["CL"], af$fit$params["V1"],
+                      af$fit$params["V2"], af$fit$params["Q"], t_obs)
+        ok <- is.finite(C_pred) & C_pred > 0 & C_obs > 0
+        data.frame(
+          animal   = as.character(id),
+          time     = t_obs[ok],
+          obs      = C_obs[ok],
+          pred     = C_pred[ok],
+          resid    = log(C_obs[ok]) - log(C_pred[ok]),
+          stringsAsFactors = FALSE
+        )
+      })
+      do.call(rbind, rows)
     })
 
     # ── Parameter table header ────────────────────────────────────────────────
 
     output$param_table_header <- renderUI({
       req(active_fit())
-      tagList(
-        "Paramètres estimés — ",
-        tags$span(class = "text-primary", active_fit()$label)
-      )
+      tagList("Paramètres estimés — ",
+              tags$span(class = "text-primary", active_fit()$label))
     })
 
     # ── Parameter table ───────────────────────────────────────────────────────
@@ -271,10 +270,7 @@ mod_modeling_server <- function(id, pk_data) {
       req(active_fit())
       ft <- active_fit()$fit
 
-      rse_vec <- setNames(
-        unname(ft$rse),
-        gsub("^%RSE_", "", names(ft$rse))
-      )
+      rse_vec <- setNames(unname(ft$rse), gsub("^%RSE_","", names(ft$rse)))
 
       primary_df <- data.frame(
         Paramètre = names(ft$params),
@@ -282,120 +278,130 @@ mod_modeling_server <- function(id, pk_data) {
         `%RSE`    = unname(rse_vec[names(ft$params)]),
         check.names = FALSE
       )
-
-      derived_vals <- unlist(ft$derived)
       derived_df <- data.frame(
-        Paramètre = names(derived_vals),
-        Valeur    = unname(derived_vals),
+        Paramètre = names(unlist(ft$derived)),
+        Valeur    = unname(unlist(ft$derived)),
         `%RSE`    = NA_real_,
         check.names = FALSE
       )
-
       crit_df <- data.frame(
-        Paramètre = c("AIC", "BIC", "RSS", "n_obs"),
+        Paramètre = c("AIC","BIC","RSS","n_obs"),
         Valeur    = c(ft$AIC, ft$BIC, ft$RSS, as.numeric(ft$n_obs)),
         `%RSE`    = NA_real_,
         check.names = FALSE
       )
-
       tbl <- rbind(primary_df, derived_df, crit_df)
 
-      DT::datatable(
-        tbl,
-        rownames = FALSE,
-        options  = list(
-          dom        = "t",
-          pageLength = 25,
-          scrollX    = FALSE,
-          columnDefs = list(
-            list(
-              targets = 1,
-              render  = DT::JS(
-                "function(data, type, row) {",
-                "  if (type !== 'display' || data === null || data === undefined) return data;",
-                "  var v = parseFloat(data);",
-                "  if (isNaN(v)) return data;",
-                "  if (Math.abs(v) > 0 && Math.abs(v) < 0.001) return v.toExponential(4);",
-                "  return v.toPrecision(5);",
-                "}"
-              )
-            )
-          )
-        ),
-        class = "compact stripe"
-      ) %>%
-        DT::formatRound("%RSE", digits = 2)
+      DT::datatable(tbl, rownames = FALSE,
+        options = list(dom="t", pageLength=25, scrollX=FALSE,
+          columnDefs = list(list(targets=1, render=DT::JS(
+            "function(data,type,row){",
+            "  if(type!=='display'||data===null||data===undefined) return data;",
+            "  var v=parseFloat(data); if(isNaN(v)) return data;",
+            "  if(Math.abs(v)>0&&Math.abs(v)<0.001) return v.toExponential(4);",
+            "  return v.toPrecision(5);","}"
+          )))
+        ), class="compact stripe"
+      ) %>% DT::formatRound("%RSE", digits=2)
     })
 
-    # ── Fit plot — both curves overlaid ──────────────────────────────────────
+    # ── Fit plot ──────────────────────────────────────────────────────────────
 
     output$fit_plot <- plotly::renderPlotly({
       req(fit_result(), pk_data())
       r  <- fit_result()
       d  <- pk_data()
       df <- d$data
+      p  <- plotly::plot_ly()
 
-      animals <- unique(df[[d$animal_col]])
-      p <- plotly::plot_ly()
-
-      # Observed points
-      for (anim in animals) {
+      for (anim in unique(df[[d$animal_col]])) {
         sub <- df[df[[d$animal_col]] == anim, ]
-        p <- plotly::add_trace(
-          p,
-          x      = sub[[d$time_col]],
-          y      = sub[[d$conc_col]],
-          type   = "scatter",
-          mode   = "markers",
-          name   = as.character(anim),
-          marker = list(size = 9, symbol = "circle-open", line = list(width = 2))
-        )
+        p <- plotly::add_trace(p, x=sub[[d$time_col]], y=sub[[d$conc_col]],
+          type="scatter", mode="markers", name=as.character(anim),
+          marker=list(size=9, symbol="circle-open", line=list(width=2)))
       }
 
-      # 1-cmt curves (dotted)
       if (!is.null(r$sim1)) {
         for (dv in sort(unique(r$sim1$dose))) {
-          sub_sim <- r$sim1[r$sim1$dose == dv, ]
-          p <- plotly::add_trace(
-            p,
-            x          = sub_sim$time,
-            y          = sub_sim$conc,
-            type       = "scatter",
-            mode       = "lines",
-            name       = paste0("1-cmt ", dv, " mg/kg"),
-            line       = list(width = 1.5, dash = "dot", color = "grey"),
-            showlegend = TRUE,
-            legendgroup = "1cmt"
-          )
+          s <- r$sim1[r$sim1$dose==dv,]
+          p <- plotly::add_trace(p, x=s$time, y=s$conc, type="scatter", mode="lines",
+            name=paste0("1-cmt ",dv," mg/kg"),
+            line=list(width=1.5, dash="dot", color="grey"),
+            legendgroup="1cmt", showlegend=TRUE)
         }
       }
-
-      # 2-cmt curves (dashed)
       if (!is.null(r$sim2)) {
         for (dv in sort(unique(r$sim2$dose))) {
-          sub_sim <- r$sim2[r$sim2$dose == dv, ]
-          p <- plotly::add_trace(
-            p,
-            x          = sub_sim$time,
-            y          = sub_sim$conc,
-            type       = "scatter",
-            mode       = "lines",
-            name       = paste0("2-cmt ", dv, " mg/kg"),
-            line       = list(width = 2, dash = "dash"),
-            showlegend = TRUE,
-            legendgroup = "2cmt"
-          )
+          s <- r$sim2[r$sim2$dose==dv,]
+          p <- plotly::add_trace(p, x=s$time, y=s$conc, type="scatter", mode="lines",
+            name=paste0("2-cmt ",dv," mg/kg"),
+            line=list(width=2, dash="dash"),
+            legendgroup="2cmt", showlegend=TRUE)
         }
       }
 
       p %>% plotly::layout(
-        xaxis     = list(title = paste0("Temps  (", d$time_col, ")")),
-        yaxis     = list(
-          title = paste0("Concentration  (", d$conc_col, ")"),
-          type  = "log"
-        ),
-        legend    = list(title = list(text = "Série")),
-        hovermode = "x unified"
+        xaxis=list(title=paste0("Temps (",d$time_col,")")),
+        yaxis=list(title=paste0("Concentration (",d$conc_col,")"), type="log"),
+        legend=list(title=list(text="Série")), hovermode="x unified"
+      )
+    })
+
+    # ── Résidus vs Temps ──────────────────────────────────────────────────────
+
+    output$resid_vs_time <- plotly::renderPlotly({
+      req(resid_df())
+      rd <- resid_df()
+      p  <- plotly::plot_ly()
+
+      for (anim in unique(rd$animal)) {
+        sub <- rd[rd$animal == anim, ]
+        p <- plotly::add_trace(p, x=sub$time, y=sub$resid,
+          type="scatter", mode="markers",
+          name=anim, marker=list(size=8))
+      }
+
+      p %>% plotly::layout(
+        xaxis = list(title = "Temps"),
+        yaxis = list(title = "Résidu log (obs - prédit)", zeroline = TRUE,
+                     zerolinecolor = "#e74c3c", zerolinewidth = 2),
+        shapes = list(list(type="line", x0=0, x1=1, xref="paper",
+                           y0=0, y1=0, line=list(color="#e74c3c", width=2, dash="dash"))),
+        hovermode = "closest",
+        legend = list(title = list(text = "Animal"))
+      )
+    })
+
+    # ── Observé vs Prédit ─────────────────────────────────────────────────────
+
+    output$obs_vs_pred <- plotly::renderPlotly({
+      req(resid_df())
+      rd  <- resid_df()
+      lim <- range(c(rd$obs, rd$pred), na.rm = TRUE)
+
+      p <- plotly::plot_ly()
+
+      for (anim in unique(rd$animal)) {
+        sub <- rd[rd$animal == anim, ]
+        p <- plotly::add_trace(p, x=sub$pred, y=sub$obs,
+          type="scatter", mode="markers",
+          name=anim, marker=list(size=8))
+      }
+
+      # Ligne d'identité y = x
+      p <- plotly::add_trace(p,
+        x = lim, y = lim,
+        type = "scatter", mode = "lines",
+        name = "y = x",
+        line = list(color="#e74c3c", width=2, dash="dash"),
+        showlegend = TRUE
+      )
+
+      p %>% plotly::layout(
+        xaxis = list(title = "Concentration prédite", type = "log"),
+        yaxis = list(title = "Concentration observée", type = "log"),
+        hovermode = "closest",
+        legend = list(title = list(text = "Animal"))
       )
     })
 
