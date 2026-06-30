@@ -22,6 +22,7 @@ library(deSolve)
 source("../etape2_carboplatin_humain/parameters_human.R")
 source("../shared/parameters_FORNARI_CORRECT.R")
 source("../etape5_tdxd_humain/parameters_tdxd_human.R")
+source("../etape3_tdxd_rat/parameters_tdxd_rat.R")
 source("../etape3_tdxd_rat/pkpd_tdxd_rat.R")
 source("parameters_bpa_human.R")
 
