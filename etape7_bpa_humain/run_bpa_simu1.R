@@ -128,7 +128,7 @@ for (i in 1:N_patients) {
     error = function(e) NULL
   )
 
-  if (!is.null(out) && nrow(out) == n_times) {
+  if (!is.null(out) && nrow(out) > 10) {
     results$CL_ADC[i]      <- pars_i$CL_ADC
     results$V1_ADC[i]      <- pars_i$V1_ADC
     results$Slope_CMP[i]   <- pars_i$Slope_CMP
@@ -143,10 +143,13 @@ for (i in 1:N_patients) {
     results$Grade_Anemia[i]<- ctcae_anemia(results$RBC_nadir[i], pars_typ$RBC0)
     results$Grade_Plt[i]   <- ctcae_plt(results$Plt_nadir[i])
 
-    mat_neut[, i] <- out$Neut
-    mat_rbc[, i]  <- out$RBC
-    mat_plt[, i]  <- out$Plt
-    mat_adc[, i]  <- out$C_ADC1
+    # Stocker profil complet si lsoda a convergé jusqu'au bout
+    if (nrow(out) >= n_times) {
+      mat_neut[, i] <- out$Neut[1:n_times]
+      mat_rbc[, i]  <- out$RBC[1:n_times]
+      mat_plt[, i]  <- out$Plt[1:n_times]
+      mat_adc[, i]  <- out$C_ADC1[1:n_times]
+    }
   }
 
   if (i %% pb_step == 0)
@@ -156,11 +159,13 @@ for (i in 1:N_patients) {
 results <- results[!is.na(results$Neut_nadir), ]
 n_ok    <- nrow(results)
 # Supprimer colonnes sans profil
-ok_cols <- !is.na(mat_neut[1, ])
+ok_cols  <- colSums(!is.na(mat_neut)) > (n_times / 2)
 mat_neut <- mat_neut[, ok_cols, drop = FALSE]
 mat_rbc  <- mat_rbc[,  ok_cols, drop = FALSE]
 mat_plt  <- mat_plt[,  ok_cols, drop = FALSE]
 mat_adc  <- mat_adc[,  ok_cols, drop = FALSE]
+has_profiles <- ncol(mat_neut) > 0
+cat(sprintf("  Profils complets : %d/%d patients\n", ncol(mat_neut), n_ok))
 
 saveRDS(results, "results/bpa_simu1_results.rds")
 
@@ -251,6 +256,7 @@ grade_cols <- c(G0 = "#2166ac", G1 = "#74add1", G2 = "#f4a582",
 pdf("results/BPA_simu1_VPC.pdf", width = 14, height = 10)
 
 # ── Page 1 : profils temporels ───────────────────────────
+if (has_profiles) {
 par(mfrow = c(2, 2), mar = c(4, 4.5, 3.5, 1.5))
 
 # 1. ADC concentration
@@ -293,6 +299,7 @@ abline(h = rbc0, lty = 1, col = "grey30", lwd = 1)
           hcols  = c("grey50", "orange", "red", "darkred"),
           hlabs  = c("G1", "G2", "G3", "G4"))
 abline(h = pars_typ$Plt0, lty = 1, col = "grey30", lwd = 1)
+} # end has_profiles
 
 # ── Page 2 : grades + nadirs ─────────────────────────────
 par(mfrow = c(2, 3), mar = c(4, 4.2, 3, 1))
