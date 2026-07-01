@@ -109,12 +109,15 @@ omega_Slope_CMP <- 0.33
 omega_Slope_MEP <- 0.33
 
 # -- Protocole NHP ------------------------------------------------------------
-# Etude de toxicite preclinique typique : Q3W x 4 cycles
+# Q6W au lieu de Q3W : la T½ allometrique BPA singe (~19-20j) est proche de
+# l'intervalle Q3W (21j) -> accumulation continue sans creux net par cycle.
+# Q6W (42j) laisse le temps a une vraie elimination entre doses.
 BW_KG      <- BW_NHP_KG
 DOSE_MGKG  <- 5.4
 TINFU_H    <- 1.5
-INTERVAL_H <- 21 * 24
+INTERVAL_H <- 42 * 24
 N_CYCLES   <- 4
+FREQ_LABEL <- sprintf("Q%dW", round(INTERVAL_H / (7*24)))   # libelle dynamique (Q3W, Q6W, ...)
 
 # -- Resume -------------------------------------------------------------------
 cat("╔══════════════════════════════════════════════════════╗\n")

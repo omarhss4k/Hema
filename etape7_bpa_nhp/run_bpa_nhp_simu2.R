@@ -48,8 +48,8 @@ ctcae_plt <- function(x) {
 
 cat(sprintf("\n[NHP Simu 2] IC50_CMP=%.1f nM  Slope_CMP=%.0f\n",
             IC50_CMP_BPA_s2, Slope_CMP_BPA_s2))
-cat(sprintf("BW=%.0f kg  %.1f mg/kg Q3W x%d  N=%d animaux\n\n",
-            BW_KG, DOSE_MGKG, N_CYCLES, N_animals))
+cat(sprintf("BW=%.0f kg  %.1f mg/kg %s x%d  N=%d animaux\n\n",
+            BW_KG, DOSE_MGKG, FREQ_LABEL, N_CYCLES, N_animals))
 
 results <- data.frame(
   id          = 1:N_animals,
@@ -131,8 +131,8 @@ pct_a <- round(100 * tab_a / n_ok, 1)
 pct_p <- round(100 * tab_p / n_ok, 1)
 
 cat("\n=============================================================\n")
-cat(sprintf("  BPA NHP SIMU 1 -- %.1f mg/kg Q3W x%d (N=%d animaux)\n",
-            DOSE_MGKG, N_CYCLES, n_ok))
+cat(sprintf("  BPA NHP SIMU 2 -- %.1f mg/kg %s x%d (N=%d animaux)\n",
+            DOSE_MGKG, FREQ_LABEL, N_CYCLES, n_ok))
 cat(sprintf("  Slope_MEP=%.3f | Slope_CMP=%.1f\n", Slope_MEP_BPA_s2, Slope_CMP_BPA_s2))
 cat("  NEUTROPENIE :")
 for (g in grade_order) cat(sprintf("  %s=%.0f%%", g, pct_n[g]))
@@ -209,8 +209,8 @@ if (has_profiles) {
                 hlines = c(pars_typ$RBC0*0.67, pars_typ$RBC0*0.80),
                 hcols  = c("darkred","orange"))
 
-  mtext(sprintf("BPA NHP Simu2 -- %.1f mg/kg Q3W x%d  |  Slope_CMP=%.0f  Slope_MEP=%.3f  (N=%d)",
-                DOSE_MGKG, N_CYCLES, Slope_CMP_BPA_s2, Slope_MEP_BPA_s2, n_ok),
+  mtext(sprintf("BPA NHP Simu2 -- %.1f mg/kg %s x%d  |  Slope_CMP=%.0f  Slope_MEP=%.3f  (N=%d)",
+                DOSE_MGKG, FREQ_LABEL, N_CYCLES, Slope_CMP_BPA_s2, Slope_MEP_BPA_s2, n_ok),
         outer = TRUE, cex = 1.1, font = 2)
 }
 
