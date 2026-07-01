@@ -111,6 +111,14 @@ bpa_pars$V1_ADC <- BPA_V1_hu
 bpa_pars$V2_ADC <- BPA_V2_hu
 bpa_pars$Q_ADC  <- BPA_Q_hu
 
+# -- Neutraliser la decroissance de relargage cycle-dependante T-DXd ----------
+# krel_power=-0.137 et krel_factor=0.830 (Yin 2020) sont calibres sur la
+# cinetique de clivage du linker T-DXd (GGFG) -- non pertinents pour BPA.
+# Sans cette neutralisation, Krel(cycle) decroit -> chaque cycle libere
+# moins de payload -> toxicite artificiellement attenuee des le cycle 2.
+bpa_pars$krel_power  <- 0
+bpa_pars$krel_factor <- 1.0
+
 # -- IIV (log-normal) ---------------------------------------------------------
 omega_CL        <- 0.35   # Yin 2020
 omega_V1        <- 0.20   # Yin 2020
