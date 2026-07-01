@@ -3,12 +3,13 @@
 # Simulation de population -- anti-FLT3_chBPA-STINGa20 ADC
 # Scenario 1 (sous-traitant) : IC50_MEP=155 nM, IC50_CMP=7.8 nM
 #
-# PK : placeholder T-DXd (Yin 2020) -- à remplacer par PK BPA
-# PD : Fornari 2019 + Slopes calibrés par ratio IC50 vs T-DXd
+# PK : 1-compartiment (Shiny souris, allometrie mouse->human)
+#        CL=0.000422 L/kg/h, V1=0.0787 L/kg -> T½_hu~39j
+# PD : Fornari 2019 + Slopes calibres par ratio IC50 vs T-DXd
 #   Slope_CMP ~ 1 440 000  (Slope_tdxd_hu x 190/7.8,  ~24x T-DXd)
 #   Slope_MEP ~ 1 190      (Slope_tdxd_hu x 184/155,  ~1.19x T-DXd)
 #
-# IIV log-normal (sans mixture) : ω_CL=0.35 ω_V1=0.20 ω_Slope=0.33
+# IIV log-normal (sans mixture) : omega_CL=0.35 omega_V1=0.20 omega_Slope=0.33
 ############################################################
 library(deSolve)
 
@@ -16,7 +17,7 @@ source("../etape2_carboplatin_humain/parameters_human.R")
 source("../shared/parameters_FORNARI_CORRECT.R")
 source("../etape5_tdxd_humain/parameters_tdxd_human.R")
 source("../etape3_tdxd_rat/parameters_tdxd_rat.R")
-source("../etape3_tdxd_rat/pkpd_tdxd_rat.R")
+source("pkpd_bpa_1cmt.R")
 source("parameters_bpa_human.R")
 
 dir.create("results", showWarnings = FALSE)
@@ -29,8 +30,10 @@ pars_pd_hu[["k_dam"]] <- NULL
 pars_pd_hu[["k_rep"]] <- NULL
 pars_typ <- c(pars_pd_hu, bpa_pars)
 
+# Etat initial 1-cmt : sans C_ADC2
+bpa_state0_1cmt <- c(C_ADC1 = 0, C_DXd = 0, C_DXd_ic = 0, Damage = 0)
 state_pd_hu <- init_state[!names(init_state) %in% c("C1", "C2", "Damage")]
-state0_hu   <- c(tdxd_hu_state0, state_pd_hu)
+state0_hu   <- c(bpa_state0_1cmt, state_pd_hu)
 
 times_hu <- seq(0, 126 * 24, by = 6)
 n_times  <- length(times_hu)
@@ -81,7 +84,7 @@ for (i in 1:N_patients) {
     Tinfu_h = TINFU_H, interval_h = INTERVAL_H, n_cycles = N_CYCLES)
 
   out <- tryCatch(suppressMessages(suppressWarnings(as.data.frame(lsoda(
-    y = state0_hu, times = times_hu, func = pkpd_tdxd_fornari, parms = pars_i,
+    y = state0_hu, times = times_hu, func = pkpd_bpa_fornari_1cmt, parms = pars_i,
     rtol = 1e-5, atol = 1e-7, maxsteps = 500000)))), error = function(e) NULL)
 
   if (!is.null(out) && nrow(out) > 10) {
