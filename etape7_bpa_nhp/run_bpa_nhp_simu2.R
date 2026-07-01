@@ -79,9 +79,12 @@ for (i in 1:N_animals) {
     dose_mgkg = DOSE_MGKG, BW_kg = BW_KG,
     Tinfu_h = TINFU_H, interval_h = INTERVAL_H, n_cycles = N_CYCLES)
 
+  # hmax borne le pas interne du solveur : sans cela, lsoda peut "sauter"
+  # une infusion courte (Tinfu_h) une fois le systeme stabilise entre deux
+  # cycles espaces, manquant silencieusement les doses suivantes.
   out <- tryCatch(suppressMessages(suppressWarnings(as.data.frame(lsoda(
     y = state0, times = times, func = pkpd_bpa_fornari_1cmt, parms = pars_i,
-    rtol = 1e-5, atol = 1e-7, maxsteps = 500000)))), error = function(e) NULL)
+    rtol = 1e-5, atol = 1e-7, maxsteps = 500000, hmax = TINFU_H / 2)))), error = function(e) NULL)
 
   if (!is.null(out) && nrow(out) > 10) {
     results$CL_ADC[i]      <- pars_i$CL_ADC
