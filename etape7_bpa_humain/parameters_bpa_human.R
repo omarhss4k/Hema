@@ -19,8 +19,9 @@ source("../shared/parameters_FORNARI_CORRECT.R")
 source("../etape5_tdxd_humain/parameters_tdxd_human.R")
 
 # -- IC50 reference T-DXd converties en nM (MW_ADC = 148000 g/mol) -----------
-IC50_MEP_tdxd_nM <- 27.3e3 / 148000 * 1e6   # 184.5 nM
-IC50_CMP_tdxd_nM <- 28.1e3 / 148000 * 1e6   # 189.9 nM
+# C[nM] = C[ug/mL] * 1e6 / MW[g/mol]  (ex: 27.3 ug/mL / 148000 g/mol * 1e6 = 184.5 nM)
+IC50_MEP_tdxd_nM <- 27.3 / 148000 * 1e6   # 184.5 nM
+IC50_CMP_tdxd_nM <- 28.1 / 148000 * 1e6   # 189.9 nM
 
 # -- IC50 BPA (CFU humaines, en nM) -------------------------------------------
 IC50_MEP_BPA_nM  <- 155     # erythroid (sous-traitant -- interne = ND)
@@ -29,17 +30,17 @@ IC50_CMP_BPA_s2  <- 0.015   # myeloid Simu 2 (interne)
 
 # -- Slopes BPA calcules par ratio IC50 ---------------------------------------
 # Slope_BPA = Slope_tdxd_human * (IC50_tdxd_nM / IC50_BPA_nM)
-# Rappel : Slope_sensitive_tdxd (humain) ~ 59 000 (calibre FDA BLA)
-#          Slope_MEP_sensitive_tdxd      ~ 1 000
+# Rappel : Slope_sensitive_tdxd (humain) = 59.1  (calibre FDA BLA)
+#          Slope_MEP_sensitive_tdxd      = 1.00
 #
 # Simu 1 (sous-traitant) :
-#   Slope_CMP = 59000 * (190/7.8)   ~ 1 440 000  (24x plus potent que T-DXd)
-#   Slope_MEP = 1000  * (184/155)   ~     1 190
+#   Slope_CMP = 59.1 * (189.9/7.8)   ~ 1 439   (24x plus potent que T-DXd)
+#   Slope_MEP = 1.00 * (184.5/155)   ~ 1.19
 Slope_MEP_BPA_s1 <- Slope_MEP_sensitive_tdxd * (IC50_MEP_tdxd_nM / IC50_MEP_BPA_nM)
 Slope_CMP_BPA_s1 <- Slope_sensitive_tdxd     * (IC50_CMP_tdxd_nM / IC50_CMP_BPA_s1)
 
 # Simu 2 (interne) :
-#   Slope_CMP = 59000 * (190/0.015) ~ 747 000 000 (EXTREME : 12 667x plus potent)
+#   Slope_CMP = 59.1 * (189.9/0.015) ~ 748 000 (EXTREME : 12 667x plus potent)
 #   -> kill_CMP = 1 garanti des la premiere dose pour 100% des patients
 Slope_MEP_BPA_s2 <- Slope_MEP_sensitive_tdxd * (IC50_MEP_tdxd_nM / IC50_MEP_BPA_nM)
 Slope_CMP_BPA_s2 <- Slope_sensitive_tdxd     * (IC50_CMP_tdxd_nM / IC50_CMP_BPA_s2)

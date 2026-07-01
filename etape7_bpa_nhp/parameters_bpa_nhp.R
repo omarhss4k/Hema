@@ -15,8 +15,9 @@ source("../shared/parameters_FORNARI_CORRECT.R")
 source("../etape5_tdxd_humain/parameters_tdxd_human.R")
 
 # -- IC50 reference T-DXd [nM] ------------------------------------------------
-IC50_MEP_tdxd_nM <- 27.3e3 / 148000 * 1e6   # 184.5 nM
-IC50_CMP_tdxd_nM <- 28.1e3 / 148000 * 1e6   # 189.9 nM
+# C[nM] = C[ug/mL] * 1e6 / MW[g/mol]  (ex: 27.3 ug/mL / 148000 g/mol * 1e6 = 184.5 nM)
+IC50_MEP_tdxd_nM <- 27.3 / 148000 * 1e6   # 184.5 nM
+IC50_CMP_tdxd_nM <- 28.1 / 148000 * 1e6   # 189.9 nM
 
 # -- IC50 BPA (CFU humaines, en nM) -------------------------------------------
 IC50_MEP_BPA_nM  <- 155
