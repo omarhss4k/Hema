@@ -119,6 +119,17 @@ bpa_pars$Q_ADC  <- BPA_Q_hu
 bpa_pars$krel_power  <- 0
 bpa_pars$krel_factor <- 1.0
 
+# -- Neutraliser k_int (internalisation mediee par la cible T-DXd = HER2) -----
+# k_int=0.01507 h-1 (Vasalou 2024) represente la degradation de l'ADC via
+# liaison/internalisation HER2 -- sans rapport avec la cible BPA (FLT3),
+# pour laquelle aucune donnee d'internalisation n'est disponible.
+# BUG MAJEUR : ce terme s'ajoute directement dans l'ODE
+#   dC_ADC1 = rate_in/V1 - (CL_ADC/V1 + k_int) * C1
+# et domine totalement la clearance allometrique du BPA (T½ reelle chute
+# de ~39j a ~2j), ecrasant Damage a quasi-zero des le cycle 2 et masquant
+# toute toxicite cumulative entre cycles Q3W.
+bpa_pars$k_int <- 0
+
 # -- IIV (log-normal) ---------------------------------------------------------
 omega_CL        <- 0.35   # Yin 2020
 omega_V1        <- 0.20   # Yin 2020
