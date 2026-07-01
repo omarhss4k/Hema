@@ -54,16 +54,15 @@ Slope_CMP_BPA_s2 <- Slope_sensitive_tdxd     * (IC50_CMP_tdxd_nM / IC50_CMP_BPA_
 BW_MOUSE_KG <- 0.025   # 25 g (poids moyen souris)
 
 # ---- Valeurs souris issues du Shiny [L/kg/h et L/kg] ----
-BPA_CL_mouse_per_kg  <- tdxd_pars_hu$CL_ADC / BW_MOUSE_KG   # REMPLACER [L/kg/h]
-BPA_V1_mouse_per_kg  <- tdxd_pars_hu$V1_ADC / BW_MOUSE_KG   # REMPLACER [L/kg]
-BPA_V2_mouse_per_kg  <- tdxd_pars_hu$V2_ADC / BW_MOUSE_KG   # REMPLACER [L/kg]
-BPA_Q_mouse_per_kg   <- tdxd_pars_hu$Q_ADC  / BW_MOUSE_KG   # REMPLACER [L/kg/h]
-
-# Exemple :
-# BPA_CL_mouse_per_kg <- 0.85   # L/kg/h
-# BPA_V1_mouse_per_kg <- 0.077  # L/kg
-# BPA_V2_mouse_per_kg <- 0.15   # L/kg
-# BPA_Q_mouse_per_kg  <- 0.12   # L/kg/h
+# Shiny PK : n=2 souris (1 mg/kg et 5 mg/kg), temps 0-500h
+# Modele 1-cmt retenu (AIC=-16.0) malgre ΔAIC=13.5 en faveur du 2-cmt :
+#   -> 2-cmt : V2 %RSE=128%, Q %RSE=259% -> parametres non identifiables
+#   -> 1-cmt : CL %RSE=22.7%, V1 %RSE=34.7% -> fiables
+# Pour la simulation 2-cmt du modele PD Fornari : V2=V1, Q~0 (monocomp.)
+BPA_CL_mouse_per_kg  <- 0.000422   # L/kg/h  (1-cmt Shiny, %RSE=22.7%)
+BPA_V1_mouse_per_kg  <- 0.0787     # L/kg    (1-cmt Shiny, %RSE=34.7%)
+BPA_V2_mouse_per_kg  <- 0.0787     # L/kg    (= V1, 1-cmt effectif)
+BPA_Q_mouse_per_kg   <- 0.000001   # L/kg/h  (negligeable -> 1-cmt effectif)
 
 # ---- Allometrie souris -> humain ------------------------------------------
 # Regles standard (Boxenbaum 1982) :
