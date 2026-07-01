@@ -130,6 +130,27 @@ bpa_pars$krel_factor <- 1.0
 # toute toxicite cumulative entre cycles Q3W.
 bpa_pars$k_int <- 0
 
+# -- Plafonner le kill via modele Emax (au lieu du lineaire Slope*D_kill) -----
+# Le modele lineaire par defaut (pkpd_tdxd_rat.R, branche sans ED50_kill) n'a
+# AUCUN plafond : kill_CMP = Slope_CMP * D_kill peut depasser 1 des que Damage
+# franchit le seuil D0, ce qui rend (1-kill_CMP) negatif -> ablation totale
+# instantanee. Avec Slope_CMP~1439, la moindre dose franchissant D0 produit
+# une "falaise" tout-ou-rien (ex. observe : 0.1 mg/kg = G0 partout, 0.25 mg/kg
+# = G4 chez 77% des animaux), non realiste biologiquement.
+#
+# En fixant ED50_kill, l'ODE bascule sur la branche Emax deja codee :
+#   Emax_X   = min(1, Slope_X * ED50_kill)   (calcule automatiquement)
+#   kill_X   = Emax_X * D_kill / (ED50_kill + D_kill)   (borne a Emax_X <= 1)
+# Slope_CMP (1439) sature Emax_CMP=1 quelle que soit la dose testee (ablation
+# totale possible a dose suffisante), tandis que Slope_MEP (1.19) plus faible
+# donne Emax_MEP=min(1, 1.19*ED50_kill) < 1 -- preserve le ratio de puissance
+# CMP/MEP calibre via IC50 tout en bornant chaque compartiment a un effet
+# maximal plausible.
+# ED50_kill=0.10 choisi ~ ordre de grandeur du D_kill observe autour de
+# 0.4-0.5 mg/kg (milieu de la gamme de dose testee) -- HYPOTHESE a
+# recalibrer des que des donnees dose-toxicite BPA reelles seront dispo.
+bpa_pars$ED50_kill <- 0.10
+
 # -- IIV (log-normal) ---------------------------------------------------------
 omega_CL        <- 0.35   # Yin 2020
 omega_V1        <- 0.20   # Yin 2020
