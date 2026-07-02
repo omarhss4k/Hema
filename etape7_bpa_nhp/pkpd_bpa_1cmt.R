@@ -111,7 +111,15 @@ pkpd_bpa_fornari_1cmt <- function(time, state, pars) {
     dT3_Mono <- a_Mono * T2_Mono - a_Mono * T3_Mono
     dMono    <- a_Mono * T3_Mono - k_circ_Mono * Mono
 
-    drug_ret <- delta_Ret * Slope_MEP * k_prol_Ret * Damage
+    # Kill direct erythroide : homogeneise avec le kill progeniteur.
+    #   Mode Emax (ED50_kill defini) : reutilise kill_MEP borne [0,Emx_MEP<=1]
+    #     et le meme seuil D0 (via D_kill) -> coherent avec kill_MPP/CMP/MEP,
+    #     evite que l'anemie soit pilotee par un terme non plafonne.
+    #   Mode lineaire (retrocompat rat) : Slope_MEP * Damage, non borne.
+    drug_ret <- if (!is.null(pars$ED50_kill))
+                  delta_Ret * kill_MEP * k_prol_Ret
+                else
+                  delta_Ret * Slope_MEP * k_prol_Ret * Damage
 
     dT1_Ret <- k_prol_Ret * f_prol_Ret * T1_Ret - drug_ret * T1_Ret +
                k_tr_Ret  * MEP - a_Ret * T1_Ret
@@ -121,7 +129,11 @@ pkpd_bpa_fornari_1cmt <- function(time, state, pars) {
     dRet    <- a_Ret * T3_Ret - k_circ_Ret * Ret
     dRBC    <- k_circ_Ret * Ret - k_circ_RBC * RBC
 
-    drug_plt <- delta_Plt * Slope_MEP * k_prol_Plt * Damage
+    # Kill direct plaquettaire : meme homogeneisation que drug_ret.
+    drug_plt <- if (!is.null(pars$ED50_kill))
+                  delta_Plt * kill_MEP * k_prol_Plt
+                else
+                  delta_Plt * Slope_MEP * k_prol_Plt * Damage
 
     dT1_Plt <- k_prol_Plt * f_prol_Plt * T1_Plt - drug_plt * T1_Plt +
                k_tr_Plt  * MEP - a_Plt * T1_Plt
