@@ -33,7 +33,7 @@ for (i in 1:N) {
   rc<-runif(1)
   pt$kmax_CMP <- if(rc<0.66) 0.02*exp(rnorm(1,0,0.3))
                  else if(rc<0.80) 0.13*exp(rnorm(1,0,0.3))
-                 else 0.90*exp(rnorm(1,0,0.35))
+                 else 0.80*exp(rnorm(1,0,0.35))
   # Mixture kmax_ret_prol (anemie) : proportions FDA (34/33/33)  [iter.5]
   rm<-runif(1)
   pt$kmax_ret_prol <- if(rm<0.34) 0.005*exp(rnorm(1,0,0.3))
