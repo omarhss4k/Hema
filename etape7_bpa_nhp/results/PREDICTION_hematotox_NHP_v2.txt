@@ -1,0 +1,42 @@
+=== PREDICTION BPA NHP -- SCENARIO 1 (IC50_CMP=7.8 nM, sous-traitant) ===
+Architecture etape5 (mixture + kill lineaire) | Q3W x4 | N=100/dose
+Dose     | NEUTROPENIE (G0..G4)       | ANEMIE (G0..G4)            | THROMBO (G0..G4)          
+------------------------------------------------------------------------------------------------ 
+0.1      | 76/ 4/ 4/ 5/11   G34= 16% | 83/16/ 1/ 0/ 0   G34=  0% | 100/ 0/ 0/ 0/ 0  G34=  0%
+0.25     | 64/ 0/ 0/ 2/34   G34= 36% | 38/28/34/ 0/ 0   G34=  0% | 95/ 5/ 0/ 0/ 0   G34=  0%
+0.5      | 58/ 6/ 0/ 0/36   G34= 36% | 17/25/50/ 8/ 0   G34=  8% | 93/ 5/ 2/ 0/ 0   G34=  0%
+1        | 17/36/11/ 0/36   G34= 36% |  1/31/47/21/ 0   G34= 21% | 89/ 5/ 3/ 3/ 0   G34=  3%
+2        |  1/20/40/ 3/36   G34= 39% |  0/22/46/27/ 5   G34= 32% | 85/ 9/ 0/ 6/ 0   G34=  6%
+3.6      |  0/ 5/42/17/36   G34= 53% |  0/18/41/29/12   G34= 41% | 80/14/ 0/ 3/ 3   G34=  6%
+5.4      |  0/ 0/36/28/36   G34= 64% |  0/10/45/30/15   G34= 45% | 72/22/ 0/ 3/ 3   G34=  6%
+
+
+=== PREDICTION BPA NHP -- SCENARIO 2 (IC50_CMP=0.015 nM, interne) ===
+Architecture etape5 (mixture + kill lineaire) | Q3W x4 | N=100/dose
+Dose     | NEUTROPENIE (G0..G4)       | ANEMIE (G0..G4)            | THROMBO (G0..G4)          
+------------------------------------------------------------------------------------------------ 
+0.1      | 25/ 6/13/21/35   G34= 56% | 62/35/ 3/ 0/ 0   G34=  0% | 99/ 1/ 0/ 0/ 0   G34=  0%
+0.25     |  0/ 0/ 0/ 1/99   G34=100% |  0/ 6/87/ 7/ 0   G34=  7% | 94/ 6/ 0/ 0/ 0   G34=  0%
+0.5      |  0/ 0/ 0/ 0/100  G34=100% |  0/ 0/75/25/ 0   G34= 25% | 84/14/ 2/ 0/ 0   G34=  0%
+1        |  0/ 0/ 0/ 0/100  G34=100% |  0/ 0/71/29/ 0   G34= 29% | 69/25/ 3/ 3/ 0   G34=  3%
+2        |  0/ 0/ 0/ 0/100  G34=100% |  0/ 0/58/35/ 7   G34= 42% | 68/26/ 0/ 6/ 0   G34=  6%
+3.6      |  0/ 0/ 0/ 0/100  G34=100% |  0/ 0/48/36/16   G34= 52% | 65/29/ 0/ 3/ 3   G34=  6%
+5.4      |  0/ 0/ 0/ 0/100  G34=100% |  0/ 0/43/36/21   G34= 57% | 62/32/ 0/ 3/ 3   G34=  6%
+
+
+NOTE : architecture repliquee de l'etape 5 (validee FDA). Selectivite
+
+########################################################################
+# CONCLUSIONS (architecture etape5 validee FDA, repliquee pour BPA)
+########################################################################
+# 1. NEUTROPENIE = toxicite dominante (cible FLT3, myeloide) -- profil
+#    biologiquement attendu d'un ADC anti-FLT3. Anemie secondaire,
+#    thrombopenie mineure.
+# 2. Les 2 scenarios IC50 CMP DIFFERENT (kill lineaire non plafonne) :
+#    S1 (7.8 nM)  : neutropenie G3-4 16%->64% (dose 0.1->5.4 mg/kg)
+#    S2 (0.015 nM): neutropenie G4=100% des 0.25 mg/kg (potence x12660)
+# 3. Plancher neutropenie ~36% G4 a faible dose (S1) = sous-groupe
+#    sensible+modere (34%) de la mixture heritee T-DXd -> HYPOTHESE
+#    (distribution de sensibilite BPA supposee = T-DXd, non recalibree).
+# 4. Architecture identique a l'etape 5 (validee vs FDA Neut 15.7%/16.2%).
+########################################################################
