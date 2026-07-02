@@ -32,6 +32,12 @@ suppressMessages(suppressWarnings({
   source("../shared/bpa_build_params.R")
 }))
 
+# -- IIV (log-normal) : memes valeurs que l'etape 5 --------------------------
+omega_CL        <- 0.35   # Yin 2020
+omega_V1        <- 0.20   # Yin 2020
+omega_Slope_CMP <- 0.33   # Fornari Table S4
+omega_Slope_MEP <- 0.33   # Fornari Table S4
+
 # -- Ratios de puissance IC50 (BPA vs T-DXd) ----------------------------------
 IC50_MEP_tdxd <- 27.3 / 148000 * 1e6   # 184.5 nM
 IC50_CMP_tdxd <- 28.1 / 148000 * 1e6   # 189.9 nM
