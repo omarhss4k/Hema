@@ -29,16 +29,16 @@ gN<-gA<-character(N)
 for (i in 1:N) {
   pt <- pt0
   pt$CL_ADC <- pt0$CL_ADC*exp(rnorm(1,0,0.35)); pt$V1_ADC <- pt0$V1_ADC*exp(rnorm(1,0,0.20))
-  # Mixture kmax_CMP (neutropenie) : proportions FDA (66/14/20)
+  # Mixture kmax_CMP (neutropenie) : proportions FDA (66/14/20)  [iter.2]
   rc<-runif(1)
   pt$kmax_CMP <- if(rc<0.66) 0.02*exp(rnorm(1,0,0.3))
-                 else if(rc<0.80) 0.15*exp(rnorm(1,0,0.3))
-                 else 0.48*exp(rnorm(1,0,0.3))
-  # Mixture kmax_ret_prol (anemie) : proportions FDA (34/33/33)
+                 else if(rc<0.80) 0.12*exp(rnorm(1,0,0.3))
+                 else 0.60*exp(rnorm(1,0,0.35))
+  # Mixture kmax_ret_prol (anemie) : proportions FDA (34/33/33)  [iter.2]
   rm<-runif(1)
   pt$kmax_ret_prol <- if(rm<0.34) 0.005*exp(rnorm(1,0,0.3))
-                      else if(rm<0.67) 0.04*exp(rnorm(1,0,0.3))
-                      else 0.18*exp(rnorm(1,0,0.5))
+                      else if(rm<0.67) 0.06*exp(rnorm(1,0,0.3))
+                      else 0.11*exp(rnorm(1,0,0.45))
   pt$rate_fun <- make_tdxd_infusion(dose_mgkg=5.4, BW_kg=70, Tinfu_h=1.5, interval_h=21*24, n_cycles=6)
   out<-tryCatch(as.data.frame(lsoda(y=state0,times=times,func=pkpd_emax_ic50,parms=pt,rtol=1e-5,atol=1e-7,maxsteps=5e5,hmax=0.75)),error=function(e)NULL)
   if(!is.null(out)){gN[i]<-cn(min(out$Neut,na.rm=T));gA[i]<-ca(min(out$RBC,na.rm=T),pt0$RBC0)}else gN[i]<-NA
