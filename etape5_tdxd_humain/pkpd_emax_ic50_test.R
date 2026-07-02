@@ -71,13 +71,18 @@ pkpd_emax_ic50 <- function(time, state, pars) {
     dT2_Mono <- a_Mono*T1_Mono - a_Mono*T2_Mono
     dT3_Mono <- a_Mono*T2_Mono - a_Mono*T3_Mono
     dMono    <- a_Mono*T3_Mono - k_circ_Mono*Mono
-    dT1_Ret <- k_prol_Ret*f_prol_Ret*T1_Ret + k_tr_Ret*MEP - a_Ret*T1_Ret
-    dT2_Ret <- k_prol_Ret*f_prol_Ret*T2_Ret + a_Ret*T1_Ret - a_Ret*T2_Ret
+    # Deplation des precurseurs erythro/mega PROLIFERANTS (T1/T2), meme EC50 (E_MEP)
+    #   -> reproduit l'atteinte des progeniteurs en division (cf drug_ret etape5),
+    #      necessaire car la deplation du MEP seul est tamponnee (RBC vie longue).
+    depl_retp <- kmax_ret_prol * E_MEP
+    depl_pltp <- kmax_plt_prol * E_MEP
+    dT1_Ret <- k_prol_Ret*f_prol_Ret*T1_Ret - depl_retp*T1_Ret + k_tr_Ret*MEP - a_Ret*T1_Ret
+    dT2_Ret <- k_prol_Ret*f_prol_Ret*T2_Ret - depl_retp*T2_Ret + a_Ret*T1_Ret - a_Ret*T2_Ret
     dT3_Ret <- a_Ret*T2_Ret - a_Ret*T3_Ret
     dRet    <- a_Ret*T3_Ret - k_circ_Ret*Ret
     dRBC    <- k_circ_Ret*Ret - k_circ_RBC*RBC
-    dT1_Plt <- k_prol_Plt*f_prol_Plt*T1_Plt + k_tr_Plt*MEP - a_Plt*T1_Plt
-    dT2_Plt <- k_prol_Plt*f_prol_Plt*T2_Plt + a_Plt*T1_Plt - a_Plt*T2_Plt
+    dT1_Plt <- k_prol_Plt*f_prol_Plt*T1_Plt - depl_pltp*T1_Plt + k_tr_Plt*MEP - a_Plt*T1_Plt
+    dT2_Plt <- k_prol_Plt*f_prol_Plt*T2_Plt - depl_pltp*T2_Plt + a_Plt*T1_Plt - a_Plt*T2_Plt
     dT3_Plt <- a_Plt*T2_Plt - a_Plt*T3_Plt
     dPlt    <- a_Plt*T3_Plt - k_circ_Plt*Plt
 
