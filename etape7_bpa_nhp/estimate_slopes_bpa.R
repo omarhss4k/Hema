@@ -27,9 +27,12 @@ TINFU_H <- 1.0        # duree d'infusion (h)         <-- verifier (bolus court ?
 ## ════════════════════════════════════════════════════════
 obs <- read.csv("data_obs/bpa_hema.csv", stringsAsFactors = FALSE)
 # lignees a ajuster (Neut via CMP ; Ret/RBC via MEP)
-lineages <- c("Neut","RBC","Ret")     # Plt/Mono optionnels
-# Exclure la phase de NEUTROPHILIE precoce (effet STING, hors modele Fornari) :
-FIT_FROM_DAY <- 8      # ne fitte que jour >= 8 (ajuster/mettre 0 pour tout inclure)
+lineages <- c("RBC","Ret")            # commencer par les plus propres ; ajouter "Neut" ensuite
+# Exclure TOUTE la phase de HAUSSE (rebond STING/reticulocytose, hors modele Fornari).
+# Le pic est a j8, il redescend vers j15 -> on ne fitte QUE la chute.
+FIT_FROM_DAY <- 15
+# D0 FIXE (ne pas l'estimer : sinon l'optim le fait fuir vers l'infini = kill eteint)
+D0_FIX <- 0.02
 
 ## ════════════════════════════════════════════════════════
 ## [3] MODELE (PK 2-cmt fixe + Fornari, kill lineaire Slope)
@@ -70,7 +73,7 @@ base_ind <- function(aid, L) {
 ## [4] OBJECTIF (SSR fold-change) + ESTIMATION
 ## ════════════════════════════════════════════════════════
 objective <- function(theta) {
-  SlopeCMP<-exp(theta[1]); SlopeMEP<-exp(theta[2]); D0<-exp(theta[3])
+  SlopeCMP<-exp(theta[1]); SlopeMEP<-exp(theta[2]); D0<-D0_FIX   # D0 fixe
   p <- build_pars(SlopeCMP, SlopeMEP, D0)
   ss<-0
   for (d in unique(obs$Dose_mgkg)) {
@@ -88,14 +91,14 @@ objective <- function(theta) {
   ss
 }
 
-cat("Estimation (Slope_CMP, Slope_MEP, D0) ...\n")
-fit <- optim(par=log(c(1, 1, 0.05)), fn=objective, method="Nelder-Mead",
+cat(sprintf("Estimation (Slope_CMP, Slope_MEP) | D0 fixe=%.3f | fit jour>=%d ...\n", D0_FIX, FIT_FROM_DAY))
+fit <- optim(par=log(c(1, 1)), fn=objective, method="Nelder-Mead",
              control=list(maxit=500, reltol=1e-7))
-S_CMP<-exp(fit$par[1]); S_MEP<-exp(fit$par[2]); D0<-exp(fit$par[3])
+S_CMP<-exp(fit$par[1]); S_MEP<-exp(fit$par[2]); D0<-D0_FIX
 cat(sprintf("\n=== PARAMETRES ESTIMES (BPA, donnees NHP reelles) ===\n"))
 cat(sprintf("  Slope_CMP = %.3f\n", S_CMP))
 cat(sprintf("  Slope_MEP = %.3f\n", S_MEP))
-cat(sprintf("  D0 (Damage_threshold) = %.4f\n", D0))
+cat(sprintf("  D0 (fixe) = %.4f\n", D0))
 cat(sprintf("  SSR finale = %.4f  (convergence=%d)\n", fit$value, fit$convergence))
 
 ## ════════════════════════════════════════════════════════
