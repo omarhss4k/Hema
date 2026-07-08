@@ -31,9 +31,19 @@ V2_ADC  <- 0.1170226727748038    # L
 TINFU_H <- 1.5                    # duree perfusion (h)
 DOSES   <- c(0.3, 1, 3)           # mg/kg
 
-## ═══════ [2] PARAMETRES IMMUNO-PD CALIBRES ═══════
+## ═══════ [2] IC50 in vitro (nM) -- PILOTENT LA SELECTIVITE ═══════
+# La sensibilite d'une lignee au signal STING est prise proportionnelle
+# a 1/IC50 (plus l'IC50 est basse, plus la lignee est deplete).
+# Un seul parametre d'INTENSITE globale ; le PARTAGE entre lignees vient
+# des IC50 reelles.  <-- remplace ces valeurs par les tiennes.
+IC50_myelo   <- 0.008615   # nM  (progeniteurs myeloides = CMP -> Neut/Mono)
+IC50_erythro <- 155        # nM  (progeniteurs erythroides = MEP -> Ret/RBC/Plt)
+IC50_REF     <- IC50_myelo # reference (lignee la plus sensible) = poids 1
+
+## ═══════ [2b] PARAMETRES IMMUNO-PD CALIBRES ═══════
 # Sa = mediateur AIGU (pulse, pic ~j4-6)  -> pilote le REBOND
 # Sc = mediateur CHRONIQUE (retarde, pic ~j11-15) -> pilote l'EFFONDREMENT
+K_DEPL_INTENSITY <- 0.60   # intensite GLOBALE de deplation (lignee de reference)
 mkp <- function() {
   p <- init_pars
   p$CL_ADC <- CL_ADC; p$V1_ADC <- V1_ADC; p$Q_ADC <- Q_ADC; p$V2_ADC <- V2_ADC
@@ -43,8 +53,11 @@ mkp <- function() {
   p$k_c    <- 0.030;  p$koff_c <- 0.004    # Sc : chronique auto-amplifie, lent
   # -- rebond (granulopoiese d'urgence, regime lineaire) --
   p$Emax_stim <- 300; p$EC50_stim <- 3
-  # -- deplation myeloide selective (erythroide epargnee) --
-  p$k_depl_CMP <- 0.60; p$k_depl_MPP <- 0.12; p$k_depl_MEP <- 1e-4
+  # -- deplation par lignee = intensite x (IC50_ref / IC50_lignee) --
+  #    => rapport myelo/erythro = IC50_erythro/IC50_myelo (~18000x)
+  p$k_depl_CMP <- K_DEPL_INTENSITY * (IC50_REF / IC50_myelo)     # myeloide
+  p$k_depl_MEP <- K_DEPL_INTENSITY * (IC50_REF / IC50_erythro)   # erythroide (~0)
+  p$k_depl_MPP <- p$k_depl_CMP * 0.2   # progeniteur multipotent (non lignee-specifique)
   p
 }
 
