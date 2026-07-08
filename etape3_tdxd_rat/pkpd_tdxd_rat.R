@@ -125,14 +125,24 @@ pkpd_tdxd_fornari <- function(time, state, pars) {
     f_prol_Plt <- pmin(pmax(r_pPlt, 0.2), 10)^gamma_prolTrans
 
     # Progéniteurs (Eq. 1, 4) -- kill via kill_MPP/CMP/MEP (Emax ou linéaire)
+    dMPP0_kdd <- if (!is.null(pars$k_depl_direct)) pars$k_depl_direct else 0
     dMPP <- k_stem * f_stem +
             k_prol_MPP * (1 - kill_MPP) * MPP -
             k_tr_CMP   * f_mat_CMP * MPP -
-            k_tr_MEP   * f_mat_MEP * MPP
+            k_tr_MEP   * f_mat_MEP * MPP -
+            (if (!is.null(pars$k_depl_direct_MPP)) pars$k_depl_direct_MPP else dMPP0_kdd) * pmax(0, Damage - (if (!is.null(pars$Damage_threshold)) pars$Damage_threshold else 0)) * MPP
+
+    # Deplation DIRECTE optionnelle des progeniteurs (guardee, OFF par defaut) :
+    # permet d'atteindre le G4 myeloide observe quand le blocage de prolif seul
+    # plafonne a G3. Actif seulement si pars$k_depl_direct est defini.
+    kdd      <- if (!is.null(pars$k_depl_direct)) pars$k_depl_direct else 0
+    depl_CMP <- kdd * D_kill
+    depl_MPP <- (if (!is.null(pars$k_depl_direct_MPP)) pars$k_depl_direct_MPP else kdd) * D_kill
 
     dCMP <- k_prol_CMP * (1 - kill_CMP) * CMP +
             k_tr_CMP   * f_mat_CMP * MPP -
-            (k_tr_Neut + k_tr_Mono) * CMP
+            (k_tr_Neut + k_tr_Mono) * CMP -
+            depl_CMP * CMP
 
     dMEP <- k_prol_MEP * (1 - kill_MEP) * MEP +
             k_tr_MEP   * f_mat_MEP * MPP -
