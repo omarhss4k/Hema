@@ -41,7 +41,7 @@ pkpd_bpa_immuno <- function(time, state, pars) {
     # Sc : reponse CHRONIQUE -- declenchee par Sa, auto-amplifiee, tardive
     dSc <- k_c*Sa*(1 - Sc/Smax) - koff_c*Sc
 
-    stim <- Emax_stim * Sa/(EC50_stim + Sa)   # rebond -> pilote par l'AIGU (Sa)
+    stim <- Emax_stim * Sa/(EC50_stim + Sa)   # rebond -> pilote par Sa (pic j4-6) ; EC50 grand = regime lineaire = epouse la forme de Sa
     depl_CMP <- k_depl_CMP * Sc                # effondrement -> pilote par le CHRONIQUE (Sc)
     depl_MEP <- k_depl_MEP * Sc
     depl_MPP <- k_depl_MPP * Sc
@@ -58,11 +58,13 @@ pkpd_bpa_immuno <- function(time, state, pars) {
     dCMP <- k_prol_CMP*CMP + k_tr_CMP*f_mat_CMP*MPP - (k_tr_Neut+k_tr_Mono)*CMP - depl_CMP*CMP
     dMEP <- k_prol_MEP*MEP + k_tr_MEP*f_mat_MEP*MPP - (k_tr_Ret+k_tr_Plt)*MEP - depl_MEP*MEP
 
-    # Neutrophiles : relargage terminal stimule par S (rebond = demargination)
+    # Neutrophiles : GRANULOPOIESE d'URGENCE stimulee par Sa (rebond).
+    # Le boost entre en AMONT (recrutement CMP->chaine) : il n'emerge dans le
+    # sang qu'apres le transit (MTT_Neut) -> pic RETARDE ~j6, pas demargination.
     a_Neut<-3/MTT_Neut
-    dT1_Neut<-k_tr_Neut*CMP-a_Neut*T1_Neut; dT2_Neut<-a_Neut*T1_Neut-a_Neut*T2_Neut
-    dT3_Neut<-a_Neut*T2_Neut-a_Neut*(1+stim)*T3_Neut
-    dNeut   <-a_Neut*(1+stim)*T3_Neut - k_circ_Neut*Neut
+    dT1_Neut<-k_tr_Neut*(1+stim)*CMP-a_Neut*T1_Neut; dT2_Neut<-a_Neut*T1_Neut-a_Neut*T2_Neut
+    dT3_Neut<-a_Neut*T2_Neut-a_Neut*T3_Neut
+    dNeut   <-a_Neut*T3_Neut - k_circ_Neut*Neut
     a_Mono<-3/MTT_Mono
     dT1_Mono<-k_tr_Mono*CMP-a_Mono*T1_Mono; dT2_Mono<-a_Mono*T1_Mono-a_Mono*T2_Mono
     dT3_Mono<-a_Mono*T2_Mono-a_Mono*T3_Mono; dMono<-a_Mono*T3_Mono-k_circ_Mono*Mono
