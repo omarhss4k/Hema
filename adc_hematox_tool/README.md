@@ -43,6 +43,16 @@ d'étude in vivo pour le nouveau composé.
 
 Toujours lancer **depuis la racine de l'outil** (`adc_hematox_tool/`).
 
+### Sous RStudio / Posit Workbench
+Ouvre le dossier `adc_hematox_tool/` **comme projet RStudio** (ou
+`Session ▸ Set Working Directory ▸ To Source File Location`), puis dans la
+console :
+```r
+source("scripts/predict.R")     # ou calibrate.R / run_all.R
+```
+Le répertoire de travail doit être la racine de l'outil. Les scripts ne
+contiennent **aucun `quit()`** : ils ne fermeront jamais ta session.
+
 ### 1. Prédire un composé (cas courant)
 ```bash
 Rscript scripts/predict.R

@@ -6,26 +6,20 @@
 ############################################################
 
 # -- charge tout le modele (ODE + parametres biologiques) --
+# Utilise source(..., chdir=TRUE) : le repertoire courant est change
+# TEMPORAIREMENT le temps de chaque source (pour resoudre les sous-source
+# en chemins locaux) puis restaure automatiquement -> pas de setwd() manuel,
+# pas de risque de laisser la session RStudio dans un mauvais repertoire.
 load_model <- function(model_dir = "model") {
-  old <- getwd()
-  # les parametres se sourcent entre eux en chemins locaux -> on se place dans model/
-  setwd(model_dir)
   suppressMessages(suppressWarnings({
     library(deSolve)
-    source("parameters_baseline.R")   # biologie de base (baselines PD)
-    source("parameters_fornari.R")    # feedbacks Fornari
-    source("parameters_adc.R")        # constantes PK/PD ADC (+ tdxd_hu_state0)
-    source("parameters_infusion.R")   # make_tdxd_infusion
-    source("model_ode.R")             # pkpd_tdxd_fornari
+    source(file.path(model_dir, "parameters_baseline.R"),  chdir = TRUE)
+    source(file.path(model_dir, "parameters_fornari.R"),   chdir = TRUE)
+    source(file.path(model_dir, "parameters_adc.R"),       chdir = TRUE)
+    source(file.path(model_dir, "parameters_infusion.R"),  chdir = TRUE)
+    source(file.path(model_dir, "model_ode.R"),            chdir = TRUE)
   }))
-  setwd(old)
-  # exporte les objets necessaires dans l'environnement appelant
-  invisible(list2env(list(
-    init_pars = init_pars, init_state = init_state,
-    tdxd_pars_hu = tdxd_pars_hu, tdxd_hu_state0 = tdxd_hu_state0,
-    make_tdxd_infusion = make_tdxd_infusion,
-    pkpd_tdxd_fornari = pkpd_tdxd_fornari
-  ), envir = parent.frame()))
+  invisible(TRUE)
 }
 
 # -- construit le jeu de parametres pour un composE + une IC50 + la calibration --
