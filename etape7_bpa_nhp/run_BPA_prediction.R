@@ -38,16 +38,26 @@ Q_BPA   <- 0.00102316504406689    # L/h
 TINFU_H <- 1.5
 DOSES   <- c(0.3, 1, 3)           # mg/kg
 
-## ═══════ [2] POTENCY : reference + IC50 du BPA ═══════
-# Reference = ADC cytotoxique calibre
-IC50_REF      <- 0.008615   # nM  (IC50 myelo ADC de reference)
-IC50ADC_REF   <- 27.70      # ug/mL (echelle de potency du modele calibre)
+## ═══════ [2] IC50 du BPA (a trancher) ═══════
 # IC50 myeloide du BPA -- A TRANCHER (2 valeurs candidates) :
 IC50_BPA_LIST <- c(0.015, 7.8)   # nM
 
-## ═══════ [3] PD CALIBRE (fige, = run_ADCcyto_G4.R) ═══════
-K_REP <- 0.002; ED50_KILL <- 0.1; EMAX_CMP <- 0.982
-K_DEPL_DIR <- 0.25; EMAX_MEP <- 1e-4
+## ═══════ [3] CALIBRATION lue depuis run_ADCcyto_G4.R ═══════
+# Lance d'abord :  Rscript run_ADCcyto_G4.R  -> ecrit results/calib_cyto.rds
+# La prediction BPA utilise AUTOMATIQUEMENT la calibration courante.
+CALIB_FILE <- "results/calib_cyto.rds"
+if (file.exists(CALIB_FILE)) {
+  cal <- readRDS(CALIB_FILE)
+  cat(sprintf("[calibration lue depuis %s]\n", CALIB_FILE))
+} else {
+  cat("[!] results/calib_cyto.rds absent -> valeurs par defaut (lance run_ADCcyto_G4.R pour re-caler)\n")
+  cal <- list(K_REP = 0.002, ED50_KILL = 0.1, EMAX_CMP = 0.982,
+              K_DEPL_DIR = 0.25, EMAX_MEP = 1e-4,
+              IC50_REF = 0.008615, IC50ADC_REF = 27.70)
+}
+K_REP <- cal$K_REP; ED50_KILL <- cal$ED50_KILL; EMAX_CMP <- cal$EMAX_CMP
+K_DEPL_DIR <- cal$K_DEPL_DIR; EMAX_MEP <- cal$EMAX_MEP
+IC50_REF <- cal$IC50_REF; IC50ADC_REF <- cal$IC50ADC_REF
 
 mkp <- function(ic50_bpa) {
   p <- c(init_pars, tdxd_pars_hu)

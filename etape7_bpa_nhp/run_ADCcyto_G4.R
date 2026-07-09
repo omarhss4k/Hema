@@ -43,6 +43,9 @@ ED50_KILL    <- 0.1
 EMAX_CMP     <- 0.982    # blocage proliferation myeloide (quasi-max)
 K_DEPL_DIR   <- 0.25     # deplation directe progeniteurs -> atteint le G4
 EMAX_MEP     <- 1e-4     # erythroide EPARGNE (IC50 erythro >> myelo)
+# Ancres de POTENCY de la reference (pour la translation vers d'autres ADC) :
+IC50_REF     <- 0.008615 # nM     IC50 myelo in vitro de CET ADC cytotoxique
+IC50ADC_REF  <- 27.70    # ug/mL  echelle IC50_ADC du modele a cette calibration
 
 mkp <- function() {
   p <- c(init_pars, tdxd_pars_hu)
@@ -115,3 +118,10 @@ for (d in names(sims)) {
     nM, o$td[which.min(o$Mono)], cn(nM * BASE_MONO)))
 }
 cat("-> results/ADCcyto_G4_neut_mono.pdf\n")
+
+## ═══════ [7] SAUVEGARDE DE LA CALIBRATION (alimente run_BPA_prediction.R) ═══════
+calib <- list(K_REP = K_REP, ED50_KILL = ED50_KILL, EMAX_CMP = EMAX_CMP,
+              K_DEPL_DIR = K_DEPL_DIR, EMAX_MEP = EMAX_MEP,
+              IC50_REF = IC50_REF, IC50ADC_REF = IC50ADC_REF)
+saveRDS(calib, "results/calib_cyto.rds")
+cat("-> results/calib_cyto.rds  (calibration -> lue par run_BPA_prediction.R)\n")
