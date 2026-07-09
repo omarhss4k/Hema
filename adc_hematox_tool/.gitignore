@@ -1,0 +1,4 @@
+# donnees confidentielles -- jamais versionnees
+data/*.csv
+results/*.pdf
+results/*.rds
