@@ -52,19 +52,30 @@ for (cc in list(c("Neut", init_pars$Neut0, "Neutrophiles"),
 }
 dev.off()
 
-## -- RESUME CONSOLE (grades CTCAE) --
+## -- RESUME CONSOLE + EXPORT CSV (grades CTCAE) --
 cat(sprintf("\n===== PREDICTION : %s =====\n", cp$name))
+tab <- data.frame()   # accumulateur pour l'export CSV
 for (ic in cp$IC50_myelo) {
   cat(sprintf("\n### IC50_myelo = %s nM  (IC50_ADC = %.0f ug/mL) ###\n",
       ic, calib$IC50ADC_scale * (ic / IC50_REF)))
   for (d in cp$doses) {
     p <- build_pars(cp, ic, calib, IC50_REF)
     o <- simulate(p, d, cp$BW_kg, cp$Tinfu_h)
-    nN <- min(o$Neut) / init_pars$Neut0; nM <- min(o$Mono) / init_pars$Mono0
+    nN <- min(o$Neut) / init_pars$Neut0; jN <- o$td[which.min(o$Neut)]
+    nM <- min(o$Mono) / init_pars$Mono0; jM <- o$td[which.min(o$Mono)]
+    gN <- ctcae_grade(nN, cp$baseline_neut); gM <- ctcae_grade(nM, cp$baseline_mono)
     cat(sprintf(" dose %-4s mg/kg : Neut %.2f@j%.0f (%s) | Mono %.2f@j%.0f (%s)\n",
-      d, nN, o$td[which.min(o$Neut)], ctcae_grade(nN, cp$baseline_neut),
-      nM, o$td[which.min(o$Mono)], ctcae_grade(nM, cp$baseline_mono)))
+      d, nN, jN, gN, nM, jM, gM))
+    tab <- rbind(tab, data.frame(
+      compose = cp$name, IC50_nM = ic, dose_mgkg = d,
+      neut_nadir_fold = round(nN, 3), neut_nadir_jour = round(jN),
+      neut_absolu = round(nN * cp$baseline_neut, 3), neut_grade = gN,
+      mono_nadir_fold = round(nM, 3), mono_nadir_jour = round(jM),
+      mono_absolu = round(nM * cp$baseline_mono, 3), mono_grade = gM))
   }
 }
+csv_out <- sprintf("results/prediction_%s_grades.csv", cp$name)
+write.csv(tab, csv_out, row.names = FALSE)
 cat(sprintf("\n-> results/prediction_%s.pdf\n", cp$name))
+cat(sprintf("-> %s\n", csv_out))
 if (!is.null(cp$note)) cat(sprintf("NOTE : %s\n", cp$note))

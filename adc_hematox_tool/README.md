@@ -58,6 +58,19 @@ Rscript scripts/calibrate.R
 + `results/calibration_fit.pdf` (validation vs profils observés).
 Nécessite les profils de référence dans `data/` (voir plus bas).
 
+### 3. Tout enchaîner (calage → prédiction)
+```bash
+Rscript scripts/run_all.R
+```
+Lance `calibrate.R` puis `predict.R` d'affilée.
+
+### Sorties
+- `results/prediction_<nom>.pdf` — courbes neutro + monocytes
+- `results/prediction_<nom>_grades.csv` — tableau (dose × IC50 → nadir,
+  jour, valeur absolue, grade CTCAE) réutilisable dans Excel
+- `results/calibration_fit.pdf` — validation du calage
+- `results/calibration.rds` — calibration persistée
+
 ---
 
 ## Le seul fichier à éditer : `config/compounds.R`
