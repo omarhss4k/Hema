@@ -48,8 +48,11 @@ NEW_COMPOUND <- list(
   pk_bw      = 0.02,
   IC50_myelo = c(0.015, 7.8),     # nM -- une ou plusieurs valeurs (fourchette)
   doses      = c(0.3, 1, 3),      # mg/kg
-  # baselines absolues (x10^9/L) pour convertir en grade CTCAE :
-  baseline_neut = 2.4, baseline_mono = 0.8,
+  # baselines absolues (x10^9/L) mesurees chez l'animal cible :
+  #   neut ~2-4 (abondant) ; mono ~0.2-0.5 (naturellement peu abondant).
+  #   Les GRADES CTCAE ne s'appliquent qu'aux NEUTROPHILES (pas de grade
+  #   standard pour la monocytopenie -> le "grade" mono est indicatif).
+  baseline_neut = 2.75, baseline_mono = 0.25,
   # note mecanistique (affichee dans la sortie) :
   note = "Si mecanisme immuno/STING : prediction cytotoxique = PLANCHER."
 )
