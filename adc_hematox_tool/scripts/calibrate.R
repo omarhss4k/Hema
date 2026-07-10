@@ -39,7 +39,9 @@ if (!file.exists(ref$profiles)) {
     L <- cc[1]; b <- as.numeric(cc[2])
     plot(NA, xlim = c(0, 32), ylim = c(0, 3.5), xlab = "Jour",
          ylab = "fold vs baseline", main = paste(cc[3], "—", ref$name, "(calage)"))
-    abline(h = 1, lty = 2, col = "grey60"); abline(h = 0.21, lty = 3, col = "red")
+    abline(h = 1, lty = 2, col = "grey60")
+    base_abs <- if (L == "Neut") 2.4 else 0.8
+    draw_grade_lines(base_abs, ymax = 3.5, xmax = 32)
     for (d in ref$doses) {
       p <- build_pars(ref, ref$IC50_myelo, CALIB, ref$IC50_myelo)  # ref sur elle-meme -> ratio 1
       o <- simulate(p, d, ref$BW_kg, ref$Tinfu_h, tmax_day = 35)

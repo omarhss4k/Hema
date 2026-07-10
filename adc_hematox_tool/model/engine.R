@@ -78,3 +78,18 @@ ctcae_grade <- function(fold, baseline_abs) {
   x <- fold * baseline_abs
   if (x < 0.5) "G4" else if (x < 1) "G3" else if (x < 1.5) "G2" else if (x < 2) "G1" else "G0"
 }
+
+# -- lignes de seuils CTCAE (neutropenie) sur un graphe en FOLD --
+# baseline_abs : baseline absolue (x10^9/L) ; ymax/xmax : cadre du plot.
+# Trace les seuils G1..G4 convertis en fold, seulement ceux qui rentrent.
+draw_grade_lines <- function(baseline_abs, ymax, xmax) {
+  seuils <- c(G1 = 2.0, G2 = 1.5, G3 = 1.0, G4 = 0.5)   # x10^9/L
+  couleurs <- c(G1 = "#f6c000", G2 = "#f08000", G3 = "#d84040", G4 = "#a01010")
+  for (g in names(seuils)) {
+    yf <- seuils[[g]] / baseline_abs
+    if (yf <= ymax) {
+      abline(h = yf, lty = 3, col = couleurs[[g]], lwd = 1)
+      text(xmax, yf, g, col = couleurs[[g]], cex = 0.7, adj = c(1, -0.3))
+    }
+  }
+}

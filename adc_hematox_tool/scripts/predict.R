@@ -36,7 +36,8 @@ for (cc in list(c("Neut", init_pars$Neut0, "Neutrophiles"),
   plot(NA, xlim = c(0, 40), ylim = c(0, 1.15), xlab = "Jour",
        ylab = "fold vs baseline", main = paste(cp$name, "predit —", cc[3]))
   abline(h = 1, lty = 2, col = "grey60")
-  abline(h = 0.21, lty = 3, col = "red"); text(39, 0.27, "G4", col = "red", cex = .7, adj = 1)
+  base_abs <- if (L == "Neut") cp$baseline_neut else cp$baseline_mono
+  draw_grade_lines(base_abs, ymax = 1.15, xmax = 40)
   for (di in seq_along(cp$doses)) {
     for (ii in seq_along(cp$IC50_myelo)) {
       p <- build_pars(cp, cp$IC50_myelo[ii], calib, IC50_REF)
