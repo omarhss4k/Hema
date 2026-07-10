@@ -93,6 +93,21 @@ Tout se règle là, sans toucher au moteur :
 - **`NEW_COMPOUND`** — PK + IC50 du composé à prédire. `IC50_myelo` accepte
   **plusieurs valeurs** (fourchette d'incertitude → plusieurs courbes).
 
+### Allométrie (PK d'une autre espèce)
+Si la PK du composé a été mesurée dans une **autre espèce** que la cible
+(ex. PK **souris**, prédiction **NHP**), mets dans `NEW_COMPOUND` :
+```r
+allometry = TRUE,
+pk_bw     = 0.02,   # BW (kg) de l'espèce où la PK a été mesurée
+```
+Le modèle scale automatiquement : **CL, Q ∝ BW^0.75** et **V1, V2 ∝ BW^1.0**
+(Boxenbaum), de `pk_bw` vers `BW_kg`.
+
+> ⚠️ Vérifie d'abord ta PK source : un V1 de souris (~20 g) doit être
+> **~0.002–0.004 L**. Si le V1 source est bien plus grand, le fit amont est
+> faux (souvent unités de concentration) et l'allométrie donnera des volumes
+> aberrants. Un **garde-fou** alerte si le V scalé est implausible.
+
 ### Unités (important)
 - PK : **CL, Q en L/h** ; **V1, V2 en L** ; doses en **mg/kg**.
 - Concentrations (pour l'ajustement PK amont) : **µg/mL** (= mg/L).

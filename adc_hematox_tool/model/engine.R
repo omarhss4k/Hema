@@ -22,12 +22,32 @@ load_model <- function(model_dir = "model") {
   invisible(TRUE)
 }
 
+# -- allometrie (Boxenbaum) : scale une PK d'une espece source vers cible --
+#   CL, Q  ∝ BW^0.75      V1, V2 ∝ BW^1.0
+# cp doit contenir pk_bw (BW ou la PK a ete mesuree, kg) ; BW_kg = cible.
+# Alerte si le V scalE est physiquement implausible pour la cible.
+allometric_scale <- function(cp) {
+  if (is.null(cp$pk_bw) || isFALSE(cp$allometry)) return(cp)
+  r <- cp$BW_kg / cp$pk_bw
+  fCL <- r^0.75; fV <- r^1.0
+  cat(sprintf("[allometrie] %s : BW %.3g -> %.3g kg (x%.0f) | CLx%.2f  Vx%.0f\n",
+              cp$name, cp$pk_bw, cp$BW_kg, r, fCL, fV))
+  cp$CL <- cp$CL * fCL; cp$Q <- cp$Q * fCL
+  cp$V1 <- cp$V1 * fV; cp$V2 <- cp$V2 * fV
+  vplasma <- 0.06 * cp$BW_kg   # ~60 mL/kg de volume sanguin
+  if (cp$V1 > 3 * vplasma)
+    cat(sprintf("[!] V1 scalE = %.3f L >> volume plasmatique attendu (~%.3f L) : verifier BW source et unites de concentration.\n",
+                cp$V1, vplasma))
+  cp
+}
+
 # -- construit le jeu de parametres pour un composE + une IC50 + la calibration --
 # cp    : liste compound (PK, IC50, BW...) depuis config/compounds.R
 # ic50  : IC50 myeloide du composE (nM)
 # calib : liste CALIB (PD calibre + ancres de potency)
 # ic50_ref : IC50 myeloide de la REFERENCE (ancre de translation)
 build_pars <- function(cp, ic50, calib, ic50_ref) {
+  cp <- allometric_scale(cp)          # scale PK si allometrie demandee
   p <- c(init_pars, tdxd_pars_hu)
   p$CL_ADC <- cp$CL; p$V1_ADC <- cp$V1; p$Q_ADC <- cp$Q; p$V2_ADC <- cp$V2
   p$k_int <- 0; p$krel_power <- 0; p$krel_factor <- 1

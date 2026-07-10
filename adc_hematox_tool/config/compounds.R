@@ -34,11 +34,18 @@ CALIB <- list(
 ## Remplis PK + IC50. Le modele predit sa toxicite SANS donnees in vivo.
 NEW_COMPOUND <- list(
   name       = "BPA",
-  BW_kg      = 2.5,
+  BW_kg      = 2.5,               # espece CIBLE de la prediction (NHP, kg)
   # -- PK 2-cmt du composE (depuis ton Shiny) --
   CL = 0.000467305265769336, V1 = 0.0586062942310418,
   Q  = 0.00102316504406689,  V2 = 0.0424186702071202,
   Tinfu_h    = 1.5,
+  # -- ALLOMETRIE (si la PK vient d'une autre espece que la cible) --
+  # allometry=TRUE : scale CL,Q (^0.75) et V1,V2 (^1) de pk_bw -> BW_kg.
+  # pk_bw = poids de l'espece OU la PK a ete mesuree (souris ~0.02 kg).
+  # ATTENTION : mettre TRUE seulement apres avoir verifie la PK source
+  # (un V1 souris doit etre ~0.002-0.004 L ; sinon le fit source est faux).
+  allometry  = FALSE,
+  pk_bw      = 0.02,
   IC50_myelo = c(0.015, 7.8),     # nM -- une ou plusieurs valeurs (fourchette)
   doses      = c(0.3, 1, 3),      # mg/kg
   # baselines absolues (x10^9/L) pour convertir en grade CTCAE :
