@@ -26,10 +26,14 @@ mk <- function(L, b0) {
   df <- data.frame(dose = obs$Dose_mgkg, day = obs$time_day,
                    fo = mapply(function(a, x) x / baseline(a, L), obs$Animal_Id, obs[[L]]),
                    lign = L, b0 = b0, stringsAsFactors = FALSE)
-  df[is.finite(df$fo) & df$day > 0 & df$fo <= 1, ]      # signal de depletion
+  # signal de depletion, MAIS on exclut les points terminaux (animaux sacrifies :
+  # zeros persistants tardifs) qui fausseraient la recuperation (k_rep -> 0).
+  term <- df$day > 22 & df$fo < 0.05
+  df[is.finite(df$fo) & df$day > 0 & df$fo <= 1 & !term, ]
 }
 OBS <- rbind(mk("Neut", init_pars$Neut0), mk("Mono", init_pars$Mono0))
-cat(sprintf("Points utilises pour le fit : %d (Neut+Mono, <= baseline)\n", nrow(OBS)))
+n_term <- sum(obs$time_day > 22 & (obs$Neut / mapply(function(a,x) baseline(a,"Neut"), obs$Animal_Id, obs$Neut) < 0.05), na.rm = TRUE)
+cat(sprintf("Points utilises pour le fit : %d (Neut+Mono, <= baseline, hors terminaux)\n", nrow(OBS)))
 
 # -- sim allegee (tol relachee, pas 12h, hmax libre) : rapide pour le fit --
 sim_fast <- function(p, dose) {
@@ -87,6 +91,18 @@ cat("\n--- CALIB : avant -> apres (a copier dans config/compounds.R) ---\n")
 show <- function(n, fmt) cat(sprintf(paste0("  %-14s ", fmt, "  ->  ", fmt, "\n"), n, CALIB[[n]], best[[n]]))
 show("IC50ADC_scale", "%8.3f"); show("Emax_CMP", "%8.4f")
 show("k_depl_direct", "%8.4f"); show("k_rep", "%8.5f")
+
+# -- alerte : parametre bute sur une borne -> fit mal contraint --
+hit <- c()
+for (n in names(BND)) { b <- BND[[n]]; v <- best[[n]]; tol <- 0.02 * (b[2] - b[1])
+  if (v <= b[1] + tol) hit <- c(hit, sprintf("%s (borne BASSE %.4g)", n, b[1]))
+  if (v >= b[2] - tol) hit <- c(hit, sprintf("%s (borne HAUTE %.4g)", n, b[2])) }
+if (length(hit)) {
+  cat("\n[!] Parametres qui BUTENT sur une borne -> fit mal contraint / degenere :\n")
+  for (h in hit) cat("    -", h, "\n")
+  cat("    Interpretation prudente : ces valeurs ne sont pas identifiables par tes\n",
+      "    donnees. Envisage de FIXER l'ancrage de puissance ou d'ajouter des points.\n", sep = "")
+} else cat("\n[ok] Aucun parametre ne bute sur une borne.\n")
 
 saveRDS(best, "results/calibration.rds")
 cat("\n-> results/calibration.rds  (lue par predict.R)\n")
