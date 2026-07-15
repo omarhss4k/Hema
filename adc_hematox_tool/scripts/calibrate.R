@@ -31,7 +31,12 @@ if (!file.exists(ref$profiles)) {
   bi <- function(aid, L) { s <- obs[obs$Animal_Id == aid, ]; s <- s[order(s$time_day), ]
     v <- s[[L]][!is.na(s[[L]])]; if (!length(v)) NA else v[1] }
 
-  cols <- c("0.3" = "#2166ac", "1" = "#1a9641", "3" = "#b2182b")
+  # palette dynamique : une couleur par dose de la reference (quelles qu'elles soient)
+  pal <- grDevices::colorRampPalette(c("#2166ac", "#1a9641", "#f0a000", "#b2182b"))
+  cols <- setNames(pal(length(ref$doses)), as.character(ref$doses))
+  # baselines pour les grades : depuis la config si presentes, sinon defauts
+  bN <- if (!is.null(ref$baseline_neut)) ref$baseline_neut else 2.4
+  bM <- if (!is.null(ref$baseline_mono)) ref$baseline_mono else 0.8
   pdf("results/calibration_fit.pdf", width = 13, height = 5.4)
   par(mfrow = c(1, 2), mar = c(4.2, 4.5, 3, 1))
   for (cc in list(c("Neut", init_pars$Neut0, "Neutrophiles"),
@@ -40,7 +45,7 @@ if (!file.exists(ref$profiles)) {
     plot(NA, xlim = c(0, 32), ylim = c(0, 3.5), xlab = "Jour",
          ylab = "fold vs baseline", main = paste(cc[3], "—", ref$name, "(calage)"))
     abline(h = 1, lty = 2, col = "grey60")
-    base_abs <- if (L == "Neut") 2.4 else 0.8
+    base_abs <- if (L == "Neut") bN else bM
     draw_grade_lines(base_abs, ymax = 3.5, xmax = 32)
     for (d in ref$doses) {
       p <- build_pars(ref, ref$IC50_myelo, CALIB, ref$IC50_myelo)  # ref sur elle-meme -> ratio 1

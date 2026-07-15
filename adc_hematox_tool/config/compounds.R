@@ -7,15 +7,19 @@
 ## ═══════ ADC DE REFERENCE (donnees completes : PK + IC50 + profils) ═══════
 ## Sert a CALIBRER le modele. Ses profils hemato vont dans data/.
 REFERENCE <- list(
-  name       = "ADC cytotoxique",
-  BW_kg      = 2.5,
-  # -- PK 2-cmt (unites : L, L/h) --
-  CL = 0.00484307629862215, V1 = 0.04907800106132178,
-  Q  = 0.01627593959372783, V2 = 0.1170226727748038,
-  Tinfu_h    = 1.5,
-  IC50_myelo = 0.008615,          # nM  (IC50 myeloide in vitro)
-  doses      = c(0.3, 1, 3),      # mg/kg
-  profiles   = "data/reference_profiles.csv"   # CSV confidentiel (voir README)
+  name       = "ADC FGFR2",
+  BW_kg      = 4.0,               # singe cynomolgus (protocole FGFR2)
+  # -- PK 2-cmt NHP (unites : L, L/h) --
+  # !! valeurs FALLBACK calculees depuis parameters_fgfr2_nhp.R (FDA Table 7
+  #    x1.297), utilisees quand pk2cmt_params.csv est absent. Si tu as le
+  #    fichier pk2cmt_params.csv, donne-le moi pour mettre la PK exacte.
+  CL = 0.00138, V1 = 0.130,
+  Q  = 0.000846, V2 = 0.139,
+  Tinfu_h    = 0.5,
+  IC50_myelo = 0.008615,          # nM  !! PLACEHOLDER : mettre l'IC50 FGFR2 reelle
+  doses      = c(4, 13, 26, 39),  # mg/kg (doses corrigees, Q3W)
+  baseline_neut = 2.25, baseline_mono = 0.43,  # !! a affiner via import_fgfr2.R
+  profiles   = "data/reference_profiles.csv"   # genere par scripts/import_fgfr2.R
 )
 
 ## ═══════ CALIBRATION PD (calee sur REFERENCE) ═══════

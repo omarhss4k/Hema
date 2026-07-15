@@ -60,6 +60,15 @@ Rscript scripts/predict.R
 → `results/prediction_<nom>.pdf` + grades CTCAE dans la console.
 Utilise la calibration existante (ou les valeurs par défaut si aucune).
 
+### Importer des données FGFR2 comme référence
+Si ta référence est l'étude FGFR2 (fichier `nhp_hema_data.csv` avec colonnes
+`Neut_1e3_uL`, `Mono_1e3_uL`, …), place-le dans `data/` puis :
+```bash
+Rscript scripts/import_fgfr2.R      # -> data/reference_profiles.csv
+```
+Le script mappe les colonnes (Neut/Mono en 10³/µL = 10⁹/L, copie directe) et
+affiche les baselines moyennes à reporter dans `config/compounds.R`.
+
 ### 2. (Re)calibrer sur l'ADC de référence
 ```bash
 Rscript scripts/calibrate.R
