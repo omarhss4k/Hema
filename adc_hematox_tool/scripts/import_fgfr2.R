@@ -18,7 +18,20 @@
 src <- "data/nhp_hema_data.csv"
 if (!file.exists(src)) stop(sprintf("Fichier source absent : %s", src))
 
-raw <- read.csv(src, stringsAsFactors = FALSE, check.names = FALSE)
+# -- lecture robuste : detecte le separateur (Excel FR = ';' + decimales ',') --
+read_flex <- function(path) {
+  l1 <- readLines(path, n = 1L, warn = FALSE)
+  n <- function(ch) lengths(regmatches(l1, gregexpr(ch, l1, fixed = TRUE)))
+  sep <- if (n(";") > n(",")) ";" else if (n("\t") > n(",")) "\t" else ","
+  dec <- if (sep == ";") "," else "."   # FR : ';' -> decimales ','
+  df <- read.csv(path, sep = sep, dec = dec, stringsAsFactors = FALSE,
+                 check.names = FALSE, fill = TRUE, strip.white = TRUE)
+  df <- df[, !grepl("^\\s*$|^X$|^X\\.", names(df)), drop = FALSE]  # vire colonnes vides
+  cat(sprintf("[lecture] separateur='%s' decimale='%s' | colonnes : %s\n",
+              ifelse(sep=="\t","TAB",sep), dec, paste(names(df), collapse = ", ")))
+  df
+}
+raw <- read_flex(src)
 
 # -- selection tolerante des colonnes (accepte plusieurs orthographes) --
 pick <- function(df, ...) {
@@ -26,14 +39,20 @@ pick <- function(df, ...) {
   NULL
 }
 
+# conversion numerique tolerante (gere une eventuelle decimale ',')
+num <- function(x) as.numeric(gsub(",", ".", gsub("\\s", "", as.character(x))))
+
 out <- data.frame(
   Animal_Id = pick(raw, "Animal_Id", "Animal_ID", "animal"),
-  Dose_mgkg = pick(raw, "Dose_mgkg", "dose_mgkg", "Dose"),
-  time_day  = pick(raw, "time_day", "jour", "day"),
-  Neut      = pick(raw, "Neut_1e3_uL", "Neut"),
-  Mono      = pick(raw, "Mono_1e3_uL", "Mono"),
+  Dose_mgkg = num(pick(raw, "Dose_mgkg", "dose_mgkg", "Dose")),
+  time_day  = num(pick(raw, "time_day", "jour", "day")),
+  Neut      = num(pick(raw, "Neut_1e3_uL", "Neut")),
+  Mono      = num(pick(raw, "Mono_1e3_uL", "Mono")),
   stringsAsFactors = FALSE
 )
+if (is.null(out$Neut) && is.null(out$Mono))
+  stop("Colonnes Neut/Mono introuvables. Colonnes vues : ",
+       paste(names(raw), collapse = ", "))
 
 # garde les lignes ayant au moins une mesure
 out <- out[!(is.na(out$Neut) & is.na(out$Mono)), ]
