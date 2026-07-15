@@ -53,6 +53,7 @@ if (!file.exists(ref$profiles)) {
       lines(o$td, o[[L]] / b, col = cols[as.character(d)], lwd = 2.5)
       od <- obs[obs$Dose_mgkg == d, ]
       for (k in 1:nrow(od)) { bb <- bi(od$Animal_Id[k], L); fo <- od[[L]][k] / bb
+        if (is.na(fo) || fo > 1) next            # on ne trace que les points <= baseline
         term <- (od$jr[k] > 22 & fo < 0.05)
         points(od$jr[k], fo, col = cols[as.character(d)], pch = ifelse(term, 1, 19), cex = 1.2, lwd = 1.4) }
     }
