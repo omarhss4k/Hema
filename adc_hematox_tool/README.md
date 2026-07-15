@@ -77,6 +77,21 @@ Rscript scripts/calibrate.R
 + `results/calibration_fit.pdf` (validation vs profils observés).
 Nécessite les profils de référence dans `data/` (voir plus bas).
 
+### 2 bis. Calibration AUTOMATIQUE (optionnel, recommandé)
+```bash
+Rscript scripts/autocalibrate.R
+```
+Ajuste automatiquement les 4 paramètres PD clés (`IC50ADC_scale`, `Emax_CMP`,
+`k_depl_direct`, `k_rep`) pour **minimiser l'écart moindres-carrés** modèle↔profils
+observés, au lieu de les régler à la main. Sauvegarde la calibration optimisée
+dans `results/calibration.rds` (lue par `predict.R`), affiche les valeurs
+avant→après (à recopier dans `config/compounds.R`) et trace `calibration_fit.pdf`.
+
+> ⚠️ **Identifiabilité** : avec peu de points, plusieurs jeux de paramètres
+> peuvent coller aux données. Les paramètres sont **bornés** à des plages
+> physiques pour éviter les solutions aberrantes, mais **regarde toujours la
+> figure** : si un paramètre bute sur sa borne, le mécanisme est mal contraint.
+
 ### 3. Tout enchaîner (calage → prédiction)
 ```bash
 Rscript scripts/run_all.R
