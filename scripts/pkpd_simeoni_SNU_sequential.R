@@ -47,7 +47,7 @@ library(readxl)
 #     => Vmax < (5600 - TSC*V1) / 50 ~ 100 ug/kg/j pour TSC~3000.
 #   Seuls k1 et TSC sont estimes en Etape B.
 
-pk_data <- read.csv("pk_resultats_20260611_110140.csv", stringsAsFactors = FALSE)
+pk_data <- read.csv("pk_resultats_20260720_150418.csv", stringsAsFactors = FALSE)
 
 # x1000 : mL/kg -> L/kg    x24 : /h -> /j
 pk_fixed <- c(
@@ -64,9 +64,9 @@ cat(sprintf("V2 = %.5e L/kg\n",   pk_fixed["V2"]))
 cat(sprintf("Q  = %.5e L/j/kg\n", pk_fixed["Q"]))
 
 # Cmax (ng/mL = ug/L) issues du CSV
-Cmax_1p2  <- pk_data$cmax[pk_data$Animal == "A"]
-Cmax_5p6  <- pk_data$cmax[pk_data$Animal == "C"]
-Cmax_11p8 <- pk_data$cmax[pk_data$Animal == "D"]
+Cmax_1p2  <- pk_data$cmax[pk_data$Animal == "groupe 4"]
+Cmax_5p6  <- pk_data$cmax[pk_data$Animal == "grp 5"]
+Cmax_11p8 <- pk_data$cmax[pk_data$Animal == "grp 7"]
 
 KM_FIXED   <- 1    # ug/L — fixe (C1 >> Km => regime zeroth-order)
 VMAX_FIXED <- 50   # ug/kg/j — fixe : drug actif a 5.6mg/kg pendant >100j
