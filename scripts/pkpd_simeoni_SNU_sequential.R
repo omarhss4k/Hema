@@ -386,22 +386,24 @@ cat(sprintf("   Objectif retenu  : %.8f\n", best_val_A))
 # =============================================================================
 
 cat("\n===========================================================\n")
-cat("ETAPE B — Ajustement groupes traites : k1 et TSC (Km, Vmax fixes)\n")
+cat("ETAPE B — Ajustement groupes traites : k1 et TSC (PK lineaire)\n")
 cat("===========================================================\n")
 cat(sprintf("L0 fixe = %.6f /j  |  L1 fixe = %.2f mm3/j\n", L0_est, L1_est))
-cat(sprintf("Km   fixe = %.0f ug/L\n",    KM_FIXED))
-cat(sprintf("Vmax fixe = %.0f ug/kg/j\n", VMAX_FIXED))
+cat(sprintf("t1/2 beta PK = %.1f j  (biexponentiel 2-compartiments)\n",
+            log(2) / (0.00271672748720293 * 24)))
 
-# TSC_upper = Cmax_1p2/2 : force TSC loin sous Cmax_1p2 => drug actif ~20j a
-# 1.2mg/kg avec Vmax=50 => MTT converge naturellement vers ~15j pour fitter les
-# donnees 1.2mg/kg (suppression moderee soutenue jusqu'a j49).
-TSC_lower <- Cmax_1p2 / 20   # ~840 ug/L
-TSC_upper <- Cmax_1p2 / 2    # ~8392 ug/L
-k1_lower  <- 4 / 25
-k1_upper  <- 4 / 3
+# PK lineaire 2-compartiments suffit : t½_beta = 10.6j.
+# A TSC~2000-4000 ug/L :
+#   5.6 mg/kg  → drug > TSC pendant ~25j → suppression soutenue ✓
+#   11.8 mg/kg → drug > TSC pendant ~35j → suppression forte ✓
+#   1.2 mg/kg  → drug > TSC pendant ~10j → effet modere ✓
+TSC_lower <- Cmax_1p2 / 20   # ~839 ug/L
+TSC_upper <- Cmax_1p2 / 3    # ~5595 ug/L
+k1_lower  <- 4 / 25          # MTT max = 25j
+k1_upper  <- 4 / 5           # MTT min =  5j
 
 cat(sprintf("Bornes TSC : [%.0f, %.0f] ug/L\n", TSC_lower, TSC_upper))
-cat(sprintf("Bornes k1  : [%.4f, %.4f] /j    (MTT dans [3, 25 j])\n", k1_lower, k1_upper))
+cat(sprintf("Bornes k1  : [%.4f, %.4f] /j    (MTT dans [5, 25 j])\n", k1_lower, k1_upper))
 
 lower_B <- c(log(k1_lower), log(TSC_lower))
 upper_B <- c(log(k1_upper), log(TSC_upper))
@@ -416,19 +418,18 @@ objective_traites <- function(logpar) {
   params_all <- c(
     CL = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
     V2 = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
-    L0 = L0_est, L1 = L1_est, k1 = k1, k2 = k2,
-    Vmax = VMAX_FIXED, Km = KM_FIXED
+    L0 = L0_est, L1 = L1_est, k1 = k1, k2 = k2
   )
 
-  pred_d1p2 <- sim_treated_tmdd(1200,  tv0_d1p2,  params_all, times_d[ok_d1p2])
+  pred_d1p2 <- sim_treated(1200,  tv0_d1p2,  params_all, times_d[ok_d1p2])
   if (any(is.na(pred_d1p2))) return(1e12)
   pred_d1p2 <- pmax(pred_d1p2, 0.1)
 
-  pred_d5p6 <- sim_treated_tmdd(5600,  tv0_d5p6,  params_all, times_d[ok_d5p6])
+  pred_d5p6 <- sim_treated(5600,  tv0_d5p6,  params_all, times_d[ok_d5p6])
   if (any(is.na(pred_d5p6))) return(1e12)
   pred_d5p6 <- pmax(pred_d5p6, 0.1)
 
-  pred_d11p8 <- sim_treated_tmdd(11800, tv0_d11p8, params_all, times_d[ok_d11p8])
+  pred_d11p8 <- sim_treated(11800, tv0_d11p8, params_all, times_d[ok_d11p8])
   if (any(is.na(pred_d11p8))) return(1e12)
   pred_d11p8 <- pmax(pred_d11p8, 0.1)
 
@@ -443,14 +444,13 @@ params_sanity <- c(
   V2 = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
   L0 = L0_est, L1 = L1_est,
   k1 = 4 / 15,
-  k2 = L0_est / 3000,
-  Vmax = VMAX_FIXED, Km = KM_FIXED
+  k2 = L0_est / 3000
 )
-test_ok <- sim_treated_tmdd(1200, tv0_d1p2, params_sanity, times_d[ok_d1p2])
+test_ok <- sim_treated(1200, tv0_d1p2, params_sanity, times_d[ok_d1p2])
 if (all(is.na(test_ok))) {
-  stop("ERREUR : sim_treated_tmdd retourne NA avec des parametres raisonnables.")
+  stop("ERREUR : sim_treated retourne NA avec des parametres raisonnables.")
 }
-cat(sprintf("  [Sanity check] sim_treated_tmdd 1.2 mg/kg : OK  (pred[1] = %.1f mm3)\n",
+cat(sprintf("  [Sanity check] sim_treated 1.2 mg/kg : OK  (pred[1] = %.1f mm3)\n",
             test_ok[1]))
 
 set.seed(42)
@@ -516,14 +516,12 @@ if (abs(log(k1_est)  - log(k1_lower))  < tol * (log(k1_upper)  - log(k1_lower)))
 mtt <- 4 / k1_est
 
 cat("\n===========================================================\n")
-cat("PARAMETRES FINAUX — SNU  (ajustement sequentiel, TMDD Km fixe)\n")
+cat("PARAMETRES FINAUX — SNU  (ajustement sequentiel, PK lineaire 2-comp)\n")
 cat("===========================================================\n")
-cat(sprintf("L0   = %.6f /j         [Etape A — %s]\n", L0_est,    src_A))
-cat(sprintf("L1   = %.2f mm3/j      [Etape A — %s]\n", L1_est,    src_A))
-cat(sprintf("k1   = %.5f /j         [Etape B — %s]\n", k1_est,    src_B))
-cat(sprintf("TSC  = %.0f ug/L       [Etape B — %s]\n", TSC_est,   src_B))
-cat(sprintf("Vmax = %.0f ug/kg/j    [fixe]\n",          VMAX_FIXED))
-cat(sprintf("Km   = %.0f ug/L       [fixe]\n",          KM_FIXED))
+cat(sprintf("L0  = %.6f /j         [Etape A — %s]\n", L0_est,  src_A))
+cat(sprintf("L1  = %.2f mm3/j      [Etape A — %s]\n", L1_est,  src_A))
+cat(sprintf("k1  = %.5f /j         [Etape B — %s]\n", k1_est,  src_B))
+cat(sprintf("TSC = %.0f ug/L       [Etape B — %s]\n", TSC_est, src_B))
 cat("-----------------------------------------------------------\n")
 cat(sprintf("MTT = %.1f j\n", mtt))
 cat(sprintf("k2  = %.3e L/ug/j  (= L0/TSC)\n", k2_est))
@@ -540,16 +538,15 @@ cat(sprintf("  Cmax/TSC @ 11.8 mg/kg: %.1f\n", Cmax_11p8 / TSC_est))
 params_best <- c(
   CL = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
   V2 = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
-  L0 = L0_est, L1 = L1_est, k1 = k1_est, k2 = k2_est,
-  Vmax = Vmax_est, Km = KM_FIXED
+  L0 = L0_est, L1 = L1_est, k1 = k1_est, k2 = k2_est
 )
 
 times_sim <- seq(0, max(times_d, na.rm = TRUE) * 1.05, by = 0.5)
 
 pred_ctrl_sim  <- sim_ctrl_fn(L0_est, L1_est, tv0_ctrl, times_sim)
-pred_d1p2_sim  <- sim_treated_tmdd(1200,  tv0_d1p2,  params_best, times_sim)
-pred_d5p6_sim  <- sim_treated_tmdd(5600,  tv0_d5p6,  params_best, times_sim)
-pred_d11p8_sim <- sim_treated_tmdd(11800, tv0_d11p8, params_best, times_sim)
+pred_d1p2_sim  <- sim_treated(1200,  tv0_d1p2,  params_best, times_sim)
+pred_d5p6_sim  <- sim_treated(5600,  tv0_d5p6,  params_best, times_sim)
+pred_d11p8_sim <- sim_treated(11800, tv0_d11p8, params_best, times_sim)
 
 niv <- c("Vehicule", "1.2 mg/kg", "5.6 mg/kg", "11.8 mg/kg")
 
@@ -583,8 +580,7 @@ ymax <- max(df_obs$TV + df_obs$sem, na.rm = TRUE)
 subtitle_txt <- paste0(
   "A: L0=", round(L0_est, 4), "/j | L1=", format(round(L1_est), big.mark = " "), "mm3/j",
   "  ||  ",
-  "B: k1=", round(k1_est, 3), "/j | TSC=", round(TSC_est, 0), "ug/L",
-  " | Vmax=", VMAX_FIXED, "(fixe) | MTT=", round(mtt, 1), "j"
+  "B: k1=", round(k1_est, 3), "/j | TSC=", round(TSC_est, 0), "ug/L | MTT=", round(mtt, 1), "j"
 )
 
 p_simeoni <- ggplot() +
@@ -638,8 +634,6 @@ simeoni_results_SNU <- list(
   L1            = L1_est,
   k1            = k1_est,
   TSC_ugL       = TSC_est,
-  Vmax_ugkgj    = VMAX_FIXED,
-  Km_ugL        = KM_FIXED,
   k2            = k2_est,
   MTT_days      = mtt,
   obj_A_DEoptim = fit_de_A$optim$bestval,
