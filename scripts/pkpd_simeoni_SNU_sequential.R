@@ -392,8 +392,11 @@ cat(sprintf("L0 fixe = %.6f /j  |  L1 fixe = %.2f mm3/j\n", L0_est, L1_est))
 cat(sprintf("Km   fixe = %.0f ug/L\n",    KM_FIXED))
 cat(sprintf("Vmax fixe = %.0f ug/kg/j\n", VMAX_FIXED))
 
-TSC_lower <- Cmax_1p2 / 10
-TSC_upper <- Cmax_5p6
+# TSC_upper = Cmax_1p2/2 : force TSC loin sous Cmax_1p2 => drug actif ~20j a
+# 1.2mg/kg avec Vmax=50 => MTT converge naturellement vers ~15j pour fitter les
+# donnees 1.2mg/kg (suppression moderee soutenue jusqu'a j49).
+TSC_lower <- Cmax_1p2 / 20   # ~840 ug/L
+TSC_upper <- Cmax_1p2 / 2    # ~8392 ug/L
 k1_lower  <- 4 / 25
 k1_upper  <- 4 / 3
 
