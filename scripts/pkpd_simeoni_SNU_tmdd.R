@@ -355,54 +355,61 @@ cat(sprintf("   Objectif DEoptim : %.8f\n", fit_de_A$optim$bestval))
 cat(sprintf("   Objectif retenu  : %.8f\n", best_val_A))
 
 # =============================================================================
-# 5B. ETAPE B — Efficacite : k1, TSC et Vmax (TMDD, Km fixe)
+# 5B. ETAPE B — Efficacite : k1, TSC, Vmax et Km (TMDD, 4 parametres)
 #
 #   L0_est et L1_est fixes depuis l'Etape A.
-#   Km fixe = KM_FIXED = 1 ug/L  (C1 >> Km => terme TMDD ~ zeroth-order)
 #   k2 derive : k2 = L0_est / TSC
 #
-#   3 parametres estimes :
+#   4 parametres estimes :
 #     k1   : vitesse de transit => MTT = 4/k1 (j)
 #     TSC  : concentration seuil de cytotoxicite (ug/L)
 #     Vmax : elimination saturable max (ug/kg/j)
+#     Km   : constante de Michaelis (ug/L)
+#
+#   Justification de liberer Km :
+#     Avec Km=1 (zeroth-order), TMDD elimine drug plus vite => curve 5.6mg/kg explose.
+#     En liberant Km dans [500, Cmax_1p2] = [500, 16784] ug/L :
+#       - Km >> Cmax : TMDD lineaire (premier ordre) -> elimination lente -> utilite faible
+#       - Km ~ C1(tardif) ~ 1000-5000 : TMDD ralentit quand C1 baisse => drug persiste
+#         => bonne suppression tardive a 5.6mg/kg + killling retarde a 1.2mg/kg ✓
 #
 #   Bornes :
 #     TSC  : [Cmax_1p2/20, Cmax_1p2/2]  = [~839, ~8392] ug/L
 #     k1   : MTT dans [5, 25 j]
-#     Vmax : [20, 2000] ug/kg/j
-#       => borne sup choisie pour ne pas eliminer tout le drug en < 1j
+#     Vmax : [100, 5000] ug/kg/j
+#     Km   : [500, Cmax_1p2] = [500, ~16784] ug/L
 #
 #   Les 3 groupes traites sont inclus dans la cost.
 # =============================================================================
 
 cat("\n===========================================================\n")
-cat("ETAPE B — Ajustement groupes traites : k1, TSC et Vmax (TMDD)\n")
+cat("ETAPE B — Ajustement groupes traites : k1, TSC, Vmax et Km (TMDD)\n")
 cat("===========================================================\n")
 cat(sprintf("L0 fixe = %.6f /j  |  L1 fixe = %.2f mm3/j\n", L0_est, L1_est))
-cat(sprintf("Km fixe = %.0f ug/L\n", KM_FIXED))
 
 TSC_lower  <- Cmax_1p2 / 20      # ~839 ug/L
 TSC_upper  <- Cmax_1p2 / 2       # ~8392 ug/L
 k1_lower   <- 4 / 25             # MTT max = 25j
 k1_upper   <- 4 / 5              # MTT min =  5j
-Vmax_lower <- 20                  # ug/kg/j
-Vmax_upper <- 200                 # ug/kg/j
-# Justification borne sup : Vmax > 200 epuise le drug a 5.6mg/kg en < 28j
-#   (5600 ugkg / 200 ugkg/j = 28j) => regrowth trop precoce, courbe 5.6 explose.
-#   A Vmax <= 200 : drug actif >= 28j a 5.6mg/kg => suppression soutenue.
+Vmax_lower <- 100                 # ug/kg/j
+Vmax_upper <- 5000                # ug/kg/j
+Km_lower   <- 500                 # ug/L
+Km_upper   <- Cmax_1p2           # ~16784 ug/L  (Km <= Cmax_1p2 pour avoir TMDD utile)
 
-cat(sprintf("Bornes TSC  : [%.0f, %.0f] ug/L\n", TSC_lower, TSC_upper))
+cat(sprintf("Bornes TSC  : [%.0f, %.0f] ug/L\n",    TSC_lower,  TSC_upper))
 cat(sprintf("Bornes k1   : [%.4f, %.4f] /j    (MTT dans [5, 25 j])\n", k1_lower, k1_upper))
 cat(sprintf("Bornes Vmax : [%.0f, %.0f] ug/kg/j\n", Vmax_lower, Vmax_upper))
+cat(sprintf("Bornes Km   : [%.0f, %.0f] ug/L\n",    Km_lower,   Km_upper))
 
-lower_B <- c(log(k1_lower), log(TSC_lower), log(Vmax_lower))
-upper_B <- c(log(k1_upper), log(TSC_upper), log(Vmax_upper))
+lower_B <- c(log(k1_lower), log(TSC_lower), log(Vmax_lower), log(Km_lower))
+upper_B <- c(log(k1_upper), log(TSC_upper), log(Vmax_upper), log(Km_upper))
 
 objective_traites <- function(logpar) {
   k1   <- exp(logpar[1])
   TSC  <- exp(logpar[2])
   Vmax <- exp(logpar[3])
-  if (k1 <= 0 || TSC <= 0 || Vmax <= 0) return(1e12)
+  Km   <- exp(logpar[4])
+  if (k1 <= 0 || TSC <= 0 || Vmax <= 0 || Km <= 0) return(1e12)
 
   k2 <- L0_est / TSC
 
@@ -411,7 +418,7 @@ objective_traites <- function(logpar) {
     V2   = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
     L0   = L0_est, L1 = L1_est,
     k1   = k1, k2 = k2,
-    Vmax = Vmax, Km = KM_FIXED
+    Vmax = Vmax, Km = Km
   )
 
   pred_d1p2 <- sim_treated_tmdd(1200,  tv0_d1p2,  params_all, times_d[ok_d1p2])
@@ -437,7 +444,7 @@ params_sanity <- c(
   V2 = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
   L0 = L0_est, L1 = L1_est,
   k1 = 4 / 15, k2 = L0_est / 3000,
-  Vmax = 100, Km = KM_FIXED
+  Vmax = 500, Km = 2000
 )
 test_ok <- sim_treated_tmdd(1200, tv0_d1p2, params_sanity, times_d[ok_d1p2])
 if (all(is.na(test_ok))) {
@@ -484,11 +491,13 @@ if (fit_local_B$objective < fit_de_B$optim$bestval) {
 k1_est   <- exp(best_par_B[1])
 TSC_est  <- exp(best_par_B[2])
 Vmax_est <- exp(best_par_B[3])
+Km_est   <- exp(best_par_B[4])
 k2_est   <- L0_est / TSC_est
 
-cat(sprintf("\n-> k1   = %.5f /j   [MTT = %.1f j]  (%s)\n", k1_est, 4 / k1_est, src_B))
-cat(sprintf("-> TSC  = %.0f ug/L  (%s)\n",  TSC_est,  src_B))
+cat(sprintf("\n-> k1   = %.5f /j   [MTT = %.1f j]  (%s)\n", k1_est,   4 / k1_est, src_B))
+cat(sprintf("-> TSC  = %.0f ug/L  (%s)\n",    TSC_est,  src_B))
 cat(sprintf("-> Vmax = %.1f ug/kg/j  (%s)\n", Vmax_est, src_B))
+cat(sprintf("-> Km   = %.0f ug/L  (%s)\n",    Km_est,   src_B))
 cat(sprintf("   k2 derive = %.3e L/ug/j\n", k2_est))
 cat(sprintf("   Objectif DEoptim : %.8f\n", fit_de_B$optim$bestval))
 cat(sprintf("   Objectif retenu  : %.8f\n", best_val_B))
@@ -507,6 +516,10 @@ if (abs(log(Vmax_est) - log(Vmax_lower)) < tol * (log(Vmax_upper) - log(Vmax_low
   cat(sprintf("  [AVERT] Vmax sur borne inferieure (%.1f ug/kg/j)\n", Vmax_est))
 if (abs(log(Vmax_est) - log(Vmax_upper)) < tol * (log(Vmax_upper) - log(Vmax_lower)))
   cat(sprintf("  [AVERT] Vmax sur borne superieure (%.1f ug/kg/j)\n", Vmax_est))
+if (abs(log(Km_est)   - log(Km_lower))   < tol * (log(Km_upper)   - log(Km_lower)))
+  cat(sprintf("  [AVERT] Km sur borne inferieure (%.0f ug/L)\n", Km_est))
+if (abs(log(Km_est)   - log(Km_upper))   < tol * (log(Km_upper)   - log(Km_lower)))
+  cat(sprintf("  [AVERT] Km sur borne superieure (%.0f ug/L)\n", Km_est))
 
 # =============================================================================
 # 6. RESUME FINAL
@@ -522,18 +535,17 @@ cat(sprintf("L1   = %.2f mm3/j      [Etape A — %s]\n", L1_est,   src_A))
 cat(sprintf("k1   = %.5f /j         [Etape B — %s]\n", k1_est,   src_B))
 cat(sprintf("TSC  = %.0f ug/L       [Etape B — %s]\n", TSC_est,  src_B))
 cat(sprintf("Vmax = %.1f ug/kg/j    [Etape B — %s]\n", Vmax_est, src_B))
-cat(sprintf("Km   = %.0f ug/L       [fixe]\n", KM_FIXED))
+cat(sprintf("Km   = %.0f ug/L       [Etape B — %s]\n", Km_est,   src_B))
 cat("-----------------------------------------------------------\n")
 cat(sprintf("MTT  = %.1f j\n", mtt))
 cat(sprintf("k2   = %.3e L/ug/j  (= L0/TSC)\n", k2_est))
-cat(sprintf("Plausibilite : Cmax(1.2mg)=%.0f | TSC=%.0f | Cmax(5.6mg)=%.0f ug/L\n",
-            Cmax_1p2, TSC_est, Cmax_5p6))
+cat(sprintf("Plausibilite : Cmax(1.2mg)=%.0f | TSC=%.0f | Km=%.0f | Cmax(5.6mg)=%.0f ug/L\n",
+            Cmax_1p2, TSC_est, Km_est, Cmax_5p6))
 cat(sprintf("  Cmax/TSC @ 1.2 mg/kg : %.1f\n",  Cmax_1p2  / TSC_est))
 cat(sprintf("  Cmax/TSC @ 5.6 mg/kg : %.1f\n",  Cmax_5p6  / TSC_est))
 cat(sprintf("  Cmax/TSC @ 11.8 mg/kg: %.1f\n",  Cmax_11p8 / TSC_est))
-cat(sprintf("  Duree TMDD ~ zeroth-order @ 1.2mg/kg : Vmax=%.0f >> CL*Cmax=%.0f ? %s\n",
-            Vmax_est, pk_fixed["CL"] * Cmax_1p2,
-            ifelse(Vmax_est > pk_fixed["CL"] * Cmax_1p2, "OUI (TMDD domine)", "NON (PK lineaire domine)")))
+cat(sprintf("  Cmax/Km  @ 1.2 mg/kg : %.1f  (TMDD saturation)\n", Cmax_1p2  / Km_est))
+cat(sprintf("  Cmax/Km  @ 5.6 mg/kg : %.1f  (TMDD saturation)\n", Cmax_5p6  / Km_est))
 
 # =============================================================================
 # 7. SIMULATION FINALE
@@ -544,7 +556,7 @@ params_best <- c(
   V2   = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
   L0   = L0_est, L1 = L1_est,
   k1   = k1_est, k2 = k2_est,
-  Vmax = Vmax_est, Km = KM_FIXED
+  Vmax = Vmax_est, Km = Km_est
 )
 
 times_sim <- seq(0, max(times_d, na.rm = TRUE) * 1.05, by = 0.5)
@@ -587,7 +599,7 @@ subtitle_txt <- paste0(
   "A: L0=", round(L0_est, 4), "/j | L1=", format(round(L1_est), big.mark = " "), "mm3/j",
   "  ||  ",
   "B: k1=", round(k1_est, 3), "/j | TSC=", round(TSC_est, 0), "ug/L",
-  " | Vmax=", round(Vmax_est, 0), "ug/kg/j | MTT=", round(mtt, 1), "j"
+  " | Vmax=", round(Vmax_est, 0), "ug/kg/j | Km=", round(Km_est, 0), "ug/L | MTT=", round(mtt, 1), "j"
 )
 
 p_simeoni <- ggplot() +
