@@ -386,7 +386,10 @@ TSC_upper  <- Cmax_1p2 / 2       # ~8392 ug/L
 k1_lower   <- 4 / 25             # MTT max = 25j
 k1_upper   <- 4 / 5              # MTT min =  5j
 Vmax_lower <- 20                  # ug/kg/j
-Vmax_upper <- 2000                # ug/kg/j
+Vmax_upper <- 200                 # ug/kg/j
+# Justification borne sup : Vmax > 200 epuise le drug a 5.6mg/kg en < 28j
+#   (5600 ugkg / 200 ugkg/j = 28j) => regrowth trop precoce, courbe 5.6 explose.
+#   A Vmax <= 200 : drug actif >= 28j a 5.6mg/kg => suppression soutenue.
 
 cat(sprintf("Bornes TSC  : [%.0f, %.0f] ug/L\n", TSC_lower, TSC_upper))
 cat(sprintf("Bornes k1   : [%.4f, %.4f] /j    (MTT dans [5, 25 j])\n", k1_lower, k1_upper))
