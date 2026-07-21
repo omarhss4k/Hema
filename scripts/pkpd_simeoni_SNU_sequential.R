@@ -22,10 +22,11 @@
 #   Etape A — Croissance  : L0 et L1 sur le groupe vehicule uniquement
 #   Etape B — Efficacite  : k1 et TSC sur les 3 groupes traites (L0/L1 fixes)
 #
-#   Bornes TSC : [Cmax_1p2/10, Cmax_1p2]
+#   Bornes TSC : [Cmax_1p2/20, 0.9*Cmax_1p2]
 #     Justification biologique :
-#       1.2 mg/kg → effet observe (~350 vs ~1500 mm3 a j49) → TSC < Cmax_1p2
-#       Borne basse = Cmax_1p2/10 pour autoriser solutions a TSC tres bas
+#       TSC < Cmax_1p2 pour que drug ait un effet a 1.2 mg/kg
+#       TSC_upper = 0.9*Cmax_1p2 : killing retarde par transit (MTT~25j) peut
+#       reproduire declin observe a j35-49 meme avec fenetre courte (~8j)
 #
 # Schema posologique : dose unique IV bolus au jour 0
 # Groupes : Vehicule | 1.2 mg/kg | 5.6 mg/kg | 11.8 mg/kg
@@ -393,12 +394,14 @@ cat(sprintf("t1/2 beta PK = %.1f j  (biexponentiel 2-compartiments)\n",
             log(2) / (0.00271672748720293 * 24)))
 
 # PK lineaire 2-compartiments suffit : t½_beta = 10.6j.
-# A TSC~2000-4000 ug/L :
-#   5.6 mg/kg  → drug > TSC pendant ~25j → suppression soutenue ✓
-#   11.8 mg/kg → drug > TSC pendant ~35j → suppression forte ✓
-#   1.2 mg/kg  → drug > TSC pendant ~10j → effet modere ✓
-TSC_lower <- Cmax_1p2 / 20   # ~839 ug/L
-TSC_upper <- Cmax_1p2 / 3    # ~5595 ug/L
+# TSC_upper = 0.9 * Cmax_1p2 : permet a l'optimiseur d'explorer TSC pres de Cmax_1p2
+#   => a TSC~10000 : drug actif ~8j a 1.2mg/kg ; killing retarde (MTT) cause
+#      declin observe a j35-49 via vidange compartiments de transit x2-x4.
+#   5.6 mg/kg  → Cmax/TSC~7-80 → suppression soutenue ✓
+#   11.8 mg/kg → Cmax/TSC~17-200 → suppression forte ✓
+#   1.2 mg/kg  → Cmax/TSC~1.1-20 → effet partiel + killing retarde ✓
+TSC_lower <- Cmax_1p2 / 20        # ~839 ug/L
+TSC_upper <- Cmax_1p2 * 0.9       # ~15106 ug/L (juste sous Cmax_1p2)
 k1_lower  <- 4 / 25          # MTT max = 25j
 k1_upper  <- 4 / 5           # MTT min =  5j
 
