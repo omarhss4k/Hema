@@ -22,11 +22,10 @@
 #   Etape A — Croissance  : L0 et L1 sur le groupe vehicule uniquement
 #   Etape B — Efficacite  : k1 et TSC sur les 3 groupes traites (L0/L1 fixes)
 #
-#   Bornes TSC : [Cmax_1p2/20, 0.9*Cmax_1p2]
-#     Justification biologique :
-#       TSC < Cmax_1p2 pour que drug ait un effet a 1.2 mg/kg
-#       TSC_upper = 0.9*Cmax_1p2 : killing retarde par transit (MTT~25j) peut
-#       reproduire declin observe a j35-49 meme avec fenetre courte (~8j)
+#   Etape B ajuste sur 5.6 et 11.8 mg/kg uniquement.
+#   1.2 mg/kg : comportement atypique (croissance j0-28 + stabilisation j35-49)
+#   non reproductible avec un seul k2=L0/TSC commun → affiche en prediction.
+#   Bornes TSC : [Cmax_1p2/20, Cmax_1p2/2]
 #
 # Schema posologique : dose unique IV bolus au jour 0
 # Groupes : Vehicule | 1.2 mg/kg | 5.6 mg/kg | 11.8 mg/kg
@@ -393,15 +392,16 @@ cat(sprintf("L0 fixe = %.6f /j  |  L1 fixe = %.2f mm3/j\n", L0_est, L1_est))
 cat(sprintf("t1/2 beta PK = %.1f j  (biexponentiel 2-compartiments)\n",
             log(2) / (0.00271672748720293 * 24)))
 
-# PK lineaire 2-compartiments suffit : t½_beta = 10.6j.
-# TSC_upper = 0.9 * Cmax_1p2 : permet a l'optimiseur d'explorer TSC pres de Cmax_1p2
-#   => a TSC~10000 : drug actif ~8j a 1.2mg/kg ; killing retarde (MTT) cause
-#      declin observe a j35-49 via vidange compartiments de transit x2-x4.
-#   5.6 mg/kg  → Cmax/TSC~7-80 → suppression soutenue ✓
-#   11.8 mg/kg → Cmax/TSC~17-200 → suppression forte ✓
-#   1.2 mg/kg  → Cmax/TSC~1.1-20 → effet partiel + killing retarde ✓
+# Ajustement sur 5.6 et 11.8 mg/kg UNIQUEMENT.
+# 1.2 mg/kg exclu de la cost : comportement atypique (croissance lente j0-28
+# puis stabilisation j35-49) incompatible avec un seul k2=L0/TSC commun.
+# 1.2 mg/kg est affiche en PREDICTION uniquement.
+#
+# Avec t½_beta=10.6j : drug actif 5.6mg/kg pendant ~ln(66547/TSC)/0.0652 j
+#   TSC_lower=839 : drug actif ~34j a 5.6mg/kg → suppression soutenue ✓
+#   TSC_upper=8392 (Cmax_1p2/2) : drug actif ~17j a 5.6mg/kg → encore suffisant ✓
 TSC_lower <- Cmax_1p2 / 20        # ~839 ug/L
-TSC_upper <- Cmax_1p2 * 0.9       # ~15106 ug/L (juste sous Cmax_1p2)
+TSC_upper <- Cmax_1p2 / 2         # ~8392 ug/L
 k1_lower  <- 4 / 25          # MTT max = 25j
 k1_upper  <- 4 / 5           # MTT min =  5j
 
@@ -424,10 +424,7 @@ objective_traites <- function(logpar) {
     L0 = L0_est, L1 = L1_est, k1 = k1, k2 = k2
   )
 
-  pred_d1p2 <- sim_treated(1200,  tv0_d1p2,  params_all, times_d[ok_d1p2])
-  if (any(is.na(pred_d1p2))) return(1e12)
-  pred_d1p2 <- pmax(pred_d1p2, 0.1)
-
+  # 1.2 mg/kg exclu de la cost (comportement atypique — affiche en prediction)
   pred_d5p6 <- sim_treated(5600,  tv0_d5p6,  params_all, times_d[ok_d5p6])
   if (any(is.na(pred_d5p6))) return(1e12)
   pred_d5p6 <- pmax(pred_d5p6, 0.1)
@@ -436,7 +433,6 @@ objective_traites <- function(logpar) {
   if (any(is.na(pred_d11p8))) return(1e12)
   pred_d11p8 <- pmax(pred_d11p8, 0.1)
 
-  sum(1 / sem_d1p2[ok_d1p2]^2   * (log(tv_d1p2[ok_d1p2])   - log(pred_d1p2))^2,  na.rm = TRUE) +
   sum(1 / sem_d5p6[ok_d5p6]^2   * (log(tv_d5p6[ok_d5p6])   - log(pred_d5p6))^2,  na.rm = TRUE) +
   sum(1 / sem_d11p8[ok_d11p8]^2 * (log(tv_d11p8[ok_d11p8]) - log(pred_d11p8))^2, na.rm = TRUE)
 }
