@@ -392,19 +392,22 @@ cat(sprintf("L0 fixe = %.6f /j  |  L1 fixe = %.2f mm3/j\n", L0_est, L1_est))
 cat(sprintf("t1/2 beta PK = %.1f j  (biexponentiel 2-compartiments)\n",
             log(2) / (0.00271672748720293 * 24)))
 
-# Ajustement sur 5.6 et 11.8 mg/kg UNIQUEMENT.
-# 1.2 mg/kg exclu de la cost : comportement atypique (croissance lente j0-28
-# puis stabilisation j35-49) incompatible avec un seul k2=L0/TSC commun.
-# 1.2 mg/kg est affiche en PREDICTION uniquement.
+# Ajustement sur les 3 groupes traites avec poids de groupe reduit pour 1.2mg/kg.
+# W_1P2 = 0.1 : 1.2mg/kg contribue 10% de son poids normal dans la cost.
+#   Justification : les points precoces de 1.2mg/kg (petite SEM) dominent sinon
+#   l'optimisation et tirent TSC vers le haut, causant regrowth a 5.6mg/kg.
+#   La structure 1/SEM² est conservee au sein de chaque groupe.
 #
-# Avec t½_beta=10.6j : drug actif 5.6mg/kg pendant ~ln(66547/TSC)/0.0652 j
-#   TSC_lower=839 : drug actif ~34j a 5.6mg/kg → suppression soutenue ✓
-#   TSC_upper=8392 (Cmax_1p2/2) : drug actif ~17j a 5.6mg/kg → encore suffisant ✓
-TSC_lower <- Cmax_1p2 / 20        # ~839 ug/L
-TSC_upper <- Cmax_1p2 / 2         # ~8392 ug/L
-k1_lower  <- 4 / 25          # MTT max = 25j
-k1_upper  <- 4 / 5           # MTT min =  5j
+# Bornes TSC : [Cmax_1p2/20, Cmax_5p6/10] = [~839, ~6655] ug/L
+#   TSC < Cmax_5p6/10 : drug actif ~ln(6.6)/0.0652=28j a 5.6mg/kg ✓
+W_1P2 <- 0.1
 
+TSC_lower <- Cmax_1p2 / 20        # ~839 ug/L
+TSC_upper <- Cmax_5p6 / 10        # ~6655 ug/L
+k1_lower  <- 4 / 25               # MTT max = 25j
+k1_upper  <- 4 / 5                # MTT min =  5j
+
+cat(sprintf("Poids groupe 1.2 mg/kg : %.2f\n", W_1P2))
 cat(sprintf("Bornes TSC : [%.0f, %.0f] ug/L\n", TSC_lower, TSC_upper))
 cat(sprintf("Bornes k1  : [%.4f, %.4f] /j    (MTT dans [5, 25 j])\n", k1_lower, k1_upper))
 
@@ -424,7 +427,10 @@ objective_traites <- function(logpar) {
     L0 = L0_est, L1 = L1_est, k1 = k1, k2 = k2
   )
 
-  # 1.2 mg/kg exclu de la cost (comportement atypique — affiche en prediction)
+  pred_d1p2 <- sim_treated(1200,  tv0_d1p2,  params_all, times_d[ok_d1p2])
+  if (any(is.na(pred_d1p2))) return(1e12)
+  pred_d1p2 <- pmax(pred_d1p2, 0.1)
+
   pred_d5p6 <- sim_treated(5600,  tv0_d5p6,  params_all, times_d[ok_d5p6])
   if (any(is.na(pred_d5p6))) return(1e12)
   pred_d5p6 <- pmax(pred_d5p6, 0.1)
@@ -433,8 +439,9 @@ objective_traites <- function(logpar) {
   if (any(is.na(pred_d11p8))) return(1e12)
   pred_d11p8 <- pmax(pred_d11p8, 0.1)
 
-  sum(1 / sem_d5p6[ok_d5p6]^2   * (log(tv_d5p6[ok_d5p6])   - log(pred_d5p6))^2,  na.rm = TRUE) +
-  sum(1 / sem_d11p8[ok_d11p8]^2 * (log(tv_d11p8[ok_d11p8]) - log(pred_d11p8))^2, na.rm = TRUE)
+  W_1P2 * sum(1 / sem_d1p2[ok_d1p2]^2   * (log(tv_d1p2[ok_d1p2])   - log(pred_d1p2))^2,  na.rm = TRUE) +
+          sum(1 / sem_d5p6[ok_d5p6]^2   * (log(tv_d5p6[ok_d5p6])   - log(pred_d5p6))^2,  na.rm = TRUE) +
+          sum(1 / sem_d11p8[ok_d11p8]^2 * (log(tv_d11p8[ok_d11p8]) - log(pred_d11p8))^2, na.rm = TRUE)
 }
 
 # Test de sanite avant DEoptim
@@ -515,7 +522,7 @@ if (abs(log(k1_est)  - log(k1_lower))  < tol * (log(k1_upper)  - log(k1_lower)))
 mtt <- 4 / k1_est
 
 cat("\n===========================================================\n")
-cat("PARAMETRES FINAUX — SNU  (ajustement sequentiel, PK lineaire 2-comp)\n")
+cat("PARAMETRES FINAUX — SNU  (ajustement sequentiel, PK lineaire, W_1P2=0.1)\n")
 cat("===========================================================\n")
 cat(sprintf("L0  = %.6f /j         [Etape A — %s]\n", L0_est,  src_A))
 cat(sprintf("L1  = %.2f mm3/j      [Etape A — %s]\n", L1_est,  src_A))
