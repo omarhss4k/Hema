@@ -51,7 +51,7 @@ DOSES_UGKG <- c(1200, 5600, 11800)   # [ug/kg]
 
 # --- Bornes MTT pour l'Etape B ---
 MTT_MIN_J <- 5    # [jours] — MTT minimum biologique plausible
-MTT_MAX_J <- 25   # [jours] — MTT maximum biologique plausible
+MTT_MAX_J <- 40   # [jours] — MTT maximum biologique plausible
 
 # --- Bornes k2 pour l'Etape B ---
 #   k2 est estime directement (TSC = L0/k2 est derive pour interpretation).
@@ -60,8 +60,8 @@ MTT_MAX_J <- 25   # [jours] — MTT maximum biologique plausible
 #     Augmenter K2_TSC_MAX_X si le drug est tres peu potent.
 #   k2_upper : drug tres puissant — TSC aussi bas que Cmax_dose1 / K2_TSC_MIN_DIV
 #     Augmenter K2_TSC_MIN_DIV si le modele sur-supprime a faible dose.
-K2_TSC_MAX_X   <- 1    # TSC_max = K2_TSC_MAX_X   * Cmax_dose3  (borne basse de k2)
-K2_TSC_MIN_DIV <- 50   # TSC_min = Cmax_dose1 / K2_TSC_MIN_DIV (borne haute de k2)
+K2_TSC_MAX_X   <- 2    # TSC_max = K2_TSC_MAX_X   * Cmax_dose3  (borne basse de k2)
+K2_TSC_MIN_DIV <- 100  # TSC_min = Cmax_dose1 / K2_TSC_MIN_DIV (borne haute de k2)
 
 # --- Poids de groupe pour la dose la plus faible (Etape B) ---
 #   W_DOSE_FAIBLE = 1.0 : poids normal
@@ -469,7 +469,7 @@ fit_de_B <- DEoptim(
   upper   = upper_B,
   control = DEoptim.control(
     NP      = 80,
-    itermax = 800,
+    itermax = 1500,
     F       = 0.8,
     CR      = 0.9,
     trace   = 100,
