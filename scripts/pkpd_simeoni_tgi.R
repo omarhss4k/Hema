@@ -68,7 +68,7 @@ K2_TSC_MIN_DIV <- 50   # TSC_min = Cmax_dose1 / K2_TSC_MIN_DIV (borne haute de k
 #   W_DOSE_FAIBLE < 1.0 : reduit l'influence de ce groupe sur l'estimation de TSC.
 #   Utile quand ce groupe a un comportement atypique (croissance initiale + stabilisation)
 #   non reproductible avec un seul k2 = L0/TSC commun.
-W_DOSE_FAIBLE <- 0.1
+W_DOSE_FAIBLE <- 0    # 0 = exclure ce groupe de l'ajustement (affiche en prediction uniquement)
 
 # --- Position des groupes dans le fichier Excel ---
 #   Deux formats sont detectes automatiquement :
