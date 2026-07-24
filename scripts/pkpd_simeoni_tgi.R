@@ -14,13 +14,13 @@
 #   dx4/dt =  k1*x3 - k1*x4
 #   g(w) = L0*w / (1 + (L0*w/L1)^psi)^(1/psi)   psi = 20
 #
-#   TSC (ug/L) : concentration seuil de cytotoxicite — estimee directement
-#   k2 = L0/TSC (derive)
+#   k2 [L/ug/j] : taux de cytotoxicite — estime directement en Etape B
+#   TSC = L0/k2 [ug/L] : concentration seuil (derive, pour interpretation)
 #   MTT = 4/k1  (jours)
 #
 # Ajustement SEQUENTIEL :
 #   Etape A — Croissance  : L0 et L1 sur le groupe vehicule uniquement
-#   Etape B — Efficacite  : k1 et TSC sur les groupes traites (L0/L1 fixes)
+#   Etape B — Efficacite  : k1 et k2 sur les groupes traites (L0/L1 fixes)
 # =============================================================================
 
 library(deSolve)
@@ -53,15 +53,15 @@ DOSES_UGKG <- c(1200, 5600, 11800)   # [ug/kg]
 MTT_MIN_J <- 5    # [jours] — MTT minimum biologique plausible
 MTT_MAX_J <- 25   # [jours] — MTT maximum biologique plausible
 
-# --- Borne superieure TSC ---
-#   TSC_upper = Cmax_dose2 / FACTEUR_TSC_UPPER
-#   Garantit que le drug reste actif suffisamment longtemps a la dose intermediaire.
-#   Reduire ce facteur si le modele montre une re-croissance trop precoce a dose2.
-FACTEUR_TSC_UPPER <- 10
-
-# --- Borne inferieure TSC ---
-#   TSC_lower = Cmax_dose1 / FACTEUR_TSC_LOWER
-FACTEUR_TSC_LOWER <- 20
+# --- Bornes k2 pour l'Etape B ---
+#   k2 est estime directement (TSC = L0/k2 est derive pour interpretation).
+#
+#   k2_lower : drug tres faible — TSC jusqu'a K2_TSC_MAX_X * Cmax_dose3
+#     Augmenter K2_TSC_MAX_X si le drug est tres peu potent.
+#   k2_upper : drug tres puissant — TSC aussi bas que Cmax_dose1 / K2_TSC_MIN_DIV
+#     Augmenter K2_TSC_MIN_DIV si le modele sur-supprime a faible dose.
+K2_TSC_MAX_X   <- 1    # TSC_max = K2_TSC_MAX_X   * Cmax_dose3  (borne basse de k2)
+K2_TSC_MIN_DIV <- 50   # TSC_min = Cmax_dose1 / K2_TSC_MIN_DIV (borne haute de k2)
 
 # --- Poids de groupe pour la dose la plus faible (Etape B) ---
 #   W_DOSE_FAIBLE = 1.0 : poids normal
@@ -351,29 +351,31 @@ cat(sprintf("   Objectif retenu  : %.8f\n", best_val_A))
 # =============================================================================
 
 cat("\n===========================================================\n")
-cat("ETAPE B — Ajustement groupes traites : k1 et TSC\n")
+cat("ETAPE B — Ajustement groupes traites : k1 et k2\n")
 cat("===========================================================\n")
 cat(sprintf("L0 fixe = %.6f /j  |  L1 fixe = %.2f mm3/j\n", L0_est, L1_est))
 
-TSC_lower <- Cmax_dose1 / FACTEUR_TSC_LOWER
-TSC_upper <- Cmax_dose2 / FACTEUR_TSC_UPPER
+# Bornes k2 calculees depuis CONFIG et Cmax observes
+TSC_min   <- Cmax_dose1 / K2_TSC_MIN_DIV          # drug le plus puissant
+TSC_max   <- Cmax_dose3 * K2_TSC_MAX_X             # drug le plus faible
+k2_lower  <- L0_est / TSC_max
+k2_upper  <- L0_est / TSC_min
 k1_lower  <- 4 / MTT_MAX_J
 k1_upper  <- 4 / MTT_MIN_J
 
 cat(sprintf("Poids %s : %.2f\n", LABEL_DOSE_1, W_DOSE_FAIBLE))
-cat(sprintf("Bornes TSC : [%.0f, %.0f] ug/L\n", TSC_lower, TSC_upper))
-cat(sprintf("Bornes k1  : [%.4f, %.4f] /j    (MTT dans [%d, %d] j)\n",
+cat(sprintf("Bornes TSC equivalentes : [%.0f, %.0f] ug/L\n", TSC_min, TSC_max))
+cat(sprintf("Bornes k2 : [%.3e, %.3e] L/ug/j\n", k2_lower, k2_upper))
+cat(sprintf("Bornes k1 : [%.4f, %.4f] /j    (MTT dans [%d, %d] j)\n",
             k1_lower, k1_upper, MTT_MIN_J, MTT_MAX_J))
 
-lower_B <- c(log(k1_lower), log(TSC_lower))
-upper_B <- c(log(k1_upper), log(TSC_upper))
+lower_B <- c(log(k1_lower), log(k2_lower))
+upper_B <- c(log(k1_upper), log(k2_upper))
 
 objective_traites <- function(logpar) {
-  k1  <- exp(logpar[1])
-  TSC <- exp(logpar[2])
-  if (k1 <= 0 || TSC <= 0) return(1e12)
-
-  k2 <- L0_est / TSC
+  k1 <- exp(logpar[1])
+  k2 <- exp(logpar[2])
+  if (k1 <= 0 || k2 <= 0) return(1e12)
 
   params_all <- c(
     CL = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
@@ -449,8 +451,8 @@ if (fit_local_B$objective < fit_de_B$optim$bestval) {
 }
 
 k1_est  <- exp(best_par_B[1])
-TSC_est <- exp(best_par_B[2])
-k2_est  <- L0_est / TSC_est
+k2_est  <- exp(best_par_B[2])
+TSC_est <- L0_est / k2_est
 
 cat(sprintf("\n-> k1  = %.5f /j   [MTT = %.1f j]  (%s)\n", k1_est, 4 / k1_est, src_B))
 cat(sprintf("-> TSC = %.0f ug/L  (%s)\n", TSC_est, src_B))
@@ -460,13 +462,15 @@ cat(sprintf("   Objectif retenu  : %.8f\n", best_val_B))
 
 # Avertissements si parametre sur borne
 tol <- 0.02
-if (abs(log(TSC_est) - log(TSC_lower)) < tol * (log(TSC_upper) - log(TSC_lower)))
-  cat("  [AVERT] TSC sur borne inferieure\n")
-if (abs(log(TSC_est) - log(TSC_upper)) < tol * (log(TSC_upper) - log(TSC_lower)))
-  cat("  [AVERT] TSC sur borne superieure\n")
-if (abs(log(k1_est)  - log(k1_upper))  < tol * (log(k1_upper)  - log(k1_lower)))
+rng_k2 <- log(k2_upper) - log(k2_lower)
+rng_k1 <- log(k1_upper) - log(k1_lower)
+if (abs(log(k2_est) - log(k2_lower)) < tol * rng_k2)
+  cat(sprintf("  [AVERT] k2 sur borne inferieure (TSC=%.0f ug/L — drug tres faible)\n", TSC_est))
+if (abs(log(k2_est) - log(k2_upper))  < tol * rng_k2)
+  cat(sprintf("  [AVERT] k2 sur borne superieure (TSC=%.0f ug/L — drug tres puissant)\n", TSC_est))
+if (abs(log(k1_est) - log(k1_upper))  < tol * rng_k1)
   cat(sprintf("  [AVERT] k1 sur borne superieure (MTT=%.1fj)\n", 4/k1_est))
-if (abs(log(k1_est)  - log(k1_lower))  < tol * (log(k1_upper)  - log(k1_lower)))
+if (abs(log(k1_est) - log(k1_lower))  < tol * rng_k1)
   cat(sprintf("  [AVERT] k1 sur borne inferieure (MTT=%.1fj)\n", 4/k1_est))
 
 # =============================================================================
