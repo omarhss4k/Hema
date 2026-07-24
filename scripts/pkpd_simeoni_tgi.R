@@ -68,7 +68,11 @@ K2_TSC_MIN_DIV <- 100  # TSC_min = Cmax_dose1 / K2_TSC_MIN_DIV (borne haute de k
 #   W_DOSE_FAIBLE < 1.0 : reduit l'influence de ce groupe sur l'estimation de TSC.
 #   Utile quand ce groupe a un comportement atypique (croissance initiale + stabilisation)
 #   non reproductible avec un seul k2 = L0/TSC commun.
-W_DOSE_FAIBLE <- 0    # 0 = exclure ce groupe de l'ajustement (affiche en prediction uniquement)
+# Poids par groupe dans la fonction de cout de l'Etape B :
+#   1.0 = poids normal  |  0 = exclure (affiche en prediction uniquement)
+W_DOSE_FAIBLE      <- 0    # dose la plus faible   (1.2 mg/kg)
+W_DOSE_INTERMEDIAIRE <- 1  # dose intermediaire    (5.6 mg/kg)
+W_DOSE_ELEVEE      <- 0.1  # dose la plus elevee   (11.8 mg/kg)
 
 # --- Position des groupes dans le fichier Excel ---
 #   Deux formats sont detectes automatiquement :
@@ -410,7 +414,10 @@ k2_upper  <- L0_est / TSC_min
 k1_lower  <- 4 / MTT_MAX_J
 k1_upper  <- 4 / MTT_MIN_J
 
-cat(sprintf("Poids %s : %.2f\n", LABEL_DOSE_1, W_DOSE_FAIBLE))
+cat(sprintf("Poids : %s=%.2f | %s=%.2f | %s=%.2f\n",
+            LABEL_DOSE_1, W_DOSE_FAIBLE,
+            LABEL_DOSE_2, W_DOSE_INTERMEDIAIRE,
+            LABEL_DOSE_3, W_DOSE_ELEVEE))
 cat(sprintf("Bornes TSC equivalentes : [%.0f, %.0f] ug/L\n", TSC_min, TSC_max))
 cat(sprintf("Bornes k2 : [%.3e, %.3e] L/ug/j\n", k2_lower, k2_upper))
 cat(sprintf("Bornes k1 : [%.4f, %.4f] /j    (MTT dans [%d, %d] j)\n",
@@ -442,9 +449,9 @@ objective_traites <- function(logpar) {
   if (any(is.na(pred3))) return(1e12)
   pred3 <- pmax(pred3, 0.1)
 
-  W_DOSE_FAIBLE * sum(1 / sem_dose1[ok_dose1]^2 * (log(tv_dose1[ok_dose1]) - log(pred1))^2, na.rm = TRUE) +
-                  sum(1 / sem_dose2[ok_dose2]^2 * (log(tv_dose2[ok_dose2]) - log(pred2))^2, na.rm = TRUE) +
-                  sum(1 / sem_dose3[ok_dose3]^2 * (log(tv_dose3[ok_dose3]) - log(pred3))^2, na.rm = TRUE)
+  W_DOSE_FAIBLE       * sum(1 / sem_dose1[ok_dose1]^2 * (log(tv_dose1[ok_dose1]) - log(pred1))^2, na.rm = TRUE) +
+  W_DOSE_INTERMEDIAIRE * sum(1 / sem_dose2[ok_dose2]^2 * (log(tv_dose2[ok_dose2]) - log(pred2))^2, na.rm = TRUE) +
+  W_DOSE_ELEVEE        * sum(1 / sem_dose3[ok_dose3]^2 * (log(tv_dose3[ok_dose3]) - log(pred3))^2, na.rm = TRUE)
 }
 
 # Verification avant DEoptim
