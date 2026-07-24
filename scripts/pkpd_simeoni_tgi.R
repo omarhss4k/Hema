@@ -70,6 +70,24 @@ K2_TSC_MIN_DIV <- 50   # TSC_min = Cmax_dose1 / K2_TSC_MIN_DIV (borne haute de k
 #   non reproductible avec un seul k2 = L0/TSC commun.
 W_DOSE_FAIBLE <- 0.1
 
+# --- Position des groupes dans le fichier Excel ---
+#   Deux formats sont detectes automatiquement :
+#
+#   Format TALL (temps en col 1, groupes en colonnes) :
+#     Col 1=Temps | Col 2=Ctrl | Col 3=Dose1 | Col 4=Dose2 | Col 5=Dose3
+#     LIGNE_* = index de colonne de groupe (1=col2, 2=col3, 3=col4, 4=col5)
+#
+#   Format WIDE (groupes en lignes, temps en colonnes) :
+#     Row 1 = header "Group" | t0 | t1 | ...
+#     Row 2+ = groupe | val | val | ...
+#     LIGNE_* = offset de ligne depuis l'en-tete (1=premiere ligne de donnees)
+#
+#   Dans les deux cas : 1=vehicule/ctrl, 2=dose1, 3=dose2, 4=dose3 par defaut.
+LIGNE_CTRL  <- 1   # vehicule
+LIGNE_DOSE1 <- 2   # dose la plus faible
+LIGNE_DOSE2 <- 3   # dose intermediaire
+LIGNE_DOSE3 <- 4   # dose la plus elevee
+
 # =============================================================================
 # FIN CONFIG — NE PAS MODIFIER CE QUI SUIT
 # =============================================================================
@@ -115,39 +133,68 @@ cat(sprintf("\nCmax (ug/L) : %s = %.0f | %s = %.0f | %s = %.0f\n",
 # =============================================================================
 # 2. DONNEES TUMORALES
 #
-# Structure Excel — 2 blocs separes par une ligne d'en-tete "Time" :
-#   Bloc 1 : moyennes  col 1=Temps, 2=Vehicule, 3=dose1, 4=dose2, 5=dose3
-#   Bloc 2 : SEM       (memes colonnes)
+# Deux formats detectes automatiquement (voir CONFIG LIGNE_*) :
+#   TALL : temps en col 1, groupes en colonnes (format habituel)
+#   WIDE : temps en ligne d'en-tete, groupes en lignes
 # =============================================================================
 
 raw_tumor <- suppressMessages(
   read_xlsx(FICHIER_TUMOR, col_names = FALSE, .name_repair = "minimal")
 )
 
-header_rows <- which(grepl("Time", trimws(as.character(raw_tumor[[1]])), ignore.case = TRUE))
+# Localiser les deux lignes d'en-tete (contiennent "Time" ou "Group")
+header_rows <- which(grepl("Time|Group",
+                           trimws(as.character(raw_tumor[[1]])),
+                           ignore.case = TRUE) &
+                     !is.na(raw_tumor[[1]]))
 stopifnot("2 blocs attendus (moyennes + SEM)" = length(header_rows) == 2)
 
-extract_block <- function(raw, row_start, row_end) {
-  blk <- raw[seq(row_start, row_end), ]
-  blk[!is.na(suppressWarnings(as.numeric(as.character(blk[[1]])))), ]
-}
-
-b1 <- extract_block(raw_tumor, header_rows[1] + 1, header_rows[2] - 1)
-b2 <- extract_block(raw_tumor, header_rows[2] + 1, nrow(raw_tumor))
-
-num_col <- function(df, j) suppressWarnings(as.numeric(as.character(df[[j]])))
 fix_sem <- function(x) ifelse(is.na(x) | x <= 0, 1, x)
 
-times_d   <- num_col(b1, 1)
-tv_ctrl   <- num_col(b1, 2)
-tv_dose1  <- num_col(b1, 3)
-tv_dose2  <- num_col(b1, 4)
-tv_dose3  <- num_col(b1, 5)
+# Detecter le format : col2 de la ligne d'en-tete est numerique → WIDE
+is_wide <- !is.na(suppressWarnings(as.numeric(as.character(
+  raw_tumor[[2]][header_rows[1]]
+))))
 
-sem_ctrl  <- fix_sem(num_col(b2, 2))
-sem_dose1 <- fix_sem(num_col(b2, 3))
-sem_dose2 <- fix_sem(num_col(b2, 4))
-sem_dose3 <- fix_sem(num_col(b2, 5))
+if (is_wide) {
+  # Format WIDE — temps dans la ligne d'en-tete, groupes dans les lignes suivantes
+  times_d <- suppressWarnings(as.numeric(as.character(raw_tumor[header_rows[1], ])))
+  times_d <- times_d[!is.na(times_d)]
+  n_t     <- length(times_d)
+
+  read_row_w <- function(h_row, offset) {
+    suppressWarnings(as.numeric(as.character(raw_tumor[h_row + offset, 2:(n_t + 1)])))
+  }
+  tv_ctrl  <- read_row_w(header_rows[1], LIGNE_CTRL)
+  tv_dose1 <- read_row_w(header_rows[1], LIGNE_DOSE1)
+  tv_dose2 <- read_row_w(header_rows[1], LIGNE_DOSE2)
+  tv_dose3 <- read_row_w(header_rows[1], LIGNE_DOSE3)
+  sem_ctrl  <- fix_sem(read_row_w(header_rows[2], LIGNE_CTRL))
+  sem_dose1 <- fix_sem(read_row_w(header_rows[2], LIGNE_DOSE1))
+  sem_dose2 <- fix_sem(read_row_w(header_rows[2], LIGNE_DOSE2))
+  sem_dose3 <- fix_sem(read_row_w(header_rows[2], LIGNE_DOSE3))
+
+} else {
+  # Format TALL — temps en col 1, groupes en colonnes
+  extract_block <- function(raw, r1, r2) {
+    blk <- raw[seq(r1, r2), ]
+    blk[!is.na(suppressWarnings(as.numeric(as.character(blk[[1]])))), ]
+  }
+  b1 <- extract_block(raw_tumor, header_rows[1] + 1, header_rows[2] - 1)
+  b2 <- extract_block(raw_tumor, header_rows[2] + 1, nrow(raw_tumor))
+
+  num_col <- function(df, j) suppressWarnings(as.numeric(as.character(df[[j]])))
+
+  times_d  <- num_col(b1, 1)
+  tv_ctrl  <- num_col(b1, LIGNE_CTRL  + 1)
+  tv_dose1 <- num_col(b1, LIGNE_DOSE1 + 1)
+  tv_dose2 <- num_col(b1, LIGNE_DOSE2 + 1)
+  tv_dose3 <- num_col(b1, LIGNE_DOSE3 + 1)
+  sem_ctrl  <- fix_sem(num_col(b2, LIGNE_CTRL  + 1))
+  sem_dose1 <- fix_sem(num_col(b2, LIGNE_DOSE1 + 1))
+  sem_dose2 <- fix_sem(num_col(b2, LIGNE_DOSE2 + 1))
+  sem_dose3 <- fix_sem(num_col(b2, LIGNE_DOSE3 + 1))
+}
 
 get_tv0 <- function(tv) {
   v <- tv[times_d == 0]
