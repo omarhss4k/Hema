@@ -1,6 +1,7 @@
 # =============================================================================
 # Modele PK/PD TGI — Simeoni (2004) — Ajustement sequentiel
 # Script generique — xenogreffe souris, dose unique IV bolus
+# Supporte N groupes traites (pas de limite sur le nombre de doses)
 #
 # PK  : 2 compartiments IV bolus lineaire (parametres fixes issus du CSV)
 #   dA1/dt = -(CL/V1 + Q/V1)*A1 + (Q/V2)*A2
@@ -40,69 +41,57 @@ FICHIER_TUMOR <- "Tumor_volum_SNU.xlsx"               # Excel volume tumoral
 NOM_PRODUIT <- "Fc-silent FGFR2-huBPA-LP1"
 NOM_COHORTE <- "SNU"
 
-# --- Noms des groupes dans le CSV PK (colonne Animal) ---
-#   Ces noms servent a extraire les Cmax par dose depuis le fichier PK.
-NOM_DOSE_1 <- "groupe 4"   # dose la plus faible
-NOM_DOSE_2 <- "grp 5"      # dose intermediaire
-NOM_DOSE_3 <- "grp 7"      # dose la plus elevee
+# --- Noms des groupes traites dans le CSV PK (colonne Animal) ---
+#   Un element par dose, dans le meme ordre que DOSES_UGKG.
+#   Ces noms servent a extraire les Cmax depuis le fichier PK.
+NOM_DOSES <- c("groupe 4", "grp 5", "grp 7")
 
-# --- Doses en ug/kg (meme ordre que NOM_DOSE_1/2/3) ---
-DOSES_UGKG <- c(1200, 5600, 11800)   # [ug/kg]
+# --- Doses en ug/kg (meme ordre que NOM_DOSES) ---
+#   Ajouter autant de valeurs que de groupes traites.
+DOSES_UGKG <- c(1200, 5600, 11800)
+
+# --- Poids de chaque groupe dans la fonction de cout de l'Etape B ---
+#   Un element par dose (meme ordre que DOSES_UGKG).
+#   1.0 = poids normal  |  0 = exclure (affiche en prediction uniquement)
+W_DOSES <- c(0, 1, 0.1)
 
 # --- Bornes MTT pour l'Etape B ---
 MTT_MIN_J <- 5    # [jours] — MTT minimum biologique plausible
 MTT_MAX_J <- 40   # [jours] — MTT maximum biologique plausible
 
 # --- Bornes k2 pour l'Etape B ---
-#   k2 est estime directement (TSC = L0/k2 est derive pour interpretation).
-#
-#   k2_lower : drug tres faible — TSC jusqu'a K2_TSC_MAX_X * Cmax_dose3
-#     Augmenter K2_TSC_MAX_X si le drug est tres peu potent.
-#   k2_upper : drug tres puissant — TSC aussi bas que Cmax_dose1 / K2_TSC_MIN_DIV
-#     Augmenter K2_TSC_MIN_DIV si le modele sur-supprime a faible dose.
-K2_TSC_MAX_X   <- 2    # TSC_max = K2_TSC_MAX_X   * Cmax_dose3  (borne basse de k2)
-K2_TSC_MIN_DIV <- 100  # TSC_min = Cmax_dose1 / K2_TSC_MIN_DIV (borne haute de k2)
-
-# --- Poids de groupe pour la dose la plus faible (Etape B) ---
-#   W_DOSE_FAIBLE = 1.0 : poids normal
-#   W_DOSE_FAIBLE < 1.0 : reduit l'influence de ce groupe sur l'estimation de TSC.
-#   Utile quand ce groupe a un comportement atypique (croissance initiale + stabilisation)
-#   non reproductible avec un seul k2 = L0/TSC commun.
-# Poids par groupe dans la fonction de cout de l'Etape B :
-#   1.0 = poids normal  |  0 = exclure (affiche en prediction uniquement)
-W_DOSE_FAIBLE      <- 0    # dose la plus faible   (1.2 mg/kg)
-W_DOSE_INTERMEDIAIRE <- 1  # dose intermediaire    (5.6 mg/kg)
-W_DOSE_ELEVEE      <- 0.1  # dose la plus elevee   (11.8 mg/kg)
+#   TSC_max = K2_TSC_MAX_X   * Cmax de la dose la plus elevee   (borne basse de k2)
+#   TSC_min = Cmax de la dose la plus faible / K2_TSC_MIN_DIV   (borne haute de k2)
+K2_TSC_MAX_X   <- 2    # drug tres faible  — augmenter si TSC depasse Cmax_max
+K2_TSC_MIN_DIV <- 100  # drug tres puissant — augmenter si le modele sur-supprime
 
 # --- Position des groupes dans le fichier Excel ---
 #   Deux formats sont detectes automatiquement :
 #
 #   Format TALL (temps en col 1, groupes en colonnes) :
-#     Col 1=Temps | Col 2=Ctrl | Col 3=Dose1 | Col 4=Dose2 | Col 5=Dose3
-#     LIGNE_* = index de colonne de groupe (1=col2, 2=col3, 3=col4, 4=col5)
+#     Col 1=Temps | Col 2=Ctrl | Col 3=Dose1 | ...
+#     LIGNE_CTRL = 1 → col 2, LIGNES_DOSES = c(2,3,...) → col 3, 4, ...
 #
 #   Format WIDE (groupes en lignes, temps en colonnes) :
-#     Row 1 = header "Group" | t0 | t1 | ...
-#     Row 2+ = groupe | val | val | ...
-#     LIGNE_* = offset de ligne depuis l'en-tete (1=premiere ligne de donnees)
-#
-#   Dans les deux cas : 1=vehicule/ctrl, 2=dose1, 3=dose2, 4=dose3 par defaut.
-LIGNE_CTRL  <- 1   # vehicule
-LIGNE_DOSE1 <- 2   # dose la plus faible
-LIGNE_DOSE2 <- 3   # dose intermediaire
-LIGNE_DOSE3 <- 4   # dose la plus elevee
+#     Row 1 = header | t0 | t1 | ...
+#     LIGNE_CTRL = 1 → 1re ligne apres header
+#     LIGNES_DOSES = c(2,3,...) → 2e, 3e lignes apres header
+LIGNE_CTRL   <- 1         # vehicule
+LIGNES_DOSES <- c(2, 3, 4) # un offset par dose (meme ordre que DOSES_UGKG)
 
 # =============================================================================
 # FIN CONFIG — NE PAS MODIFIER CE QUI SUIT
 # =============================================================================
 
-# Titre du graphique (construit automatiquement depuis CONFIG)
+N_DOSES     <- length(DOSES_UGKG)
+LABEL_DOSES <- paste0(DOSES_UGKG / 1000, " mg/kg")
 TITRE_GRAPHE <- paste0("PK/PD TGI - Simeoni (2004) - ", NOM_PRODUIT, " - ", NOM_COHORTE)
 
-# Etiquettes des groupes pour le graphe (construites depuis CONFIG)
-LABEL_DOSE_1 <- paste0(DOSES_UGKG[1] / 1000, " mg/kg")
-LABEL_DOSE_2 <- paste0(DOSES_UGKG[2] / 1000, " mg/kg")
-LABEL_DOSE_3 <- paste0(DOSES_UGKG[3] / 1000, " mg/kg")
+stopifnot(
+  "NOM_DOSES doit avoir le meme nombre d'elements que DOSES_UGKG"  = length(NOM_DOSES)   == N_DOSES,
+  "W_DOSES doit avoir le meme nombre d'elements que DOSES_UGKG"    = length(W_DOSES)     == N_DOSES,
+  "LIGNES_DOSES doit avoir le meme nombre d'elements que DOSES_UGKG" = length(LIGNES_DOSES) == N_DOSES
+)
 
 # =============================================================================
 # 1. CHARGEMENT DES PARAMETRES PK
@@ -124,15 +113,16 @@ cat(sprintf("V1 = %.5e L/kg\n",   pk_fixed["V1"]))
 cat(sprintf("V2 = %.5e L/kg\n",   pk_fixed["V2"]))
 cat(sprintf("Q  = %.5e L/j/kg\n", pk_fixed["Q"]))
 
-# Cmax (ng/mL = ug/L) issues du CSV
-Cmax_dose1 <- pk_data$cmax[pk_data$Animal == NOM_DOSE_1]
-Cmax_dose2 <- pk_data$cmax[pk_data$Animal == NOM_DOSE_2]
-Cmax_dose3 <- pk_data$cmax[pk_data$Animal == NOM_DOSE_3]
+# Cmax (ug/L) par groupe dose
+Cmax_doses <- sapply(NOM_DOSES, function(n) {
+  v <- pk_data$cmax[pk_data$Animal == n]
+  if (length(v) == 0) stop(sprintf("Groupe '%s' introuvable dans le CSV PK (colonne Animal)", n))
+  v[1]
+})
 
-cat(sprintf("\nCmax (ug/L) : %s = %.0f | %s = %.0f | %s = %.0f\n",
-            LABEL_DOSE_1, Cmax_dose1,
-            LABEL_DOSE_2, Cmax_dose2,
-            LABEL_DOSE_3, Cmax_dose3))
+cat("\nCmax (ug/L) :\n")
+for (i in seq_len(N_DOSES))
+  cat(sprintf("  %s = %.0f\n", LABEL_DOSES[i], Cmax_doses[i]))
 
 # =============================================================================
 # 2. DONNEES TUMORALES
@@ -172,14 +162,10 @@ if (is_wide) {
   read_row_w <- function(h_row, offset) {
     suppressWarnings(as.numeric(as.character(raw_tumor[h_row + offset, 2:(n_t + 1)])))
   }
-  tv_ctrl  <- read_row_w(header_rows[1], LIGNE_CTRL)
-  tv_dose1 <- read_row_w(header_rows[1], LIGNE_DOSE1)
-  tv_dose2 <- read_row_w(header_rows[1], LIGNE_DOSE2)
-  tv_dose3 <- read_row_w(header_rows[1], LIGNE_DOSE3)
-  rsem_ctrl  <- read_row_w(header_rows[2], LIGNE_CTRL)
-  rsem_dose1 <- read_row_w(header_rows[2], LIGNE_DOSE1)
-  rsem_dose2 <- read_row_w(header_rows[2], LIGNE_DOSE2)
-  rsem_dose3 <- read_row_w(header_rows[2], LIGNE_DOSE3)
+  tv_ctrl   <- read_row_w(header_rows[1], LIGNE_CTRL)
+  rsem_ctrl <- read_row_w(header_rows[2], LIGNE_CTRL)
+  tv_doses    <- lapply(LIGNES_DOSES, function(l) read_row_w(header_rows[1], l))
+  rsem_doses  <- lapply(LIGNES_DOSES, function(l) read_row_w(header_rows[2], l))
 
 } else {
   # Format TALL — temps en col 1, groupes en colonnes
@@ -192,21 +178,15 @@ if (is_wide) {
 
   num_col <- function(df, j) suppressWarnings(as.numeric(as.character(df[[j]])))
 
-  times_d  <- num_col(b1, 1)
-  tv_ctrl  <- num_col(b1, LIGNE_CTRL  + 1)
-  tv_dose1 <- num_col(b1, LIGNE_DOSE1 + 1)
-  tv_dose2 <- num_col(b1, LIGNE_DOSE2 + 1)
-  tv_dose3 <- num_col(b1, LIGNE_DOSE3 + 1)
-  rsem_ctrl  <- num_col(b2, LIGNE_CTRL  + 1)
-  rsem_dose1 <- num_col(b2, LIGNE_DOSE1 + 1)
-  rsem_dose2 <- num_col(b2, LIGNE_DOSE2 + 1)
-  rsem_dose3 <- num_col(b2, LIGNE_DOSE3 + 1)
+  times_d   <- num_col(b1, 1)
+  tv_ctrl   <- num_col(b1, LIGNE_CTRL + 1)
+  rsem_ctrl <- num_col(b2, LIGNE_CTRL + 1)
+  tv_doses    <- lapply(LIGNES_DOSES, function(l) num_col(b1, l + 1))
+  rsem_doses  <- lapply(LIGNES_DOSES, function(l) num_col(b2, l + 1))
 }
 
 sem_ctrl  <- fix_sem(rsem_ctrl)
-sem_dose1 <- fix_sem(rsem_dose1)
-sem_dose2 <- fix_sem(rsem_dose2)
-sem_dose3 <- fix_sem(rsem_dose3)
+sem_doses <- lapply(rsem_doses, fix_sem)
 
 get_tv0 <- function(tv) {
   v <- tv[times_d == 0]
@@ -214,21 +194,17 @@ get_tv0 <- function(tv) {
 }
 
 tv0_ctrl  <- get_tv0(tv_ctrl)
-tv0_dose1 <- get_tv0(tv_dose1)
-tv0_dose2 <- get_tv0(tv_dose2)
-tv0_dose3 <- get_tv0(tv_dose3)
+tv0_doses <- sapply(tv_doses, get_tv0)
 
 # Exclure les timepoints sans SEM valide pour eviter poids artificiel 1/1²
-ok_ctrl  <- !is.na(tv_ctrl)  & !is.na(rsem_ctrl)  & rsem_ctrl  > 0
-ok_dose1 <- !is.na(tv_dose1) & !is.na(rsem_dose1) & rsem_dose1 > 0
-ok_dose2 <- !is.na(tv_dose2) & !is.na(rsem_dose2) & rsem_dose2 > 0
-ok_dose3 <- !is.na(tv_dose3) & !is.na(rsem_dose3) & rsem_dose3 > 0
+ok_ctrl  <- !is.na(tv_ctrl) & !is.na(rsem_ctrl) & rsem_ctrl > 0
+ok_doses <- lapply(seq_len(N_DOSES), function(i)
+  !is.na(tv_doses[[i]]) & !is.na(rsem_doses[[i]]) & rsem_doses[[i]] > 0)
 
-cat(sprintf("\nTV0 (j0) : Ctrl=%.0f | %s=%.0f | %s=%.0f | %s=%.0f mm3\n",
-            tv0_ctrl,
-            LABEL_DOSE_1, tv0_dose1,
-            LABEL_DOSE_2, tv0_dose2,
-            LABEL_DOSE_3, tv0_dose3))
+cat(sprintf("\nTV0 (j0) : Ctrl=%.0f", tv0_ctrl))
+for (i in seq_len(N_DOSES))
+  cat(sprintf(" | %s=%.0f", LABEL_DOSES[i], tv0_doses[i]))
+cat(" mm3\n")
 
 # =============================================================================
 # 3. EQUATIONS DU MODELE DE SIMEONI  <- NE PAS MODIFIER
@@ -402,12 +378,12 @@ cat(sprintf("   Objectif DEoptim : %.8f\n", fit_de_A$optim$bestval))
 cat(sprintf("   Objectif retenu  : %.8f\n", best_val_A))
 
 # =============================================================================
-# 5B. ETAPE B — Efficacite : k1 et TSC (L0/L1 fixes depuis Etape A)
+# 5B. ETAPE B — Efficacite : k1 et k2 (L0/L1 fixes depuis Etape A)
 #
-#   k2 derive : k2 = L0_est / TSC
-#   Bornes TSC : [Cmax_dose1 / FACTEUR_TSC_LOWER, Cmax_dose2 / FACTEUR_TSC_UPPER]
-#   Bornes k1  : MTT dans [MTT_MIN_J, MTT_MAX_J]
-#   Poids dose la plus faible : W_DOSE_FAIBLE
+#   k2 estime directement ; TSC = L0/k2 derive pour interpretation
+#   Bornes k2 : [L0/(K2_TSC_MAX_X*Cmax_max), L0*K2_TSC_MIN_DIV/Cmax_min]
+#   Bornes k1 : MTT dans [MTT_MIN_J, MTT_MAX_J]
+#   Poids par groupe : W_DOSES
 # =============================================================================
 
 cat("\n===========================================================\n")
@@ -415,18 +391,16 @@ cat("ETAPE B — Ajustement groupes traites : k1 et k2\n")
 cat("===========================================================\n")
 cat(sprintf("L0 fixe = %.6f /j  |  L1 fixe = %.2f mm3/j\n", L0_est, L1_est))
 
-# Bornes k2 calculees depuis CONFIG et Cmax observes
-TSC_min   <- Cmax_dose1 / K2_TSC_MIN_DIV          # drug le plus puissant
-TSC_max   <- Cmax_dose3 * K2_TSC_MAX_X             # drug le plus faible
-k2_lower  <- L0_est / TSC_max
-k2_upper  <- L0_est / TSC_min
-k1_lower  <- 4 / MTT_MAX_J
-k1_upper  <- 4 / MTT_MIN_J
+TSC_min  <- Cmax_doses[1]        / K2_TSC_MIN_DIV
+TSC_max  <- Cmax_doses[N_DOSES]  * K2_TSC_MAX_X
+k2_lower <- L0_est / TSC_max
+k2_upper <- L0_est / TSC_min
+k1_lower <- 4 / MTT_MAX_J
+k1_upper <- 4 / MTT_MIN_J
 
-cat(sprintf("Poids : %s=%.2f | %s=%.2f | %s=%.2f\n",
-            LABEL_DOSE_1, W_DOSE_FAIBLE,
-            LABEL_DOSE_2, W_DOSE_INTERMEDIAIRE,
-            LABEL_DOSE_3, W_DOSE_ELEVEE))
+cat("Poids :")
+for (i in seq_len(N_DOSES)) cat(sprintf(" %s=%.2f", LABEL_DOSES[i], W_DOSES[i]))
+cat("\n")
 cat(sprintf("Bornes TSC equivalentes : [%.0f, %.0f] ug/L\n", TSC_min, TSC_max))
 cat(sprintf("Bornes k2 : [%.3e, %.3e] L/ug/j\n", k2_lower, k2_upper))
 cat(sprintf("Bornes k1 : [%.4f, %.4f] /j    (MTT dans [%d, %d] j)\n",
@@ -446,37 +420,31 @@ objective_traites <- function(logpar) {
     L0 = L0_est, L1 = L1_est, k1 = k1, k2 = k2
   )
 
-  pred1 <- sim_treated(DOSES_UGKG[1], tv0_dose1, params_all, times_d[ok_dose1])
-  if (any(is.na(pred1))) return(1e12)
-  pred1 <- pmax(pred1, 0.1)
-
-  pred2 <- sim_treated(DOSES_UGKG[2], tv0_dose2, params_all, times_d[ok_dose2])
-  if (any(is.na(pred2))) return(1e12)
-  pred2 <- pmax(pred2, 0.1)
-
-  pred3 <- sim_treated(DOSES_UGKG[3], tv0_dose3, params_all, times_d[ok_dose3])
-  if (any(is.na(pred3))) return(1e12)
-  pred3 <- pmax(pred3, 0.1)
-
-  W_DOSE_FAIBLE       * sum(1 / sem_dose1[ok_dose1]^2 * (log(tv_dose1[ok_dose1]) - log(pred1))^2, na.rm = TRUE) +
-  W_DOSE_INTERMEDIAIRE * sum(1 / sem_dose2[ok_dose2]^2 * (log(tv_dose2[ok_dose2]) - log(pred2))^2, na.rm = TRUE) +
-  W_DOSE_ELEVEE        * sum(1 / sem_dose3[ok_dose3]^2 * (log(tv_dose3[ok_dose3]) - log(pred3))^2, na.rm = TRUE)
+  cost <- 0
+  for (i in seq_len(N_DOSES)) {
+    if (W_DOSES[i] == 0) next
+    ok   <- ok_doses[[i]]
+    pred <- sim_treated(DOSES_UGKG[i], tv0_doses[i], params_all, times_d[ok])
+    if (any(is.na(pred))) return(1e12)
+    pred <- pmax(pred, 0.1)
+    cost <- cost + W_DOSES[i] *
+      sum(1 / sem_doses[[i]][ok]^2 * (log(tv_doses[[i]][ok]) - log(pred))^2,
+          na.rm = TRUE)
+  }
+  cost
 }
 
 # Verification avant DEoptim
 params_sanity <- c(
   CL = unname(pk_fixed["CL"]), V1 = unname(pk_fixed["V1"]),
   V2 = unname(pk_fixed["V2"]), Q  = unname(pk_fixed["Q"]),
-  L0 = L0_est, L1 = L1_est,
-  k1 = 4 / 15,
-  k2 = L0_est / 3000
+  L0 = L0_est, L1 = L1_est, k1 = 4 / 15, k2 = L0_est / 3000
 )
-test_ok <- sim_treated(DOSES_UGKG[1], tv0_dose1, params_sanity, times_d[ok_dose1])
-if (all(is.na(test_ok))) {
-  stop("ERREUR : sim_treated retourne NA avec des parametres raisonnables.")
-}
+test_ok <- sim_treated(DOSES_UGKG[1], tv0_doses[1], params_sanity,
+                       times_d[ok_doses[[1]]])
+if (all(is.na(test_ok))) stop("ERREUR : sim_treated retourne NA avec des parametres raisonnables.")
 cat(sprintf("  [Sanity check] sim_treated %s : OK  (pred[1] = %.1f mm3)\n",
-            LABEL_DOSE_1, test_ok[1]))
+            LABEL_DOSES[1], test_ok[1]))
 
 set.seed(42)
 fit_de_B <- DEoptim(
@@ -524,17 +492,17 @@ cat(sprintf("   Objectif DEoptim : %.8f\n", fit_de_B$optim$bestval))
 cat(sprintf("   Objectif retenu  : %.8f\n", best_val_B))
 
 # Avertissements si parametre sur borne
-tol <- 0.02
+tol    <- 0.02
 rng_k2 <- log(k2_upper) - log(k2_lower)
 rng_k1 <- log(k1_upper) - log(k1_lower)
 if (abs(log(k2_est) - log(k2_lower)) < tol * rng_k2)
   cat(sprintf("  [AVERT] k2 sur borne inferieure (TSC=%.0f ug/L — drug tres faible)\n", TSC_est))
-if (abs(log(k2_est) - log(k2_upper))  < tol * rng_k2)
+if (abs(log(k2_est) - log(k2_upper)) < tol * rng_k2)
   cat(sprintf("  [AVERT] k2 sur borne superieure (TSC=%.0f ug/L — drug tres puissant)\n", TSC_est))
-if (abs(log(k1_est) - log(k1_upper))  < tol * rng_k1)
-  cat(sprintf("  [AVERT] k1 sur borne superieure (MTT=%.1fj)\n", 4/k1_est))
-if (abs(log(k1_est) - log(k1_lower))  < tol * rng_k1)
-  cat(sprintf("  [AVERT] k1 sur borne inferieure (MTT=%.1fj)\n", 4/k1_est))
+if (abs(log(k1_est) - log(k1_upper)) < tol * rng_k1)
+  cat(sprintf("  [AVERT] k1 sur borne superieure (MTT=%.1fj)\n", 4 / k1_est))
+if (abs(log(k1_est) - log(k1_lower)) < tol * rng_k1)
+  cat(sprintf("  [AVERT] k1 sur borne inferieure (MTT=%.1fj)\n", 4 / k1_est))
 
 # =============================================================================
 # 6. RESUME FINAL
@@ -545,18 +513,17 @@ mtt <- 4 / k1_est
 cat("\n===========================================================\n")
 cat(sprintf("PARAMETRES FINAUX — %s  (ajustement sequentiel)\n", NOM_COHORTE))
 cat("===========================================================\n")
-cat(sprintf("L0  = %.6f /j         [Etape A — %s]\n", L0_est,  src_A))
-cat(sprintf("L1  = %.2f mm3/j      [Etape A — %s]\n", L1_est,  src_A))
-cat(sprintf("k1  = %.5f /j         [Etape B — %s]\n", k1_est,  src_B))
+cat(sprintf("L0  = %.6f /j         [Etape A — %s]\n", L0_est, src_A))
+cat(sprintf("L1  = %.2f mm3/j      [Etape A — %s]\n", L1_est, src_A))
+cat(sprintf("k1  = %.5f /j         [Etape B — %s]\n", k1_est, src_B))
 cat(sprintf("TSC = %.0f ug/L       [Etape B — %s]\n", TSC_est, src_B))
 cat("-----------------------------------------------------------\n")
 cat(sprintf("MTT = %.1f j\n", mtt))
 cat(sprintf("k2  = %.3e L/ug/j  (= L0/TSC)\n", k2_est))
-cat(sprintf("Plausibilite : Cmax(%s)=%.0f | TSC=%.0f | Cmax(%s)=%.0f ug/L\n",
-            LABEL_DOSE_1, Cmax_dose1, TSC_est, LABEL_DOSE_2, Cmax_dose2))
-cat(sprintf("  Cmax/TSC @ %s : %.1f\n", LABEL_DOSE_1, Cmax_dose1 / TSC_est))
-cat(sprintf("  Cmax/TSC @ %s : %.1f\n", LABEL_DOSE_2, Cmax_dose2 / TSC_est))
-cat(sprintf("  Cmax/TSC @ %s : %.1f\n", LABEL_DOSE_3, Cmax_dose3 / TSC_est))
+cat("Cmax/TSC par groupe :\n")
+for (i in seq_len(N_DOSES))
+  cat(sprintf("  %s : Cmax=%.0f ug/L  →  Cmax/TSC = %.1f\n",
+              LABEL_DOSES[i], Cmax_doses[i], Cmax_doses[i] / TSC_est))
 
 # =============================================================================
 # 7. SIMULATION FINALE
@@ -570,47 +537,53 @@ params_best <- c(
 
 times_sim <- seq(0, max(times_d, na.rm = TRUE) * 1.05, by = 0.5)
 
-pred_ctrl_sim  <- sim_ctrl_fn(L0_est, L1_est, tv0_ctrl,  times_sim)
-pred_dose1_sim <- sim_treated(DOSES_UGKG[1], tv0_dose1, params_best, times_sim)
-pred_dose2_sim <- sim_treated(DOSES_UGKG[2], tv0_dose2, params_best, times_sim)
-pred_dose3_sim <- sim_treated(DOSES_UGKG[3], tv0_dose3, params_best, times_sim)
+pred_ctrl_sim  <- sim_ctrl_fn(L0_est, L1_est, tv0_ctrl, times_sim)
+pred_doses_sim <- lapply(seq_len(N_DOSES), function(i)
+  sim_treated(DOSES_UGKG[i], tv0_doses[i], params_best, times_sim))
 
-niv <- c("Vehicule", LABEL_DOSE_1, LABEL_DOSE_2, LABEL_DOSE_3)
+# Clipper chaque courbe au dernier timepoint observe de son groupe
+t_max_ctrl  <- max(times_d[ok_ctrl], na.rm = TRUE)
+t_max_doses <- sapply(seq_len(N_DOSES), function(i)
+  max(times_d[ok_doses[[i]]], na.rm = TRUE))
 
-# Limites d'affichage des courbes simulees : dernier timepoint observe par groupe
-# (evite que les courbes extrapolees hors data ne compriment l'echelle y)
-t_max_ctrl  <- max(times_d[ok_ctrl],  na.rm = TRUE)
-t_max_dose1 <- max(times_d[ok_dose1], na.rm = TRUE)
-t_max_dose2 <- max(times_d[ok_dose2], na.rm = TRUE)
-t_max_dose3 <- max(times_d[ok_dose3], na.rm = TRUE)
+clip_sim <- function(tv_vec, t_max)
+  ifelse(times_sim <= t_max, tv_vec, NA_real_)
 
-clip_sim <- function(tv_vec, t_max) ifelse(times_sim <= t_max, tv_vec, NA_real_)
+niv <- c("Vehicule", LABEL_DOSES)
 
-df_sim <- rbind(
-  data.frame(jour = times_sim, TV = clip_sim(pred_ctrl_sim,  t_max_ctrl),  Groupe = "Vehicule"),
-  data.frame(jour = times_sim, TV = clip_sim(pred_dose1_sim, t_max_dose1), Groupe = LABEL_DOSE_1),
-  data.frame(jour = times_sim, TV = clip_sim(pred_dose2_sim, t_max_dose2), Groupe = LABEL_DOSE_2),
-  data.frame(jour = times_sim, TV = clip_sim(pred_dose3_sim, t_max_dose3), Groupe = LABEL_DOSE_3)
-)
+df_sim <- do.call(rbind, c(
+  list(data.frame(jour = times_sim,
+                  TV   = clip_sim(pred_ctrl_sim, t_max_ctrl),
+                  Groupe = "Vehicule")),
+  lapply(seq_len(N_DOSES), function(i)
+    data.frame(jour   = times_sim,
+               TV     = clip_sim(pred_doses_sim[[i]], t_max_doses[i]),
+               Groupe = LABEL_DOSES[i]))
+))
 df_sim$Groupe <- factor(df_sim$Groupe, levels = niv)
 
-df_obs <- rbind(
-  data.frame(jour = times_d[ok_ctrl],  TV = tv_ctrl[ok_ctrl],    sem = sem_ctrl[ok_ctrl],   Groupe = "Vehicule"),
-  data.frame(jour = times_d[ok_dose1], TV = tv_dose1[ok_dose1],  sem = sem_dose1[ok_dose1], Groupe = LABEL_DOSE_1),
-  data.frame(jour = times_d[ok_dose2], TV = tv_dose2[ok_dose2],  sem = sem_dose2[ok_dose2], Groupe = LABEL_DOSE_2),
-  data.frame(jour = times_d[ok_dose3], TV = tv_dose3[ok_dose3],  sem = sem_dose3[ok_dose3], Groupe = LABEL_DOSE_3)
-)
+df_obs <- do.call(rbind, c(
+  list(data.frame(jour   = times_d[ok_ctrl],
+                  TV     = tv_ctrl[ok_ctrl],
+                  sem    = sem_ctrl[ok_ctrl],
+                  Groupe = "Vehicule")),
+  lapply(seq_len(N_DOSES), function(i) {
+    ok <- ok_doses[[i]]
+    data.frame(jour   = times_d[ok],
+               TV     = tv_doses[[i]][ok],
+               sem    = sem_doses[[i]][ok],
+               Groupe = LABEL_DOSES[i])
+  })
+))
 df_obs$Groupe <- factor(df_obs$Groupe, levels = niv)
 
 # =============================================================================
 # 8. GRAPHIQUE
 # =============================================================================
 
-cols <- c("Vehicule" = "#888888")
-palette_doses <- c("#74ADD1", "#4393C3", "#2166AC")
-cols[LABEL_DOSE_1] <- palette_doses[1]
-cols[LABEL_DOSE_2] <- palette_doses[2]
-cols[LABEL_DOSE_3] <- palette_doses[3]
+# Palette auto-adaptee au nombre de doses (degradé bleu)
+palette_doses <- colorRampPalette(c("#AED6F1", "#1A5276"))(N_DOSES)
+cols <- c("Vehicule" = "#888888", setNames(palette_doses, LABEL_DOSES))
 
 ymax <- max(df_obs$TV + df_obs$sem, na.rm = TRUE)
 
@@ -670,6 +643,8 @@ cat(sprintf("\nGraphique sauvegarde : scripts/%s.png\n", nom_base))
 simeoni_results <- list(
   produit       = NOM_PRODUIT,
   cohorte       = NOM_COHORTE,
+  N_doses       = N_DOSES,
+  doses_ugkg    = DOSES_UGKG,
   pk_fixed      = pk_fixed,
   L0            = L0_est,
   L1            = L1_est,
@@ -677,6 +652,7 @@ simeoni_results <- list(
   TSC_ugL       = TSC_est,
   k2            = k2_est,
   MTT_days      = mtt,
+  Cmax_doses    = Cmax_doses,
   obj_A_DEoptim = fit_de_A$optim$bestval,
   obj_A_final   = best_val_A,
   obj_B_DEoptim = fit_de_B$optim$bestval,
