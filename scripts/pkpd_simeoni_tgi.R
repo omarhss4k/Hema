@@ -153,6 +153,9 @@ header_rows <- which(grepl("Time|Group",
                      !is.na(raw_tumor[[1]]))
 stopifnot("2 blocs attendus (moyennes + SEM)" = length(header_rows) == 2)
 
+# fix_sem : remplace les SEM manquants/nuls par 1 pour eviter /0.
+# IMPORTANT : les timepoints ou le SEM d'origine est NA sont EXCLUS de la cost
+# (ok_* ci-dessous) pour eviter qu'un poids artificiel 1/1² ne biaise l'optimizer.
 fix_sem <- function(x) ifelse(is.na(x) | x <= 0, 1, x)
 
 # Detecter le format : col2 de la ligne d'en-tete est numerique → WIDE
@@ -173,10 +176,10 @@ if (is_wide) {
   tv_dose1 <- read_row_w(header_rows[1], LIGNE_DOSE1)
   tv_dose2 <- read_row_w(header_rows[1], LIGNE_DOSE2)
   tv_dose3 <- read_row_w(header_rows[1], LIGNE_DOSE3)
-  sem_ctrl  <- fix_sem(read_row_w(header_rows[2], LIGNE_CTRL))
-  sem_dose1 <- fix_sem(read_row_w(header_rows[2], LIGNE_DOSE1))
-  sem_dose2 <- fix_sem(read_row_w(header_rows[2], LIGNE_DOSE2))
-  sem_dose3 <- fix_sem(read_row_w(header_rows[2], LIGNE_DOSE3))
+  rsem_ctrl  <- read_row_w(header_rows[2], LIGNE_CTRL)
+  rsem_dose1 <- read_row_w(header_rows[2], LIGNE_DOSE1)
+  rsem_dose2 <- read_row_w(header_rows[2], LIGNE_DOSE2)
+  rsem_dose3 <- read_row_w(header_rows[2], LIGNE_DOSE3)
 
 } else {
   # Format TALL — temps en col 1, groupes en colonnes
@@ -194,11 +197,16 @@ if (is_wide) {
   tv_dose1 <- num_col(b1, LIGNE_DOSE1 + 1)
   tv_dose2 <- num_col(b1, LIGNE_DOSE2 + 1)
   tv_dose3 <- num_col(b1, LIGNE_DOSE3 + 1)
-  sem_ctrl  <- fix_sem(num_col(b2, LIGNE_CTRL  + 1))
-  sem_dose1 <- fix_sem(num_col(b2, LIGNE_DOSE1 + 1))
-  sem_dose2 <- fix_sem(num_col(b2, LIGNE_DOSE2 + 1))
-  sem_dose3 <- fix_sem(num_col(b2, LIGNE_DOSE3 + 1))
+  rsem_ctrl  <- num_col(b2, LIGNE_CTRL  + 1)
+  rsem_dose1 <- num_col(b2, LIGNE_DOSE1 + 1)
+  rsem_dose2 <- num_col(b2, LIGNE_DOSE2 + 1)
+  rsem_dose3 <- num_col(b2, LIGNE_DOSE3 + 1)
 }
+
+sem_ctrl  <- fix_sem(rsem_ctrl)
+sem_dose1 <- fix_sem(rsem_dose1)
+sem_dose2 <- fix_sem(rsem_dose2)
+sem_dose3 <- fix_sem(rsem_dose3)
 
 get_tv0 <- function(tv) {
   v <- tv[times_d == 0]
@@ -210,10 +218,11 @@ tv0_dose1 <- get_tv0(tv_dose1)
 tv0_dose2 <- get_tv0(tv_dose2)
 tv0_dose3 <- get_tv0(tv_dose3)
 
-ok_ctrl  <- !is.na(tv_ctrl)
-ok_dose1 <- !is.na(tv_dose1)
-ok_dose2 <- !is.na(tv_dose2)
-ok_dose3 <- !is.na(tv_dose3)
+# Exclure les timepoints sans SEM valide pour eviter poids artificiel 1/1²
+ok_ctrl  <- !is.na(tv_ctrl)  & !is.na(rsem_ctrl)  & rsem_ctrl  > 0
+ok_dose1 <- !is.na(tv_dose1) & !is.na(rsem_dose1) & rsem_dose1 > 0
+ok_dose2 <- !is.na(tv_dose2) & !is.na(rsem_dose2) & rsem_dose2 > 0
+ok_dose3 <- !is.na(tv_dose3) & !is.na(rsem_dose3) & rsem_dose3 > 0
 
 cat(sprintf("\nTV0 (j0) : Ctrl=%.0f | %s=%.0f | %s=%.0f | %s=%.0f mm3\n",
             tv0_ctrl,
@@ -568,11 +577,20 @@ pred_dose3_sim <- sim_treated(DOSES_UGKG[3], tv0_dose3, params_best, times_sim)
 
 niv <- c("Vehicule", LABEL_DOSE_1, LABEL_DOSE_2, LABEL_DOSE_3)
 
+# Limites d'affichage des courbes simulees : dernier timepoint observe par groupe
+# (evite que les courbes extrapolees hors data ne compriment l'echelle y)
+t_max_ctrl  <- max(times_d[ok_ctrl],  na.rm = TRUE)
+t_max_dose1 <- max(times_d[ok_dose1], na.rm = TRUE)
+t_max_dose2 <- max(times_d[ok_dose2], na.rm = TRUE)
+t_max_dose3 <- max(times_d[ok_dose3], na.rm = TRUE)
+
+clip_sim <- function(tv_vec, t_max) ifelse(times_sim <= t_max, tv_vec, NA_real_)
+
 df_sim <- rbind(
-  data.frame(jour = times_sim, TV = pred_ctrl_sim,  Groupe = "Vehicule"),
-  data.frame(jour = times_sim, TV = pred_dose1_sim, Groupe = LABEL_DOSE_1),
-  data.frame(jour = times_sim, TV = pred_dose2_sim, Groupe = LABEL_DOSE_2),
-  data.frame(jour = times_sim, TV = pred_dose3_sim, Groupe = LABEL_DOSE_3)
+  data.frame(jour = times_sim, TV = clip_sim(pred_ctrl_sim,  t_max_ctrl),  Groupe = "Vehicule"),
+  data.frame(jour = times_sim, TV = clip_sim(pred_dose1_sim, t_max_dose1), Groupe = LABEL_DOSE_1),
+  data.frame(jour = times_sim, TV = clip_sim(pred_dose2_sim, t_max_dose2), Groupe = LABEL_DOSE_2),
+  data.frame(jour = times_sim, TV = clip_sim(pred_dose3_sim, t_max_dose3), Groupe = LABEL_DOSE_3)
 )
 df_sim$Groupe <- factor(df_sim$Groupe, levels = niv)
 
