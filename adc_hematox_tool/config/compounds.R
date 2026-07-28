@@ -47,7 +47,9 @@ NEW_COMPOUND <- list(
   # (un V1 souris doit etre ~0.002-0.004 L ; sinon le fit source est faux).
   allometry  = FALSE,
   pk_bw      = 0.02,
-  IC50_myelo = c(0.015, 7.8),     # nM -- une ou plusieurs valeurs (fourchette)
+  IC50_myelo = c(0.015, 7.8),     # nM -- 2 valeurs = 2 tests in vitro differents
+                                  #        (valeurs mesurees ; le script trace une
+                                  #         courbe par IC50 pour comparer les 2 dosages)
   doses      = c(0.3, 1, 3),      # mg/kg
   # baselines absolues (x10^9/L) mesurees chez l'animal cible :
   #   neut ~2-4 (abondant) ; mono ~0.2-0.5 (naturellement peu abondant).
