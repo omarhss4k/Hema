@@ -55,7 +55,5 @@ NEW_COMPOUND <- list(
   #   neut ~2-4 (abondant) ; mono ~0.2-0.5 (naturellement peu abondant).
   #   Les GRADES CTCAE ne s'appliquent qu'aux NEUTROPHILES (pas de grade
   #   standard pour la monocytopenie -> le "grade" mono est indicatif).
-  baseline_neut = 2.75, baseline_mono = 0.25,
-  # note mecanistique (affichee dans la sortie) :
-  note = "Si mecanisme immuno/STING : prediction cytotoxique = PLANCHER."
+  baseline_neut = 2.75, baseline_mono = 0.25
 )

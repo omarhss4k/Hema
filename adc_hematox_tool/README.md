@@ -23,10 +23,8 @@ d'étude in vivo pour le nouveau composé.
 2. **Prédire** un nouveau composé : on branche sa PK + son IC50, la
    *potency* est translatée depuis la référence via le rapport des IC50.
 
-> La prédiction suppose un mécanisme **cytotoxique** (le payload tue les
-> cellules en division). Pour un ADC **immuno/STING**, la toxicité est
-> immuno-médiée : la prédiction cytotoxique devient un **plancher**
-> (la toxicité réelle peut être supérieure).
+> La prédiction suppose un mécanisme **cytotoxique** : le payload tue les
+> cellules en division (progéniteurs myéloïdes).
 
 ---
 
@@ -182,8 +180,7 @@ timing du nadir, sélectivité myéloïde (érythroïde épargné selon l'IC50),
 grades CTCAE.
 
 **Ne capture pas** : la neutrophilie de stress précoce (un cytotoxique ne
-fait que déprimer), les points terminaux/sacrifice, et — pour un composé
-STING — l'amplification immunitaire (→ prédiction = plancher).
+fait que déprimer) et les points terminaux/sacrifice.
 
 ---
 
