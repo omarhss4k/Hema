@@ -1,9 +1,9 @@
 ############################################################
-# pkpd_tdxd_rat.R
-# ODE fusionné : T-DXd PK + Fornari PD
+# pkpd_adc_rat.R
+# ODE fusionné : ADC PK + Fornari PD
 #
 # STATES (25) :
-#   -- PK T-DXd (5) --------------------------------------
+#   -- PK ADC (5) --------------------------------------
 #   C_ADC1    ADC compartiment central          [mg/L]
 #   C_ADC2    ADC compartiment périphérique     [mg/L]
 #   C_DXd     DXd plasma                        [mg/L]
@@ -25,11 +25,11 @@
 library(deSolve)
 
 # -- ODE fusionné ------------------------------------------
-pkpd_tdxd_fornari <- function(time, state, pars) {
+pkpd_adc_fornari <- function(time, state, pars) {
   with(as.list(c(state, pars)), {
 
     # ════════════════════════════════════════════════════
-    # BLOC 1 -- PK T-DXd
+    # BLOC 1 -- PK ADC
     # ════════════════════════════════════════════════════
 
     rate_in <- if (!is.null(pars$rate_fun)) pars$rate_fun(time) else 0
@@ -94,7 +94,7 @@ pkpd_tdxd_fornari <- function(time, state, pars) {
       kill_MEP <- pmin(1, Emx_MEP * D_kill / (ED50k + D_kill))
     } else {
       # Linéaire Fornari (original) : kill = Slope × D_kill
-      # NOTE : Slope_CMP_tdxd_human >> 1 → kill > 1 empiriquement nécessaire
+      # NOTE : Slope_CMP_adc_human >> 1 → kill > 1 empiriquement nécessaire
       # pour reproduire G3-4 ~20% FDA (CMP_ss = MPP_input/(Slope×k_prol+k_out))
       kill_MPP <- Slope_MPP * D_kill
       kill_CMP <- Slope_CMP * D_kill
@@ -200,12 +200,12 @@ pkpd_tdxd_fornari <- function(time, state, pars) {
 }
 
 # -- Wrapper simulation ------------------------------------
-simulate_pkpd_tdxd <- function(times, pars, state0,
+simulate_pkpd_adc <- function(times, pars, state0,
                                rtol = 1e-7, atol = 1e-9) {
   out <- as.data.frame(lsoda(
     y        = state0,
     times    = sort(unique(times)),
-    func     = pkpd_tdxd_fornari,
+    func     = pkpd_adc_fornari,
     parms    = pars,
     rtol     = rtol,
     atol     = atol,

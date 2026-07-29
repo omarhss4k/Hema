@@ -37,11 +37,11 @@ cat(sprintf("Points utilises pour le fit : %d (Neut+Mono, <= baseline, hors term
 
 # -- sim allegee (tol relachee, pas 12h, hmax libre) : rapide pour le fit --
 sim_fast <- function(p, dose) {
-  st <- c(tdxd_hu_state0, init_state[!names(init_state) %in% c("C1", "C2", "Damage")])
-  p$rate_fun <- make_tdxd_infusion(dose_mgkg = dose, BW_kg = ref$BW_kg,
+  st <- c(adc_hu_state0, init_state[!names(init_state) %in% c("C1", "C2", "Damage")])
+  p$rate_fun <- make_adc_infusion(dose_mgkg = dose, BW_kg = ref$BW_kg,
                   Tinfu_h = ref$Tinfu_h, interval_h = 21 * 24, n_cycles = 1)
   o <- as.data.frame(lsoda(y = st, times = seq(0, 32 * 24, by = 12),
-         func = pkpd_tdxd_fornari, parms = p, rtol = 1e-3, atol = 1e-5, maxsteps = 1e5))
+         func = pkpd_adc_fornari, parms = p, rtol = 1e-3, atol = 1e-5, maxsteps = 1e5))
   o$td <- o$time / 24; o
 }
 

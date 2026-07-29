@@ -1,6 +1,6 @@
 ############################################################
-# parameters_tdxd_rat.R
-# Paramètres PK -- T-DXd (Trastuzumab deruxtecan) -- RAT
+# parameters_adc_rat.R
+# Paramètres PK -- ADC (ADC de reference) -- RAT
 #
 # Sources :
 #   ADC serum : Yin et al. (2020), 2-compartiments humain
@@ -12,26 +12,26 @@
 # Temps en HEURES | Concentrations en mg/L (= µg/mL)
 ############################################################
 
-tdxd_pars <- list()
+adc_pars <- list()
 
 # -- Poids corporels --------------------------------------
-tdxd_pars$BW_human <- 70     # kg
-tdxd_pars$BW_rat   <- 0.25   # kg
+adc_pars$BW_human <- 70     # kg
+adc_pars$BW_rat   <- 0.25   # kg
 
 # Facteurs allométriques (rat / humain)
-scale_CL <- (tdxd_pars$BW_rat / tdxd_pars$BW_human)^0.75  # ~0.01460
-scale_V  <- (tdxd_pars$BW_rat / tdxd_pars$BW_human)^1.0   # ~0.003571
+scale_CL <- (adc_pars$BW_rat / adc_pars$BW_human)^0.75  # ~0.01460
+scale_V  <- (adc_pars$BW_rat / adc_pars$BW_human)^1.0   # ~0.003571
 
 # -- Poids moléculaires -----------------------------------
-tdxd_pars$MW_ADC  <- 148000  # g/mol  (T-DXd ~148 kDa)
-tdxd_pars$MW_DXd  <- 718.8   # g/mol  (exatecan derivative)
+adc_pars$MW_ADC  <- 148000  # g/mol  (ADC ~148 kDa)
+adc_pars$MW_DXd  <- 718.8   # g/mol  (exatecan derivative)
 
 # -- Propriétés ADC ---------------------------------------
-tdxd_pars$DAR <- 8   # Drug-to-Antibody Ratio (molaire)
+adc_pars$DAR <- 8   # Drug-to-Antibody Ratio (molaire)
 
 # Fraction massique payload par molécule ADC
 # = DAR × (MW_DXd / MW_ADC)
-tdxd_pars$mass_frac_DXd <- tdxd_pars$DAR * tdxd_pars$MW_DXd / tdxd_pars$MW_ADC
+adc_pars$mass_frac_DXd <- adc_pars$DAR * adc_pars$MW_DXd / adc_pars$MW_ADC
 # ≈ 8 × 718.8/148000 ≈ 0.03885
 
 # -- PK ADC -- 2 compartiments (Yin 2020 → rat) -----------
@@ -42,44 +42,44 @@ V2_ADC_human_L    <- 5.16    # L
 Q_ADC_human_Lday  <- 0.174   # L/jour
 
 # Transposition en heures puis rat
-tdxd_pars$CL_ADC <- (CL_ADC_human_Lday / 24) * scale_CL  # L/h, rat
-tdxd_pars$V1_ADC <- V1_ADC_human_L            * scale_V   # L,   rat
-tdxd_pars$V2_ADC <- V2_ADC_human_L            * scale_V   # L,   rat
-tdxd_pars$Q_ADC  <- (Q_ADC_human_Lday  / 24) * scale_CL  # L/h, rat
+adc_pars$CL_ADC <- (CL_ADC_human_Lday / 24) * scale_CL  # L/h, rat
+adc_pars$V1_ADC <- V1_ADC_human_L            * scale_V   # L,   rat
+adc_pars$V2_ADC <- V2_ADC_human_L            * scale_V   # L,   rat
+adc_pars$Q_ADC  <- (Q_ADC_human_Lday  / 24) * scale_CL  # L/h, rat
 
 # -- PK DXd (payload libre) -- 1 compartiment (Yin 2020 → rat) --
 # BSA humaine standard ≈ 1.73 m² → V_DXd_human ≈ 17 × 1.73 = 29.4 L
 V_DXd_human_L    <- 17 * 1.73   # L
 CL_DXd_human_Lh  <- 19.2        # L/h
 
-tdxd_pars$V_DXd  <- V_DXd_human_L   * scale_V   # L,   rat
-tdxd_pars$CL_DXd <- CL_DXd_human_Lh * scale_CL  # L/h, rat
+adc_pars$V_DXd  <- V_DXd_human_L   * scale_V   # L,   rat
+adc_pars$CL_DXd <- CL_DXd_human_Lh * scale_CL  # L/h, rat
 
 # -- Constantes mécanistiques -----------------------------
 # Internalisation de l'ADC dans la cellule (t½ = 46h, Vasalou 2024)
-tdxd_pars$k_int  <- log(2) / 46     # h- ≈ 0.01507
+adc_pars$k_int  <- log(2) / 46     # h- ≈ 0.01507
 
 # Libération du payload -- Krel TEMPS-DÉPENDANT (Yin 2020, Eq. finale)
 # Krel(cycle) = k_rel_c1 × cycle^(-0.137) × (0.830 si cycle > 1)
 # → −25% au cycle 2, −29% au cycle 3, −39% au cycle 10
-tdxd_pars$k_rel_c1    <- 0.0159     # h-  (valeur cycle 1, Yin 2020)
-tdxd_pars$krel_power  <- -0.137     # exposant puissance par cycle
-tdxd_pars$krel_factor <- 0.830      # réduction additionnelle cycles > 1
-tdxd_pars$interval_h  <- 21 * 24   # h    (Q3W = 504h -- à ajuster si autre schéma)
+adc_pars$k_rel_c1    <- 0.0159     # h-  (valeur cycle 1, Yin 2020)
+adc_pars$krel_power  <- -0.137     # exposant puissance par cycle
+adc_pars$krel_factor <- 0.830      # réduction additionnelle cycles > 1
+adc_pars$interval_h  <- 21 * 24   # h    (Q3W = 504h -- à ajuster si autre schéma)
 
 # Échanges membranaires DXd (Vasalou 2024)
-tdxd_pars$k_inD  <- 0.7             # h-  (entrée intracellulaire)
-tdxd_pars$k_effD <- 0.7             # h-  (efflux)
+adc_pars$k_inD  <- 0.7             # h-  (entrée intracellulaire)
+adc_pars$k_effD <- 0.7             # h-  (efflux)
 
 # -- Paramètre PD (pour connexion future) -----------------
-tdxd_pars$IC50_DXd_uM <- 0.31       # µM (topoisomérase I)
+adc_pars$IC50_DXd_uM <- 0.31       # µM (topoisomérase I)
 
 # -- Compartiment intracellulaire DXd ---------------------
 # V_ic : volume intracellulaire des cellules de moelle osseuse (rat)
 #   Moelle osseuse ~ 1.5% du BW → 0.25 × 0.015 = 3.75 mL
 #   Fraction intracellulaire ~ 70% → ~2.6 mL ≈ 0.0026 L
 #   → ratio V_DXd/V_ic ≈ 35 → accumulation intracell ~35×
-tdxd_pars$V_ic <- 0.003      # L  (volume intracell. moelle, rat)
+adc_pars$V_ic <- 0.003      # L  (volume intracell. moelle, rat)
 
 # Ratio d'accumulation à l'équilibre :
 # C_DXd_ic / C_DXd = (k_inD/k_effD) × (V_DXd/V_ic)
@@ -88,8 +88,8 @@ tdxd_pars$V_ic <- 0.003      # L  (volume intracell. moelle, rat)
 # -- Dommage ADN (γH2AX, modèle Fornari adapté DXd) -------
 # k_dam : taux de formation des dommages (proportionnel à E_drug)
 # k_rep : taux de réparation ADN (t½ réparation ≈ 41h)
-tdxd_pars$k_dam <- 0.017     # h-
-tdxd_pars$k_rep <- 0.017     # h-
+adc_pars$k_dam <- 0.017     # h-
+adc_pars$k_rep <- 0.017     # h-
 
 # -- Calibration directe FDA BLA 761139 (rat) -------------
 # DS-8201a ne lie PAS HER2 rat → pas de TMDD
@@ -102,8 +102,8 @@ tdxd_pars$k_rep <- 0.017     # h-
 #   60 mg/kg Q3W×3 : C0_ADC = 1400 µg/mL, AUC0-21d = 4903 µg·d/mL,  DXd_C0 = 2.49 ng/mL
 
 # Sauvegarde des valeurs Yin 2020 / Vasalou (humain) avant remplacement
-k_rel_c1_yin2020 <- tdxd_pars$k_rel_c1   # 0.0159 h- -- conservé pour tdxd_pars_human
-k_int_vasalou    <- tdxd_pars$k_int       # 0.01507 h- -- conservé pour tdxd_pars_human
+k_rel_c1_yin2020 <- adc_pars$k_rel_c1   # 0.0159 h- -- conservé pour adc_pars_human
+k_int_vasalou    <- adc_pars$k_int       # 0.01507 h- -- conservé pour adc_pars_human
 
 # -- Données FDA Table 6 (males, Day 1) -------------------
 # C0 [µg/mL = mg/L], AUC0-21d [µg.d/mL = mg.d/L], T½ [jours]
@@ -115,7 +115,7 @@ fda_tk_rat <- list(
 V1_v <- CL_v <- V2_v <- c()
 
 for (d in fda_tk_rat) {
-  dose_mg <- d$dose_mgkg * tdxd_pars$BW_rat
+  dose_mg <- d$dose_mgkg * adc_pars$BW_rat
 
   # V1 [L] = dose [mg] / C0 [mg/L]
   V1 <- dose_mg / d$C0
@@ -140,32 +140,32 @@ CL_ADC_fda_rat  <- mean(CL_v)   # 1.01e-4 L/h (vs allom. 2.56e-4)
 V2_ADC_fda_rat  <- mean(V2_v)   # 0.01803 L  (vs allom. 0.01843 -- quasi-identique)
 
 # Application V1, V2, CL avant le calcul de Krel (Krel dépend de V1)
-tdxd_pars$V1_ADC <- V1_ADC_fda_rat
-tdxd_pars$V2_ADC <- V2_ADC_fda_rat
-tdxd_pars$CL_ADC <- CL_ADC_fda_rat
-tdxd_pars$k_int  <- 0   # pas d'internalisation récepteur-médiée sans HER2 rat
+adc_pars$V1_ADC <- V1_ADC_fda_rat
+adc_pars$V2_ADC <- V2_ADC_fda_rat
+adc_pars$CL_ADC <- CL_ADC_fda_rat
+adc_pars$k_int  <- 0   # pas d'internalisation récepteur-médiée sans HER2 rat
 
 # Krel rat calibrée [h-] -- pseudo-équilibre DXd :
 #   C_DXd_ss = Krel × C_ADC × mass_frac × V1_ADC / CL_DXd
 #   → Krel = C_DXd [mg/L] × CL_DXd / (mass_frac × C_ADC [mg/L] × V1_ADC [L])
-# NOTE : utilise tdxd_pars$V1_ADC déjà mis à jour ci-dessus
-krel_fda_20  <- (0.819e-3) * tdxd_pars$CL_DXd /
-                (tdxd_pars$mass_frac_DXd * 439  * tdxd_pars$V1_ADC)
-krel_fda_60  <- (2.49e-3)  * tdxd_pars$CL_DXd /
-                (tdxd_pars$mass_frac_DXd * 1400 * tdxd_pars$V1_ADC)
+# NOTE : utilise adc_pars$V1_ADC déjà mis à jour ci-dessus
+krel_fda_20  <- (0.819e-3) * adc_pars$CL_DXd /
+                (adc_pars$mass_frac_DXd * 439  * adc_pars$V1_ADC)
+krel_fda_60  <- (2.49e-3)  * adc_pars$CL_DXd /
+                (adc_pars$mass_frac_DXd * 1400 * adc_pars$V1_ADC)
 krel_fda_rat <- mean(c(krel_fda_20, krel_fda_60))
 # → ~0.00119 h-  (vs Yin2020 0.01590 : facteur ~0.075)
 
-tdxd_pars$k_rel_c1 <- krel_fda_rat   # h- -- calibré FDA rat
+adc_pars$k_rel_c1 <- krel_fda_rat   # h- -- calibré FDA rat
 
 # -- Conversion de concentration --------------------------
 # C_DXd [mg/L] → C_DXd [µM] : × 1000 / MW_DXd
-tdxd_pars$mgL_to_uM_DXd <- 1000 / tdxd_pars$MW_DXd  # µM per mg/L
+adc_pars$mgL_to_uM_DXd <- 1000 / adc_pars$MW_DXd  # µM per mg/L
 
 # -- Paramètres PK humains (non scalés) ------------------
 # Utilisés pour validation vs données FDA BLA 761139
 # Source : Yin et al. 2020, PopPK DS-8201a ; FDA BLA 761139
-tdxd_pars_human <- list(
+adc_pars_human <- list(
   CL_ADC       = CL_ADC_human_Lday / 24,  # 0.01754 L/h
   V1_ADC       = V1_ADC_human_L,           # 2.77 L
   V2_ADC       = V2_ADC_human_L,           # 5.16 L
@@ -174,21 +174,21 @@ tdxd_pars_human <- list(
   CL_DXd       = CL_DXd_human_Lh,         # 19.2 L/h
   k_int        = k_int_vasalou,         # Vasalou 2024, humain (0.01507 h-)
   k_rel_c1     = k_rel_c1_yin2020,     # Yin 2020, humain (0.0159 h-, non modifié)
-  krel_power   = tdxd_pars$krel_power,
-  krel_factor  = tdxd_pars$krel_factor,
-  interval_h   = tdxd_pars$interval_h,
-  k_inD        = tdxd_pars$k_inD,
-  k_effD       = tdxd_pars$k_effD,
-  V_ic         = tdxd_pars$V_ic * (70 / 0.25),  # V_ic scalé humain : 0.003 × 280 = 0.84 L
+  krel_power   = adc_pars$krel_power,
+  krel_factor  = adc_pars$krel_factor,
+  interval_h   = adc_pars$interval_h,
+  k_inD        = adc_pars$k_inD,
+  k_effD       = adc_pars$k_effD,
+  V_ic         = adc_pars$V_ic * (70 / 0.25),  # V_ic scalé humain : 0.003 × 280 = 0.84 L
                                                  # moelle ~ 1.5% × 70 kg × 70% intracell.
-  mass_frac_DXd = tdxd_pars$mass_frac_DXd,
-  DAR          = tdxd_pars$DAR,
-  MW_ADC       = tdxd_pars$MW_ADC,
-  MW_DXd       = tdxd_pars$MW_DXd,
-  mgL_to_uM_DXd = tdxd_pars$mgL_to_uM_DXd,
-  IC50_DXd_uM  = tdxd_pars$IC50_DXd_uM,
-  k_dam        = tdxd_pars$k_dam,
-  k_rep        = tdxd_pars$k_rep
+  mass_frac_DXd = adc_pars$mass_frac_DXd,
+  DAR          = adc_pars$DAR,
+  MW_ADC       = adc_pars$MW_ADC,
+  MW_DXd       = adc_pars$MW_DXd,
+  mgL_to_uM_DXd = adc_pars$mgL_to_uM_DXd,
+  IC50_DXd_uM  = adc_pars$IC50_DXd_uM,
+  k_dam        = adc_pars$k_dam,
+  k_rep        = adc_pars$k_rep
 )
 
 # -- Cibles de validation -- FDA BLA 761139 (ENHERTU, 2019) -
@@ -196,7 +196,7 @@ tdxd_pars_human <- list(
 # Source : Clinical Pharmacology Review, BLA 761139 ; Yin et al. 2020
 # ADC  : µg/mL = mg/L
 # DXd  : ng/mL (plasma, DXd libre)
-tdxd_fda_targets <- list(
+adc_fda_targets <- list(
   # -- Dose ------------------------------------------------
   dose_mgkg    = 5.4,
   BW_kg        = 70,
@@ -223,20 +223,20 @@ tdxd_fda_targets <- list(
 )
 
 # Tolérance de validation (±30% pour Cmax, ±40% pour AUC)
-tdxd_fda_targets$tol_Cmax <- 0.30
-tdxd_fda_targets$tol_AUC  <- 0.40
+adc_fda_targets$tol_Cmax <- 0.30
+adc_fda_targets$tol_AUC  <- 0.40
 
-# -- Calibration PD -- Slope_MEP T-DXd rat ----------------
+# -- Calibration PD -- Slope_MEP ADC rat ----------------
 # Slope_MEP carboplatin (parameters_rat.R) = 2.19
-# Pour T-DXd : Damage_max plus élevé (accumulation intracell DXd)
+# Pour ADC : Damage_max plus élevé (accumulation intracell DXd)
 # → Slope_MEP = 1.00 calibré pour satisfaire les seuils FDA BLA :
 #   MEP@20 mg/kg = -9.8%  < 10% (sous seuil histopathologique, n=4)
 #   MEP@60 mg/kg = -23.7% > 20% (détectable, FDA : érythroblastes↓ à ≥60 mg/kg)
 #   (scan calibrate_slope_mep.R : 2.19→1.80→1.40→1.00)
-Slope_MEP_tdxd_rat <- 1.00
+Slope_MEP_adc_rat <- 1.00
 
 # -- Fonction d'administration IV (perfusion courte) ------
-make_tdxd_infusion <- function(dose_mgkg, BW_kg = 0.25,
+make_adc_infusion <- function(dose_mgkg, BW_kg = 0.25,
                                Tinfu_h = 0.5, interval_h = NULL,
                                n_cycles = 1) {
   dose_mg  <- dose_mgkg * BW_kg
@@ -255,7 +255,7 @@ make_tdxd_infusion <- function(dose_mgkg, BW_kg = 0.25,
 }
 
 # -- État initial -----------------------------------------
-tdxd_state0 <- c(
+adc_state0 <- c(
   C_ADC1    = 0,   # ADC compartiment central        [mg/L]
   C_ADC2    = 0,   # ADC compartiment périphérique   [mg/L]
   C_DXd     = 0,   # DXd plasma                      [mg/L]
@@ -265,7 +265,7 @@ tdxd_state0 <- c(
 
 # -- Résumé des paramètres --------------------------------
 cat("╔══════════════════════════════════════════════════════════╗\n")
-cat("║  PK T-DXd -- RAT (calibré FDA BLA 761139 + Yin 2020)    ║\n")
+cat("║  PK ADC -- RAT (calibré FDA BLA 761139 + Yin 2020)    ║\n")
 cat("╚══════════════════════════════════════════════════════════╝\n\n")
 cat(sprintf("Allométrie : scale_CL=%.5f  scale_V=%.6f\n", scale_CL, scale_V))
 cat(sprintf("Calibration FDA rat (Table 6) : V1×%.2f  CL×%.3f  Krel×%.3f  k_int=0\n\n",
@@ -274,36 +274,36 @@ cat(sprintf("Calibration FDA rat (Table 6) : V1×%.2f  CL×%.3f  Krel×%.3f  k_i
             krel_fda_rat / k_rel_c1_yin2020))
 cat("-- ADC (2-compartiments) --\n")
 cat(sprintf("  CL_ADC = %.4e L/h  [FDA]  (allom.=%.4e)\n",
-            tdxd_pars$CL_ADC, CL_ADC_human_Lday/24 * scale_CL))
+            adc_pars$CL_ADC, CL_ADC_human_Lday/24 * scale_CL))
 cat(sprintf("  V1_ADC = %.5f L    [FDA]  (allom.=%.5f)\n",
-            tdxd_pars$V1_ADC, V1_ADC_human_L * scale_V))
+            adc_pars$V1_ADC, V1_ADC_human_L * scale_V))
 cat(sprintf("  V2_ADC = %.5f L    [FDA]  (allom.=%.5f)\n",
-            tdxd_pars$V2_ADC, V2_ADC_human_L * scale_V))
+            adc_pars$V2_ADC, V2_ADC_human_L * scale_V))
 cat(sprintf("  Q_ADC  = %.4e L/h  (allom., human: %.5f L/h)\n\n",
-            tdxd_pars$Q_ADC, Q_ADC_human_Lday/24))
+            adc_pars$Q_ADC, Q_ADC_human_Lday/24))
 cat("-- DXd payload (1-compartiment) --\n")
 cat(sprintf("  CL_DXd = %.5f L/h  (human: %.1f L/h)\n",
-            tdxd_pars$CL_DXd, CL_DXd_human_Lh))
+            adc_pars$CL_DXd, CL_DXd_human_Lh))
 cat(sprintf("  V_DXd  = %.5f L    (human: %.1f L)\n\n",
-            tdxd_pars$V_DXd, V_DXd_human_L))
+            adc_pars$V_DXd, V_DXd_human_L))
 cat("-- Constantes mécanistiques --\n")
 cat(sprintf("  k_int  = %.5f h-  [RAT=0, pas de liaison HER2]  (Vasalou humain = %.5f)\n",
-            tdxd_pars$k_int, k_int_vasalou))
+            adc_pars$k_int, k_int_vasalou))
 cat(sprintf("  Krel   = %.6f × Cycle^(%.3f) × (%.3f si Cycle>1)  [FDA rat calibré]\n",
-            tdxd_pars$k_rel_c1, tdxd_pars$krel_power, tdxd_pars$krel_factor))
+            adc_pars$k_rel_c1, adc_pars$krel_power, adc_pars$krel_factor))
 cat(sprintf("         (Yin2020 humain = %.4f h- → facteur rat/humain = %.3f)\n",
-            k_rel_c1_yin2020, tdxd_pars$k_rel_c1 / k_rel_c1_yin2020))
+            k_rel_c1_yin2020, adc_pars$k_rel_c1 / k_rel_c1_yin2020))
 cat(sprintf("         Cycle1=%.6f  Cycle2=%.6f  Cycle3=%.6f h-\n",
-            tdxd_pars$k_rel_c1,
-            tdxd_pars$k_rel_c1 * 2^tdxd_pars$krel_power * tdxd_pars$krel_factor,
-            tdxd_pars$k_rel_c1 * 3^tdxd_pars$krel_power * tdxd_pars$krel_factor))
-cat(sprintf("  k_inD  = k_effD = %.1f h-\n", tdxd_pars$k_inD))
+            adc_pars$k_rel_c1,
+            adc_pars$k_rel_c1 * 2^adc_pars$krel_power * adc_pars$krel_factor,
+            adc_pars$k_rel_c1 * 3^adc_pars$krel_power * adc_pars$krel_factor))
+cat(sprintf("  k_inD  = k_effD = %.1f h-\n", adc_pars$k_inD))
 cat(sprintf("  DAR    = %d  |  mass_frac_DXd = %.5f\n",
-            tdxd_pars$DAR, tdxd_pars$mass_frac_DXd))
-cat(sprintf("  IC50_DXd = %.2f µM\n",    tdxd_pars$IC50_DXd_uM))
+            adc_pars$DAR, adc_pars$mass_frac_DXd))
+cat(sprintf("  IC50_DXd = %.2f µM\n",    adc_pars$IC50_DXd_uM))
 cat(sprintf("  V_ic     = %.4f L  (ratio V_DXd/V_ic = %.0f → accum. ~%.0fx)\n",
-            tdxd_pars$V_ic,
-            tdxd_pars$V_DXd / tdxd_pars$V_ic,
-            tdxd_pars$V_DXd / tdxd_pars$V_ic))
+            adc_pars$V_ic,
+            adc_pars$V_DXd / adc_pars$V_ic,
+            adc_pars$V_DXd / adc_pars$V_ic))
 cat(sprintf("  k_dam    = %.4f h-  k_rep = %.4f h-\n\n",
-            tdxd_pars$k_dam, tdxd_pars$k_rep))
+            adc_pars$k_dam, adc_pars$k_rep))

@@ -48,7 +48,7 @@ allometric_scale <- function(cp) {
 # ic50_ref : IC50 myeloide de la REFERENCE (ancre de translation)
 build_pars <- function(cp, ic50, calib, ic50_ref) {
   cp <- allometric_scale(cp)          # scale PK si allometrie demandee
-  p <- c(init_pars, tdxd_pars_hu)
+  p <- c(init_pars, adc_pars_hu)
   p$CL_ADC <- cp$CL; p$V1_ADC <- cp$V1; p$Q_ADC <- cp$Q; p$V2_ADC <- cp$V2
   p$k_int <- 0; p$krel_power <- 0; p$krel_factor <- 1
   p$use_ADC_driver <- TRUE; p$Damage_threshold <- 0
@@ -63,11 +63,11 @@ build_pars <- function(cp, ic50, calib, ic50_ref) {
 
 # -- simule une dose (mg/kg), rend la trajectoire (jours) --
 simulate <- function(p, dose, BW_kg, Tinfu_h = 1.5, tmax_day = 40) {
-  st <- c(tdxd_hu_state0, init_state[!names(init_state) %in% c("C1", "C2", "Damage")])
-  p$rate_fun <- make_tdxd_infusion(dose_mgkg = dose, BW_kg = BW_kg,
+  st <- c(adc_hu_state0, init_state[!names(init_state) %in% c("C1", "C2", "Damage")])
+  p$rate_fun <- make_adc_infusion(dose_mgkg = dose, BW_kg = BW_kg,
                   Tinfu_h = Tinfu_h, interval_h = 21 * 24, n_cycles = 1)
   o <- as.data.frame(lsoda(y = st, times = seq(0, tmax_day * 24, by = 6),
-         func = pkpd_tdxd_fornari, parms = p,
+         func = pkpd_adc_fornari, parms = p,
          rtol = 1e-4, atol = 1e-6, maxsteps = 5e5, hmax = 1))
   o$td <- o$time / 24
   o
