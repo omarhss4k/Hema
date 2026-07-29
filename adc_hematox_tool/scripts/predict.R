@@ -25,19 +25,30 @@ IC50_REF <- REFERENCE$IC50_myelo
 cp <- NEW_COMPOUND
 dir.create("results", showWarnings = FALSE)
 
+## -- LIGNEES A TRACER --  (nom_colonne, baseline_modele, libelle, seuils_CTCAE ?)
+## Pour en ajouter/retirer : edite cette liste. Toutes les lignees existent
+## dans le modele (Neut, Mono, RBC, Ret, Plt). Les grades CTCAE ne concernent
+## que les neutrophiles -> grades=TRUE seulement pour Neut.
+LINEAGES <- list(
+  list("Neut", init_pars$Neut0, "Neutrophiles",     TRUE),
+  list("Mono", init_pars$Mono0, "Monocytes",        FALSE),
+  list("RBC",  init_pars$RBC0,  "Globules rouges",  FALSE)
+  # , list("Ret", init_pars$Ret0, "Reticulocytes", FALSE)   # decommente pour ajouter
+  # , list("Plt", init_pars$Plt0, "Plaquettes",    FALSE)
+)
+
 ## -- FIGURE (une courbe par dose x IC50) --
 cols <- c("#2166ac", "#1a9641", "#b2182b", "#762a83", "#e08214")
 ltys <- 1:4   # une texture par valeur d'IC50
-pdf(sprintf("results/prediction_%s.pdf", cp$name), width = 13, height = 5.6)
-par(mfrow = c(1, 2), mar = c(4.2, 4.5, 3.5, 1))
-for (cc in list(c("Neut", init_pars$Neut0, "Neutrophiles"),
-                c("Mono", init_pars$Mono0, "Monocytes"))) {
-  L <- cc[1]; b <- as.numeric(cc[2])
+np <- length(LINEAGES); nc <- min(3, np); nr <- ceiling(np / nc)
+pdf(sprintf("results/prediction_%s.pdf", cp$name), width = 4.6 * nc, height = 5.4 * nr)
+par(mfrow = c(nr, nc), mar = c(4.2, 4.5, 3.5, 1))
+for (cc in LINEAGES) {
+  L <- cc[[1]]; b <- as.numeric(cc[[2]]); has_grade <- isTRUE(cc[[4]])
   plot(NA, xlim = c(0, 40), ylim = c(0, 1.15), xlab = "Jour",
-       ylab = "fold vs baseline", main = paste(cp$name, "predit —", cc[3]))
+       ylab = "fold vs baseline", main = paste(cp$name, "predit —", cc[[3]]))
   abline(h = 1, lty = 2, col = "grey60")
-  base_abs <- if (L == "Neut") cp$baseline_neut else cp$baseline_mono
-  draw_grade_lines(base_abs, ymax = 1.15, xmax = 40)
+  if (has_grade) draw_grade_lines(cp$baseline_neut, ymax = 1.15, xmax = 40)
   for (di in seq_along(cp$doses)) {
     for (ii in seq_along(cp$IC50_myelo)) {
       p <- build_pars(cp, cp$IC50_myelo[ii], calib, IC50_REF)
