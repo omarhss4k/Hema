@@ -1,0 +1,52 @@
+=== BPA NHP Emax-IC50 -- SCENARIO 1 (IC50_CMP=7.8 nM) ===
+kmax calibres FDA | IC50_CMP=7.8 nM (EC50) | Q3W x4 | N=100/dose
+Dose     | NEUTRO (G0..G4)          | ANEMIE (G0..G4)          | THROMBO (G0..G4)        
+-------------------------------------------------------------------------------------------- 
+0.1      | 50/17/ 1/16/16 G34= 32% | 40/34/26/ 0/ 0 G34=  0% | 100/ 0/ 0/ 0/ 0 G34=  0%
+0.25     | 25/37/ 5/11/22 G34= 33% | 25/33/30/12/ 0 G34= 12% | 100/ 0/ 0/ 0/ 0 G34=  0%
+0.5      | 20/38/ 9/ 7/26 G34= 33% | 14/30/32/23/ 1 G34= 24% | 100/ 0/ 0/ 0/ 0 G34=  0%
+1        | 15/37/15/ 4/29 G34= 33% |  3/32/33/23/ 9 G34= 32% | 100/ 0/ 0/ 0/ 0 G34=  0%
+2        | 13/28/26/ 4/29 G34= 33% |  0/34/23/24/19 G34= 43% | 100/ 0/ 0/ 0/ 0 G34=  0%
+3.6      | 13/26/28/ 4/29 G34= 33% |  0/33/19/25/23 G34= 48% | 100/ 0/ 0/ 0/ 0 G34=  0%
+5.4      | 11/27/29/ 4/29 G34= 33% |  0/32/19/26/23 G34= 49% | 100/ 0/ 0/ 0/ 0 G34=  0%
+
+
+=== BPA NHP Emax-IC50 -- SCENARIO 2 (IC50_CMP=0.015 nM) ===
+kmax calibres FDA | IC50_CMP=0.015 nM (EC50) | Q3W x4 | N=100/dose
+Dose     | NEUTRO (G0..G4)          | ANEMIE (G0..G4)          | THROMBO (G0..G4)        
+-------------------------------------------------------------------------------------------- 
+0.1      | 15/32/20/ 4/29 G34= 33% | 20/46/32/ 2/ 0 G34=  2% | 100/ 0/ 0/ 0/ 0 G34=  0%
+0.25     | 14/32/21/ 4/29 G34= 33% | 14/40/33/13/ 0 G34= 13% | 100/ 0/ 0/ 0/ 0 G34=  0%
+0.5      | 11/30/26/ 4/29 G34= 33% |  8/31/37/23/ 1 G34= 24% | 100/ 0/ 0/ 0/ 0 G34=  0%
+1        | 10/28/29/ 4/29 G34= 33% |  2/33/33/23/ 9 G34= 32% | 100/ 0/ 0/ 0/ 0 G34=  0%
+2        |  9/28/30/ 4/29 G34= 33% |  0/34/22/25/19 G34= 44% | 100/ 0/ 0/ 0/ 0 G34=  0%
+3.6      |  9/27/31/ 4/29 G34= 33% |  0/33/19/25/23 G34= 48% | 100/ 0/ 0/ 0/ 0 G34=  0%
+5.4      |  8/28/31/ 4/29 G34= 33% |  0/32/19/26/23 G34= 49% | 100/ 0/ 0/ 0/ 0 G34=  0%
+
+
+NOTE : kmax figes depuis la calibration FDA T-DXd ; seules les IC50 changent.
+
+########################################################################
+# CONCLUSIONS -- approche Emax-IC50 (IC50 = EC50 direct, kmax calibres FDA)
+########################################################################
+# 1. NEUTROPENIE saturee ~33% G3-4 DES 0.1 mg/kg, PLATE sur toute la gamme
+#    et IDENTIQUE S1/S2 : IC50_CMP=7.8 nM est si basse que E_CMP~1 des la
+#    dose minimale -> effet myeloide maximal, insensible a la dose ET a la
+#    valeur exacte de l'IC50 (7.8 ou 0.015 nM saturent pareil).
+# 2. ANEMIE dose-dependante (0->49%) : IC50 erythroide (155 nM) plus haute,
+#    E_MEP varie avec la concentration -> reponse graduee.
+# 3. THROMBOPENIE nulle (FLT3 faible sur megacaryocytes).
+#
+# ROBUSTESSE : conclusion insensible a l'incertitude sur l'IC50 myeloide.
+#   -> neutropenie severe inevitable des faible dose, marge therapeutique
+#      cote neutropenie quasi nulle.
+#
+# vs approche A (ratio Slope, kill lineaire) : A donne une neutropenie
+#   croissante avec la dose (16->64%) et S1!=S2. La divergence isole le
+#   point : effet myeloide sature (B, borne, plus mecaniste) vs non borne (A).
+#   Les deux CONVERGENT sur : BPA myelotoxique des faible dose, neutropenie
+#   dominante.
+#
+# kmax figes depuis calibration FDA T-DXd (reproduit Neut 14%/16%,
+# Anemie 9%/9%). Seules les IC50 changent pour le BPA.
+########################################################################

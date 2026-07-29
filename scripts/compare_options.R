@@ -28,7 +28,7 @@ N_CYCLES   <- 2
 GFR_REF    <- 125    # GFR du patient de référence (Supplementary S11)
 TIMES      <- seq(0, N_CYCLES * INTERVAL_H + 21 * 24, by = 1)
 
-# ── Cibles Fornari Figure 4c (barres jaunes = IC50-scaled) ─
+# -- Cibles Fornari Figure 4c (barres jaunes = IC50-scaled) -
 FORNARI_NEUT <- c(G1 = 12, G2 = 15, G3 = 15, G4 = 1)
 FORNARI_PLT  <- c(G1 = 31, G2 = 11, G3 = 10, G4 = 4)
 
@@ -60,14 +60,14 @@ simulate_grades <- function(option_name,
 
   for (i in seq_len(N_PAT)) {
 
-    # ── Dose ───────────────────────────────────────────────
+    # -- Dose -----------------------------------------------
     dose_i <- if (!is.null(dose_fixe)) {
       dose_fixe
     } else {
       AUC_TARGET * (gfr_vals[i] + 25)
     }
 
-    # ── Paramètres individuels ─────────────────────────────
+    # -- Paramètres individuels -----------------------------
     pars_i              <- init_pars
     pars_i$CL           <- init_pars$CL * exp(eta_CL[i])
     pars_i$Slope_MPP    <- init_pars$Slope_MPP * exp(eta_Slope[i])
@@ -82,7 +82,7 @@ simulate_grades <- function(option_name,
       n_cycles   = N_CYCLES
     )
 
-    # ── État initial adapté aux baselines individuelles ────
+    # -- État initial adapté aux baselines individuelles ----
     state_i           <- init_state
     state_i["Neut"]   <- neut0_i[i]
     state_i["Plt"]    <- plt0_i[i]
@@ -167,14 +167,14 @@ res3 <- simulate_grades(
 )
 
 # ════════════════════════════════════════════════════════
-# FIGURE COMPARATIVE — 3 options + cible Fornari
+# FIGURE COMPARATIVE -- 3 options + cible Fornari
 # ════════════════════════════════════════════════════════
 make_comparison_figure <- function(res_list, out_file) {
 
   grades  <- paste0("G", 1:4)
   options <- sapply(res_list, function(r) r$option)
 
-  # ── Data.frame long ──────────────────────────────────
+  # -- Data.frame long ----------------------------------
   rows <- list()
   for (r in res_list) {
     for (g in 1:4) {
@@ -212,7 +212,7 @@ make_comparison_figure <- function(res_list, out_file) {
     "Option 3\n(omega_Slope=1.20)"      = "#9B59B6"
   )
 
-  # ── Neut ──────────────────────────────────────────────
+  # -- Neut ----------------------------------------------
   p_neut <- ggplot(df_all, aes(x = Grade, y = Neut_pct, fill = Option)) +
     geom_col(position = position_dodge(width = 0.75), width = 0.7, alpha = 0.88) +
     geom_text(aes(label = sprintf("%.0f", Neut_pct)),
@@ -220,7 +220,7 @@ make_comparison_figure <- function(res_list, out_file) {
               vjust = -0.4, size = 2.8) +
     scale_fill_manual(values = option_colors, name = NULL) +
     scale_y_continuous(limits = c(0, 40), labels = function(x) paste0(x, "%")) +
-    labs(title = "Neutropénie — % patients par grade nadir",
+    labs(title = "Neutropénie -- % patients par grade nadir",
          x = "Grade NCI-CTCAE", y = "% patients") +
     theme_bw(base_size = 10) +
     theme(plot.title    = element_text(face = "bold", hjust = 0.5),
@@ -228,7 +228,7 @@ make_comparison_figure <- function(res_list, out_file) {
           legend.text   = element_text(size = 8),
           panel.grid.minor = element_blank())
 
-  # ── Plt ───────────────────────────────────────────────
+  # -- Plt -----------------------------------------------
   p_plt <- ggplot(df_all, aes(x = Grade, y = Plt_pct, fill = Option)) +
     geom_col(position = position_dodge(width = 0.75), width = 0.7, alpha = 0.88) +
     geom_text(aes(label = sprintf("%.0f", Plt_pct)),
@@ -236,7 +236,7 @@ make_comparison_figure <- function(res_list, out_file) {
               vjust = -0.4, size = 2.8) +
     scale_fill_manual(values = option_colors, name = NULL) +
     scale_y_continuous(limits = c(0, 50), labels = function(x) paste0(x, "%")) +
-    labs(title = "Thrombocytopénie — % patients par grade nadir",
+    labs(title = "Thrombocytopénie -- % patients par grade nadir",
          x = "Grade NCI-CTCAE", y = "% patients") +
     theme_bw(base_size = 10) +
     theme(plot.title    = element_text(face = "bold", hjust = 0.5),
@@ -249,7 +249,7 @@ make_comparison_figure <- function(res_list, out_file) {
     p_neut, p_plt,
     ncol = 2,
     top  = grid::textGrob(
-      sprintf("Comparaison des 3 options — Carboplatine AUC=%d Q21D×%d (%d patients/option)",
+      sprintf("Comparaison des 3 options -- Carboplatine AUC=%d Q21D×%d (%d patients/option)",
               AUC_TARGET, N_CYCLES, N_PAT),
       gp = grid::gpar(fontface = "bold", fontsize = 13)
     )
@@ -281,7 +281,7 @@ make_individual_figure <- function(res, out_file, subtitle = "") {
     scale_fill_manual(values = unname(GRADE_COLORS), guide = "none") +
     scale_y_continuous(limits = c(0, max(df$Pct, 5) * 1.3),
                        labels = function(x) paste0(x, "%")) +
-    labs(title    = gsub("\n", " — ", res$option),
+    labs(title    = gsub("\n", " -- ", res$option),
          subtitle = subtitle,
          x = "NCI-CTCAE v5.0 Grade", y = "% patients") +
     theme_bw(base_size = 10) +
@@ -317,10 +317,10 @@ make_comparison_figure(
 # TABLEAU DE SYNTHÈSE
 # ════════════════════════════════════════════════════════
 cat("\n\n══════════════════════════════════════════════════════\n")
-cat("TABLEAU DE SYNTHÈSE — % patients par grade (nadir)\n")
+cat("TABLEAU DE SYNTHÈSE -- % patients par grade (nadir)\n")
 cat("══════════════════════════════════════════════════════\n")
 cat(sprintf("%-32s  %5s  %5s  %5s  %5s\n", "", "G1", "G2", "G3", "G4"))
-cat("── Neutropénie ────────────────────────────────────\n")
+cat("-- Neutropénie ------------------------------------\n")
 cat(sprintf("%-32s  %5.1f  %5.1f  %5.1f  %5.1f\n",
             "Cible Fornari (IC50-scaled)",
             FORNARI_NEUT["G1"], FORNARI_NEUT["G2"],
@@ -329,7 +329,7 @@ for (r in list(res1, res2, res3))
   cat(sprintf("%-32s  %5.1f  %5.1f  %5.1f  %5.1f\n",
               gsub("\n", " ", r$option),
               r$pct_neut[1], r$pct_neut[2], r$pct_neut[3], r$pct_neut[4]))
-cat("── Thrombocytopénie ───────────────────────────────\n")
+cat("-- Thrombocytopénie -------------------------------\n")
 cat(sprintf("%-32s  %5.1f  %5.1f  %5.1f  %5.1f\n",
             "Cible Fornari (IC50-scaled)",
             FORNARI_PLT["G1"], FORNARI_PLT["G2"],
@@ -341,7 +341,7 @@ for (r in list(res1, res2, res3))
 
 # Score RMSE vs Fornari (sur les 8 grades G1-G4 x 2 lignées)
 rmse <- function(obs, pred) sqrt(mean((obs - pred)^2))
-cat("\n── Score RMSE vs Fornari (plus petit = mieux) ─────\n")
+cat("\n-- Score RMSE vs Fornari (plus petit = mieux) -----\n")
 for (r in list(res1, res2, res3)) {
   sc <- rmse(c(FORNARI_NEUT, FORNARI_PLT),
              c(r$pct_neut, r$pct_plt))

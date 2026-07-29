@@ -1,0 +1,6 @@
+*.zip
+results/
+
+# Donnees experimentales BPA confidentielles (Pierre Fabre, NDA) -- ne pas pusher
+etape7_bpa_nhp/data_obs/
+etape6_fgfr2/nhp_hema_data.csv

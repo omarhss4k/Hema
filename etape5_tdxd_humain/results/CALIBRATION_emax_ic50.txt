@@ -1,0 +1,21 @@
+CALIBRATION Emax-IC50 vs FDA (T-DXd 5.4 mg/kg Q3W x6, N=100)
+============================================================
+
+Mecanisme : IC50 CFU utilisee DIRECTEMENT comme EC50 d'un effet
+  Emax par compartiment, en deplation directe (-kmax_X*E_X*X).
+  Structure Fornari inchangee. IC50 -> EC50 ; kmax -> amplitude.
+
+RESULTATS (iter.5 finale) :
+  NEUTROPENIE : G0=68 G1=14 G2=4 G3=7 G4=7 | G3-4=14% (FDA 16%)
+  ANEMIE      : G0=35 G1=31 G2=25 G3=9 G4=0 | G3-4= 9% (FDA  9%) <- exact
+
+kmax CALIBRES [1/h] (proportions mixture = FDA) :
+  CMP (neutro)     : resist 0.02 (66%) | modere 0.13 (14%) | sensible 0.80 (20%)
+  Erythroide(anem) : resist 0.005(34%) | leger  0.035(33%) | sensible 0.125(33%)
+  IIV lognormale omega=0.3 (0.5 sur sensibles erythro)
+
+IC50 (EC50) utilisees [nM] : CMP=189.9  MEP/erythro=184.5  (T-DXd)
+
+-> Pour le BPA : GARDER ces kmax (amplitude = propriete payload/mecanisme)
+   et changer SEULEMENT les IC50 (7.8 nM myeloide, 155 nM erythroide).
+   La potence BPA entre alors uniquement par l'EC50.

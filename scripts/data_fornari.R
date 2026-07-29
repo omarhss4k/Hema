@@ -1,6 +1,6 @@
 ############################################################
 # data_fornari.R
-# Données digitalisées depuis Figure 3 — Fornari 2019
+# Données digitalisées depuis Figure 3 -- Fornari 2019
 # Carboplatin 40 mg/kg Q14D × 8 cycles
 # x = jours, y = 10⁹ cells/L
 ############################################################
@@ -41,7 +41,7 @@ obs_fornari <- list(
 cat(sprintf("  Donnees Fornari chargees : %d types cellulaires\n",
             length(obs_fornari)))
 for (nm in names(obs_fornari))
-  cat(sprintf("    %-5s : %d points  [%.1f – %.1f j]\n",
+  cat(sprintf("    %-5s : %d points  [%.1f - %.1f j]\n",
               nm,
               nrow(obs_fornari[[nm]]),
               min(obs_fornari[[nm]]$time),
